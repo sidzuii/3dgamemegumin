@@ -14,6 +14,10 @@ Full description, file map and how-to guides: see `README.md` (Russian). The use
   (GENERATED: `node tools/plan/render_plan.mjs --emit` — checks streets/squares/wall/terrain, writes
   `docs/plan/*`). Builder: `world/build/Town.js`; wall = `cityWall()` in Kit.js (castle-kit geometry, village
   stone via `addKit({ retex })`). Plan doc: `docs/axel-city-plan.md`. Dungeon interior lives at z 1090..1210.
+- Interiors are in place (no separate scenes): `house({ interior: true, entrance: 'arch' })` gives an archway,
+  a plank floor and a ceiling; `open: 'work'` = open-fronted workshop; furnishing in `world/build/Interiors.js`
+  (wrapped in `world.lodMode = 'near'`). Closed houses have a solid door leaf. Walk-in shops register
+  `<id>_counter` / `_front` / `_entrance` spots.
 - Buildings have LOD: `house()` emits a near model and a far proxy (`world.lodMode`), small parts use
   `detail: true`; distances come from the quality preset (`lod`, `detail`). Terrain is chunked (170 m).
 - Saves: `mapRev` (State.MAP_REV) moves the player of an older-map save to a safe spot; placements.json
