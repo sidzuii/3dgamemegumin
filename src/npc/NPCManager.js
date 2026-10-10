@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { NPCS } from '../data/npcs.js';
 import { NavGrid } from './NavGrid.js';
+import { REGION } from '../world/MapData.js';
+import { WALL, toWorld } from '../world/AxelPlan.js';
 import { check } from '../rpg/State.js';
 import { dampAngle, clamp } from '../core/math.js';
 
@@ -24,6 +26,7 @@ const CLIPS = {
 /** How much of the clips' downward gaze is lifted (hands-on work keeps looking down). */
 const LEVEL_HEAD = { work: 0.3, shop: 0.4, magic: 0.5, dance: 0.6 };
 const WALK_SPEED = 1.35;
+const ESCORT_SPEED = 2.6; // a merchant with a mule on the road (the walk clip is sped up to match)
 const SEAT_H = 0.46; // bench height; schedule entries may set `seat` (0.1 = on the ground)
 const _v = new THREE.Vector3();
 const _p = new THREE.Vector3();
@@ -49,10 +52,15 @@ export class NPCManager {
     this.people = game.people;
     this._bakeClips();
     const W = game.world;
+    // Walkability grids: Axel inside its walls (+ the caravan camp at the south gate), Boris'
+    // farm, Olkhovka.
+    const box = (pts, m) => [Math.min(...pts.map((p) => p[0])) - m, Math.min(...pts.map((p) => p[1])) - m, Math.max(...pts.map((p) => p[0])) + m, Math.max(...pts.map((p) => p[1])) + m];
+    const [ax0, az0, ax1, az1] = box(WALL.nodes.map((n) => toWorld(n.u, n.v)), 6);
+    const reg = (id, r) => { const c = REGION[id].center; return [c.x - r, c.z - r, c.x + r, c.z + r]; };
     this.grids = [
-      new NavGrid(W, -64, -66, 64, 96),
-      new NavGrid(W, -60, 92, 50, 190),
-      new NavGrid(W, 138, -62, 212, 16),
+      new NavGrid(W, ax0, az0, ax1, az1 + 48),
+      new NavGrid(W, ...reg('farms', 62)),
+      new NavGrid(W, ...reg('olkhovka', 60)),
     ];
     for (const def of NPCS) this._create(def);
   }
@@ -278,7 +286,7 @@ class NPC {
       const px = playerPos.x - this.pos.x, pz = playerPos.z - this.pos.z;
       const block = Math.hypot(px, pz) < 0.9 && px * _v.x + pz * _v.z > 0;
       if (!block) {
-        moving = this._step(nxt, dt, WALK_SPEED);
+        moving = this._step(nxt, dt, this.escorting ? ESCORT_SPEED : WALK_SPEED);
         this.blocked = 0;
       } else if ((this.blocked = (this.blocked || 0) + dt) > 1.2) {
         // The player keeps standing in the way: step around her.
@@ -310,7 +318,7 @@ class NPC {
     this.animAcc += dt;
     const interval = d < 30 ? 0 : d < 70 ? 0.1 : Infinity;
     if (this.animAcc >= interval || !this.posed) {
-      this.mixer.update(this.posed ? this.animAcc : this.animAcc + 1);
+      this.mixer.update((this.posed ? this.animAcc : this.animAcc + 1) * (moving && this.escorting ? ESCORT_SPEED / WALK_SPEED : 1));
       this.animAcc = 0;
       this.posed = true;
       if (this.sitting) this._sitPose();

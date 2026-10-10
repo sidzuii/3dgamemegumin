@@ -3,6 +3,7 @@ import { MeguminModel } from './MeguminModel.js';
 import { RoxyModel } from './RoxyModel.js';
 import { CharacterController, MOVE } from './CharacterController.js';
 import { clamp } from '../core/math.js';
+import { REGION } from '../world/MapData.js';
 
 /**
  * The playable Megumin: model + controller + animation state machine + vitals.
@@ -37,8 +38,8 @@ export class Player {
     this.switchCooldown = 0;
     this.controller = null; // created once the world exists (finishLoad)
     this.anim = null; // created once the rig is loaded
-    this.spawnPoint = new THREE.Vector3(0, 0, 6);
-    this.spawnYaw = Math.PI; // facing -Z (towards the ruins)
+    this.spawnPoint = REGION.axel.spawn.clone(); // replaced by the save / a checkpoint
+    this.spawnYaw = Math.PI; // facing -Z
 
     this.hp = 100;
     this.maxHp = 100;

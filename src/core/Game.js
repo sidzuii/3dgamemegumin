@@ -27,13 +27,24 @@ import { PeopleLibrary } from '../npc/People.js';
 import { KitLibrary } from '../world/KitLibrary.js';
 import { Quality } from './Quality.js';
 
-/** Map layout edited with the map editor (public/data/placements.json). */
+/** Revision of the map the layout was made for (the old compact Axel had none). */
+const LAYOUT_REV = 2;
+
+/**
+ * Map layout edited with the map editor (public/data/placements.json). A layout made for another
+ * map revision is ignored: its overrides are absolute positions on the old map
+ * (the previous file is kept as public/data/placements.v1.json).
+ */
 async function loadLayout() {
-  const empty = { version: 1, overrides: {}, added: [] };
+  const empty = { version: 1, layout: LAYOUT_REV, overrides: {}, added: [] };
   try {
     const r = await fetch('/data/placements.json', { cache: 'no-store' });
     if (!r.ok) return empty;
     const data = await r.json();
+    if (data.layout !== LAYOUT_REV) {
+      console.warn('[layout] placements.json is for another map revision — ignored');
+      return empty;
+    }
     return { ...empty, ...data, overrides: data.overrides || {}, added: data.added || [] };
   } catch (e) {
     console.warn('[layout] placements.json not loaded', e);

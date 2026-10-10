@@ -9,6 +9,8 @@
 export const SAVE_KEY = 'megumin-save-v2';
 const LEGACY_KEY = 'megumin-save-v1';
 export const SAVE_VERSION = 2;
+/** Map layout revision: saves from an older map get the player moved to a safe spot (RPG._fixups). */
+export const MAP_REV = 2;
 
 export class EventBus {
   constructor() {
@@ -30,6 +32,7 @@ export class EventBus {
 export function freshState() {
   return {
     version: SAVE_VERSION,
+    // mapRev is set by RPG._fixups (absent in saves from the old map).
     flags: {},
     counters: {},
     quests: {}, // id -> { status: 'active'|'done', stage, progress: {}, day }

@@ -1,4 +1,5 @@
-import { HALF, REGIONS, RIVER, LAKES, ROADS } from '../world/MapData.js';
+import { HALF, REGIONS, RIVERS, LAKES, ROADS } from '../world/MapData.js';
+import { WALL, STREETS, SQUARES, toWorld } from '../world/AxelPlan.js';
 import { GRID_N, GRID_STEP } from '../world/Terrain.js';
 
 /**
@@ -68,11 +69,13 @@ export class MapView {
     const T = (x) => (x + HALF) * PX;
     // Water.
     ctx.strokeStyle = '#4a7a9a';
-    ctx.lineWidth = RIVER.width * PX;
     ctx.lineJoin = ctx.lineCap = 'round';
-    ctx.beginPath();
-    RIVER.points.forEach(([x, z], i) => (i ? ctx.lineTo(T(x), T(z)) : ctx.moveTo(T(x), T(z))));
-    ctx.stroke();
+    for (const R of RIVERS) {
+      ctx.lineWidth = Math.max(2, R.width) * PX;
+      ctx.beginPath();
+      R.points.forEach(([x, z], i) => (i ? ctx.lineTo(T(x), T(z)) : ctx.moveTo(T(x), T(z))));
+      ctx.stroke();
+    }
     ctx.fillStyle = '#4a7a9a';
     for (const L of LAKES) {
       ctx.beginPath();
@@ -100,15 +103,19 @@ export class MapView {
       ctx.fillRect((-f.w / 2) * PX, (-f.d / 2) * PX, f.w * PX, f.d * PX);
       ctx.restore();
     }
-    // Town wall.
+    // Axel: squares, streets, the wall.
+    const city = (pts, close) => {
+      ctx.beginPath();
+      pts.forEach(([u, v], i) => { const [x, z] = toWorld(u, v); i ? ctx.lineTo(T(x), T(z)) : ctx.moveTo(T(x), T(z)); });
+      if (close) ctx.closePath();
+    };
+    ctx.fillStyle = 'rgba(205, 190, 160, 0.9)';
+    for (const q of SQUARES) { city(q.pts, true); ctx.fill(); }
+    ctx.strokeStyle = 'rgba(205, 190, 160, 0.9)';
+    for (const st of STREETS) { ctx.lineWidth = st.width * PX; city(st.pts); ctx.stroke(); }
     ctx.strokeStyle = 'rgba(70, 60, 55, 0.95)';
-    ctx.lineWidth = 2.5 * PX;
-    ctx.beginPath();
-    for (let i = 0; i <= 8; i++) {
-      const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
-      const x = T(Math.cos(a) * 60), z = T(Math.sin(a) * 60);
-      i ? ctx.lineTo(x, z) : ctx.moveTo(x, z);
-    }
+    ctx.lineWidth = 3 * PX;
+    city(WALL.nodes.map((n) => [n.u, n.v]), true);
     ctx.stroke();
     return c;
   }

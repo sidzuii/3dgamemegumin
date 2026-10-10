@@ -1,25 +1,33 @@
 import * as THREE from 'three';
 import { mulberry32 } from '../../core/math.js';
-import { Frame, house, tower, lamp, lantern, barrel, crate, stall, well, bench, wagon, haystack, fence, tree, bush, rock, bridge, prop, GEOMETRY } from './Kit.js';
-import { REGION, LAKES } from '../MapData.js';
+import { Frame, house, tower, lamp, lantern, barrel, crate, stall, well, bench, wagon, haystack, fence, tree, bush, rock, bridge, plankBridge, prop, GEOMETRY } from './Kit.js';
+import { ROOF_COLORS } from '../KitLibrary.js';
+import { REGION, LAKES, BRIDGES, POIS } from '../MapData.js';
 import { QuestProp, Door } from '../Interactables.js';
 import { createRitualCircle } from '../Surfaces.js';
 
 /**
- * Everything outside the walls of Axel: bridges over the Lunnaya, the farms and windmill,
- * the village of Olkhovka, the hunters' camp, the hidden glade, the goblin den, the old
- * watchtower, the mine entrance, the Astrarium ruins and the outer territories.
+ * Everything outside the walls of Axel: the bridges (Moon bridge at the east gate, the south
+ * bridge, the plank bridge over the Alder creek), Boris' farm, the east fields with the
+ * windmill, the Crossroads, the woodcutter in the Alder wood, the village of Olkhovka, the
+ * hunters' camp, the hidden glade, the goblin den, the old watchtower, the mine entrance, the
+ * Astrarium ruins and the outer territories.
  */
+const POI = Object.fromEntries(POIS.map((p) => [p.id, p]));
 export function buildCountryside(world) {
   const rng = mulberry32(777);
   const W = world;
   bridges(W, rng);
   farms(W, rng);
+  W.group('windmill', { x: POI.windmill.x, z: POI.windmill.z, rot: -0.6 }, () => windmill(W, POI.windmill.x, POI.windmill.z), 'Мельница');
+  W.group('east_farm', { x: POI.east_farm.x, z: POI.east_farm.z, rot: 0.2 }, (r) => eastFarm(W, r), 'Заречный хутор');
+  W.group('crossroads', { x: REGION.crossroads.center.x, z: REGION.crossroads.center.z }, (r) => crossroads(W, r), 'Развилка трёх дорог');
+  W.group('woodcutter', { x: POI.woodcutter.x, z: POI.woodcutter.z, rot: 1.2 }, (r) => woodcutter(W, r), 'Хижина дровосека');
   olkhovka(W, rng);
   // Editable groups (map editor): whole places that move as one.
   const R = (id) => REGION[id].center;
   W.group('hunters_camp', R('hunters'), (r) => huntersCamp(W, r), 'Лагерь охотников');
-  W.group('forest_outpost', { x: -154, z: 4 }, (r) => forestOutpost(W, r), 'Аванпост гоблинов');
+  W.group('forest_outpost', { x: POI.forest_scouts.x, z: POI.forest_scouts.z }, (r) => forestOutpost(W, r), 'Аванпост гоблинов');
   W.group('glade', R('glade'), (r) => glade(W, r), 'Скрытая поляна');
   W.group('goblin_den', R('goblin_den'), (r) => goblinDen(W, r), 'Логово гоблинов');
   W.group('watchtower', R('watchtower'), (r) => watchtower(W, r), 'Сторожевая башня');
@@ -35,42 +43,43 @@ const H = (W, x, z) => W.heightAt(x, z);
 
 // -----------------------------------------------------------------------------------------
 function bridges(W, rng) {
-  const deck = (ax, az, bx, bz) => Math.max(H(W, ax, az), H(W, bx, bz)) + 0.25;
-  bridge(W, 74, -1.6, 96, -3.2, 6, deck(74, -1.6, 96, -3.2));
-  bridge(W, 44, 153, 69, 163, 5.5, deck(44, 153, 69, 163));
-  W.spot('east_bridge', new THREE.Vector3(85, deck(74, -1.6, 96, -3.2), -2.4), Math.PI / 2);
+  const deck = (b) => Math.max(H(W, ...b.a), H(W, ...b.b)) + 0.25;
+  for (const b of BRIDGES) {
+    if (b.kind === 'stone') bridge(W, ...b.a, ...b.b, b.width, deck(b));
+    else if (b.kind === 'plank') plankBridge(W, ...b.a, ...b.b, b.width, Math.max(H(W, ...b.a), H(W, ...b.b)) + 0.15);
+  }
+  const moon = BRIDGES.find((b) => b.id === 'moon_bridge');
+  W.spot('east_bridge', new THREE.Vector3((moon.a[0] + moon.b[0]) / 2, deck(moon), (moon.a[1] + moon.b[1]) / 2), Math.PI / 2);
   // Named places used by quests, events and NPC schedules.
   const sp = (name, x, z, yaw = 0) => W.spot(name, new THREE.Vector3(x, H(W, x, z), z), yaw);
-  sp('herb_meadow', -84, 6);
-  sp('river_meadow', 110, 66);
-  sp('tobias_wait', 50, 6, -Math.PI / 2);
-  sp('olkhovka_tobias', 168, -17, -Math.PI / 2);
-  sp('caravan_trader', 121, -18, 0.3);
-  sp('caravan_trader_wagon', 125, -12, 0);
-  sp('ambush_point', 118, -13);
-  // Smugglers' stash under the east bridge (a secret).
-  const sx = 79.2, sz = 5.5;
-  W.addChest(new THREE.Vector3(sx, H(W, sx, sz) + 0.02, sz), Math.PI / 2, 'bridge_stash');
-  for (let i = 0; i < 3; i++) crate(W, new Frame(W, sx - 0.4, H(W, sx - 0.4, sz + 1.2 + i * 0.8), sz + 1.2 + i * 0.8, 0), 0, 0, 0.6, i);
+  sp('herb_meadow', POI.herb_meadow.x, POI.herb_meadow.z);
+  sp('river_meadow', POI.river_meadow.x, POI.river_meadow.z);
+  sp('tobias_wait', POI.tobias_wait.x, POI.tobias_wait.z, Math.PI / 2);
+  sp('caravan_trader', POI.caravan_trader.x, POI.caravan_trader.z, 0.3);
+  sp('caravan_trader_wagon', POI.caravan_trader.x + 4, POI.caravan_trader.z + 6, 0);
+  sp('ambush_point', POI.ambush_point.x, POI.ambush_point.z);
+  sp('injured_traveler', POI.injured_traveler.x, POI.injured_traveler.z, -0.6);
+  // Smugglers' stash under the Moon bridge (a secret).
+  const sx = POI.bridge_stash.x, sz = POI.bridge_stash.z;
+  W.addChest(new THREE.Vector3(sx, H(W, sx, sz) + 0.02, sz), -Math.PI / 2, 'bridge_stash');
+  for (let i = 0; i < 3; i++) crate(W, new Frame(W, sx + 0.4, H(W, sx + 0.4, sz + 1.2 + i * 0.8), sz + 1.2 + i * 0.8, 0), 0, 0, 0.6, i);
 }
 
 // -----------------------------------------------------------------------------------------
 function farms(W, rng) {
   // Farmhouse of Boris.
-  W.group('farmhouse', { x: -22, z: 116, rot: Math.PI / 2 }, (r) => {
-    const fh = house(W, { x: -22, z: 116, rot: Math.PI / 2, w: 8, d: 6, floors: 2, roofTint: 0xd8b878, chimney: true, kind: 'farmhouse' }, r);
+  W.group('farmhouse', { x: -324, z: 230, rot: Math.PI / 2 }, (r) => {
+    const fh = house(W, { x: -324, z: 230, rot: Math.PI / 2, w: 8, d: 6, floors: 2, roofTint: 0xd8b878, chimney: true, kind: 'farmhouse' }, r);
     W.spot('farmhouse', fh.door, Math.PI / 2);
   }, 'Дом фермера');
   // Red barn.
-  W.group('barn', { x: -38, z: 134, rot: Math.PI / 2 }, (r) => barn(W, r), 'Амбар');
-  for (let i = 0; i < 4; i++) W.group('hay_' + i, { x: -46 + (i % 2) * 2.4, z: 140 + Math.floor(i / 2) * 2.6 }, () => haystack(W, -46 + (i % 2) * 2.4, 140 + Math.floor(i / 2) * 2.6, 0.8), 'Стог сена');
-  // Windmill.
-  W.group('windmill', { x: 26, z: 104, rot: -0.6 }, () => windmill(W, 26, 104), 'Мельница');
+  W.group('barn', { x: -340, z: 248, rot: Math.PI / 2 }, (r) => barn(W, r), 'Амбар');
+  for (let i = 0; i < 4; i++) W.group('hay_' + i, { x: -348 + (i % 2) * 2.4, z: 254 + Math.floor(i / 2) * 2.6 }, () => haystack(W, -348 + (i % 2) * 2.4, 254 + Math.floor(i / 2) * 2.6, 0.8), 'Стог сена');
   farmFields(W, rng);
 }
 
 function barn(W, rng) {
-  const b = house(W, { x: -38, z: 134, rot: Math.PI / 2, w: 11, d: 8, floors: 1, floorH: 4.6, style: 'wood', roofTint: 0x5a4a40, chimney: false, door: 0, kind: 'barn', lantern: false }, rng);
+  const b = house(W, { x: -340, z: 248, rot: Math.PI / 2, w: 11, d: 8, floors: 1, floorH: 4.6, style: 'wood', roofTint: 0x5a4a40, chimney: false, door: 0, kind: 'barn', lantern: false }, rng);
   b.frame.box(3.2, 3.4, 0.1, 0, 0.35, 4.08, 'door', { tint: 0x8a3a2a, collide: false });
   for (const s of [-1, 1]) b.frame.box(0.12, 3.4, 0.12, s * 0.8, 0.35, 4.14, 'timber', { tint: 0xf0e8d8, collide: false, rz: s * 0.85 });
   W.spot('barn', b.frame.at(0, 0.35, 5.2), Math.PI / 2);
@@ -83,10 +92,10 @@ function barn(W, rng) {
 function farmFields(W, rng) {
   // Fields (crops rendered as tall instanced grass, rows of cabbages / pumpkins).
   const fields = [
-    { x: -12, z: 142, w: 22, d: 16, crop: 'wheat' },
-    { x: -6, z: 165, w: 20, d: 12, crop: 'wheat' },
-    { x: 26, z: 128, w: 16, d: 20, crop: 'cabbage' },
-    { x: 14, z: 172, w: 16, d: 10, crop: 'pumpkin' },
+    { x: -314, z: 256, w: 22, d: 16, crop: 'wheat' },
+    { x: -308, z: 279, w: 20, d: 12, crop: 'wheat' },
+    { x: -276, z: 242, w: 16, d: 20, crop: 'cabbage' },
+    { x: -288, z: 286, w: 16, d: 10, crop: 'pumpkin' },
   ];
   W.fields = W.fields || [];
   fields.forEach((f, i) => {
@@ -107,23 +116,20 @@ function farmFields(W, rng) {
     }
     W.spot('field_' + i, new THREE.Vector3(f.x, H(W, f.x, f.z), f.z + f.d / 2 - 1), 0);
   });
-  W.addFootprint(-12, 142, 22, 16, 0, 'field');
-  W.addFootprint(-6, 165, 20, 12, 0, 'field');
-  W.addFootprint(26, 128, 16, 20, 0, 'field');
-  W.addFootprint(14, 172, 16, 10, 0, 'field');
+  for (const f of fields) W.addFootprint(f.x, f.z, f.w, f.d, 0, 'field');
   // Scarecrow.
-  W.group('scarecrow', { x: -10, z: 140, rot: 0.4 }, () => {
-    const S = new Frame(W, -10, H(W, -10, 140), 140, 0.4);
+  W.group('scarecrow', { x: -312, z: 254, rot: 0.4 }, () => {
+    const S = new Frame(W, -312, H(W, -312, 254), 254, 0.4);
     S.box(0.12, 2.2, 0.12, 0, 0, 0, 'log', { collide: false });
     S.box(1.6, 0.1, 0.1, 0, 1.6, 0, 'log', { collide: false });
     S.box(0.7, 0.8, 0.35, 0, 1.2, 0, 'cloth', { collide: false, tint: 0x6a7ab0 });
     S.sphere(0.25, 0, 2.25, 0, 'hay', { collide: false });
     S.cone(0.45, 0.4, 0, 2.4, 0, 'hay', { collide: false, seg: 8 });
   }, 'Пугало');
-  W.group('farm_wagon', { x: -16, z: 108, rot: 0.2 }, () => wagon(W, -16, 108, 0.2, 0xd8c8a0), 'Фургон');
-  W.group('farm_well', { x: -14, z: 124 }, () => well(W, -14, 124), 'Колодец');
+  W.group('farm_wagon', { x: -318, z: 222, rot: 0.2 }, () => wagon(W, -318, 222, 0.2, 0xd8c8a0), 'Фургон');
+  W.group('farm_well', { x: -316, z: 238 }, () => well(W, -316, 238), 'Колодец');
   // Mushroom raid spawn points around the fields (night event).
-  [[-26, 154], [6, 152], [36, 140], [-2, 182]].forEach(([x, z], i) => W.spot('raid_' + i, new THREE.Vector3(x, H(W, x, z), z), 0));
+  [[-328, 268], [-296, 266], [-266, 254], [-304, 296]].forEach(([x, z], i) => W.spot('raid_' + i, new THREE.Vector3(x, H(W, x, z), z), 0));
 }
 
 /** Stone windmill with turning sails (sails are a live mesh). */
@@ -168,6 +174,7 @@ function olkhovka(W, rng) {
     const h = house(W, { x: c.x + dx, z: c.z + dz, rot, w: 6 + Math.round(r() * 2), d: 5 + Math.round(r()), floors: r() < 0.3 ? 2 : 1, roofTint: 0xe0c080, kind: 'house' }, r);
     W.spot(`olk_house_${dx}_${dz}`, h.door, rot);
   }, 'Дом в Ольховке ' + (i + 1)));
+  W.spot('olkhovka_tobias', new THREE.Vector3(c.x - 7, H(W, c.x - 7, c.z + 8), c.z + 8), -Math.PI / 2);
   // The inn "Ольха" (Helga runs the caravans from here).
   W.group('olk_inn', { x: c.x + 2, z: c.z - 4 }, (r) => {
     const inn = house(W, { x: c.x + 2, z: c.z - 4, rot: 0, w: 9, d: 7, floors: 2, open: 'shop', roofTint: 0x7d5a3a, awningTint: 0x4a8a5a, chimney: true, kind: 'shop' }, r);
@@ -203,6 +210,59 @@ function olkhovka(W, rng) {
   }, 'Часовня и кладбище');
   fence(W, [[c.x - 30, c.z - 26], [c.x - 30, c.z + 26]], { tint: 0x8a6a48 });
   [[-8, -4], [9, -6], [-6, 26], [20, 18]].forEach(([dx, dz], i) => W.group('olk_lamp_' + i, { x: c.x + dx, z: c.z + dz }, () => lamp(W, new THREE.Vector3(c.x + dx, H(W, c.x + dx, c.z + dz), c.z + dz), 0), 'Фонарь'));
+}
+
+/** Farmstead across the river: a cottage, a fenced vegetable patch, a cart. */
+function eastFarm(W, rng) {
+  const c = POI.east_farm;
+  const h = house(W, { x: c.x, z: c.z, rot: 0.2, w: 7, d: 6, floors: 1, style: 'wood', roofTint: ROOF_COLORS.straw, chimney: true, kind: 'farmhouse', vines: 1 }, rng);
+  const F = h.frame;
+  fence(W, [F.at(-4, 0, 6), F.at(-14, 0, 6), F.at(-14, 0, 16), F.at(-4, 0, 16), F.at(-4, 0, 9)].map((p) => [p.x, p.z]), { tint: 0x9a7a50 });
+  for (let i = 0; i < 12; i++) {
+    const p = F.at(-12 + (i % 4) * 2.4, 0, 8 + Math.floor(i / 4) * 2.6);
+    new Frame(W, p.x, H(W, p.x, p.z) - 0.04, p.z, rng() * 6).kit('food/cabbage', 0, 0, 0, { s: 1.6, collide: false, castShadow: false });
+  }
+  wagon(W, ...lpos(F, 5, 4), 0.2 + 1.4, 0xd8c8a0);
+  haystack(W, ...lpos(F, 6, -2), 0.8);
+}
+const lpos = (F, lx, lz) => { const p = F.at(lx, 0, lz); return [p.x, p.z]; };
+
+/** The Crossroads: the roadside inn «Подкова», a well, a little shrine of Eris, the trader's pitch. */
+function crossroads(W, rng) {
+  const c = REGION.crossroads.center;
+  const ip = POI.crossroads_inn;
+  const inn = house(W, { x: ip.x, z: ip.z, rot: -0.3, w: 11, d: 8, floors: 2, style: 'wood', roofTint: ROOF_COLORS.brown, chimney: true, kind: 'inn', jetty: 0.3, flowers: 0.5 }, rng);
+  const F = inn.frame;
+  F.box(0.08, 0.08, 1.4, 3.5, 3.4, 4.7, 'metal', { collide: false });
+  F.put(new THREE.TorusGeometry(0.55, 0.1, 6, 14, Math.PI * 1.4), 1, 1, 1, 3.5, 2.5, 5.3, 'metal', { collide: false, rz: -Math.PI * 0.2 }); // horseshoe sign
+  for (let i = 0; i < 2; i++) {
+    const T = F.sub(-3 + i * 4, 0, 7.2);
+    T.cyl(0.6, 0.06, 0, 0.74, 0, 'plank', { seg: 10, tint: 0x8a6440 });
+    T.cyl(0.08, 0.74, 0, 0, 0, 'timber', { seg: 6, tint: 0x4a3020 });
+  }
+  W.spot('crossroads_inn', inn.door, -0.3);
+  well(W, c.x - 10, c.z + 10);
+  // Shrine of Eris: a stone niche with a small statue and candles.
+  const S = new Frame(W, c.x + 12, H(W, c.x + 12, c.z + 14), c.z + 14, Math.PI + 0.4);
+  S.box(1.6, 2.6, 1.0, 0, 0, 0, 'stone', { tint: 0xc8c0b0 });
+  S.box(2.0, 0.3, 1.3, 0, 2.6, 0, 'roof', { tint: 0x3a6a8a });
+  S.cyl(0.18, 0.9, 0, 1.0, 0.45, 'stone', { seg: 8, tint: 0xf0ece4, collide: false });
+  S.sphere(0.14, 0, 2.0, 0.45, 'stone', { tint: 0xf0ece4, collide: false });
+  prop(S, 'graveyard/candle-multiple', 0, 0, 0.9, { s: 1.0, collide: false });
+  W.addLightSource(S.at(0, 1.2, 1.0), { color: 0xffd090, intensity: 3, distance: 7, night: true });
+  lamp(W, new THREE.Vector3(c.x - 6, H(W, c.x - 6, c.z - 6), c.z - 6), 0);
+  bench(W, new Frame(W, c.x + 4, H(W, c.x + 4, c.z + 8), c.z + 8, 0.4), 0, 0, 0);
+  W.addFootprint(c.x, c.z, 20, 20, 0, 'yard');
+}
+
+/** Woodcutter's hut at the edge of the Alder wood. */
+function woodcutter(W, rng) {
+  const p = POI.woodcutter;
+  const h = house(W, { x: p.x, z: p.z, rot: 1.2, w: 6, d: 5, floors: 1, style: 'wood', roofTint: ROOF_COLORS.brown, chimney: true, kind: 'house', vines: 1 }, rng);
+  const F = h.frame;
+  prop(F, 'nature/log_stackLarge', 4.5, 0, 1, { s: 3 });
+  prop(F, 'survival/workbench', -4, 0, 3, { s: 2.6 });
+  for (let i = 0; i < 3; i++) prop(F, 'nature/stump_round', 2 + i * 1.6, 0, 4.5, { s: 2, collide: 'box' });
 }
 
 /** Graveyard beside the chapel (Kenney graveyard kit): iron fence, rows of graves, a family crypt. */
@@ -302,12 +362,11 @@ function huntersCamp(W, rng) {
   for (let i = 0; i < 6; i++) new Frame(W, c.x + 8, H(W, c.x + 8, c.z - 1), c.z - 1 + (i % 3) * 0.3, 0).cyl(0.16, 1.4, 0, 0.16 + Math.floor(i / 3) * 0.3, 0, 'log', { seg: 6, rx: Math.PI / 2, collide: false });
   W.spot('hunters_fire', new THREE.Vector3(c.x + 2, H(W, c.x + 2, c.z), c.z), -Math.PI / 2);
   W.spot('hunter_rann', new THREE.Vector3(c.x - 3, H(W, c.x - 3, c.z - 1), c.z - 1), 0.8);
-  W.spot('injured_traveler', new THREE.Vector3(-96, H(W, -96, 14), 14), -0.6);
 }
 
 function forestOutpost(W, rng) {
-  // A small goblin lookout at the forest edge (the first guild hunt).
-  const x = -154, z = 4;
+  // A small goblin lookout on the glade trail (the first guild hunt).
+  const x = POI.forest_scouts.x, z = POI.forest_scouts.z;
   tent(W, x - 3, z - 3, 0.6, 0x5b6a3a);
   tent(W, x + 4, z + 2, 2.0, 0x7b5a3a);
   totem(W, x, z + 6);
@@ -399,7 +458,7 @@ function watchtower(W, rng) {
 }
 
 function caveEntrance(W, rng) {
-  const x = -100, z = -122;
+  const x = REGION.cave.center.x, z = REGION.cave.center.z;
   const y = H(W, x, z);
   // The hill rises to the north; the portal faces south (towards the road).
   const P = new Frame(W, x, y, z - 2, 0);

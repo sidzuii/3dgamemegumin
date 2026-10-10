@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { EventBus, freshState, loadSave, writeSave, check } from './State.js';
+import { EventBus, freshState, loadSave, writeSave, check, MAP_REV } from './State.js';
 import { Clock } from './Clock.js';
 import { QuestManager } from './Quests.js';
 import { DialogueRunner } from './Dialogue.js';
@@ -7,7 +7,7 @@ import { Economy } from './Economy.js';
 import { Guild } from './Guild.js';
 import { WorldEvents } from './WorldEvents.js';
 import { Gathering } from './Gathering.js';
-import { REGIONS, REGION, HALF } from '../world/MapData.js';
+import { REGIONS, REGION, HALF, ROADS } from '../world/MapData.js';
 import { ITEMS } from '../data/items.js';
 import { PROP_TEXTS } from '../data/dialogues.js';
 
@@ -88,6 +88,12 @@ export class RPG {
 
   _fixups() {
     const S = this.state;
+    // Saved on an older map (Axel was rebuilt): the old position and fog of war mean nothing here.
+    if (S.mapRev !== MAP_REV) {
+      S.explored = '';
+      this._relocate = !!S.player;
+      S.mapRev = MAP_REV;
+    }
     S.quests = S.quests || {};
     for (const id of Object.keys(S.quests)) if (!this.quests.def(id)) delete S.quests[id];
     if (S.explored) {
@@ -111,6 +117,13 @@ export class RPG {
     }
     const P = S.player;
     const pl = g.player;
+    if (P && this._relocate) {
+      // Old map: start again at the caravan yard (prologue) or on the Fountain square.
+      const s = this.spot(this.quests.status('prologue_arrival') === 'done' ? 'square' : 'caravan_arrival');
+      P.x = s.pos.x; P.y = s.pos.y; P.z = s.pos.z; P.yaw = s.yaw;
+      this._relocate = false;
+      this.notify('info', 'Аксель отстроен заново: вы снова на улицах города. Задания и вещи сохранены.');
+    }
     if (P) {
       pl.level = P.level || 1;
       pl.xp = P.xp || 0;
@@ -407,7 +420,7 @@ export class RPG {
     if (!n) return;
     this.escort = { npc: n, to: this.spotPos(v.to), quest: v.quest, ambush: v.ambush, ambushed: false };
     n.setFollow(null);
-    n._goTo(this.escort.to, v.route);
+    n._goTo(this.escort.to, v.road ? roadRoute(v.road, n.position) : v.route);
     n.escorting = true;
   }
 
@@ -533,6 +546,22 @@ export class RPG {
     this.dirty = false;
     this.autosave = 30;
   }
+}
+
+/** Waypoints along a road (MapData ROADS) from the point nearest to `from` to the road's end. */
+function roadRoute(id, from) {
+  const pts = ROADS.find((r) => r.id === id)?.points;
+  if (!pts) return null;
+  // Nearest segment; walk on from its far end.
+  let best = 0, bd = Infinity;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [ax, az] = pts[i], [bx, bz] = pts[i + 1];
+    const dx = bx - ax, dz = bz - az;
+    const t = Math.max(0, Math.min(1, ((from.x - ax) * dx + (from.z - az) * dz) / (dx * dx + dz * dz)));
+    const d = Math.hypot(from.x - ax - dx * t, from.z - az - dz * t);
+    if (d < bd) { bd = d; best = i; }
+  }
+  return pts.slice(best + 1);
 }
 
 export { REGIONS };

@@ -9,6 +9,15 @@ Full description, file map and how-to guides: see `README.md` (Russian). The use
   builders: `src/world/build/` (Kit, Town, Countryside, Dungeon). NPCs: `src/npc/`.
 - Story quests chain through `requires` + `next`; rewards are granted once in `QuestManager.complete`.
 - Named places for NPCs/quests are `world.spot(name, pos, yaw)` registered by the builders.
+- Map: `HALF = 850` (1.7 km). Axel = walled city at (-330, 20): data `src/world/AxelPlan.js` (local u/v metres
+  from the Fountain square; wall, streets, squares, key buildings), house lots `src/world/build/AxelLots.js`
+  (GENERATED: `node tools/plan/render_plan.mjs --emit` — checks streets/squares/wall/terrain, writes
+  `docs/plan/*`). Builder: `world/build/Town.js`; wall = `cityWall()` in Kit.js (castle-kit geometry, village
+  stone via `addKit({ retex })`). Plan doc: `docs/axel-city-plan.md`. Dungeon interior lives at z 1090..1210.
+- Buildings have LOD: `house()` emits a near model and a far proxy (`world.lodMode`), small parts use
+  `detail: true`; distances come from the quality preset (`lod`, `detail`). Terrain is chunked (170 m).
+- Saves: `mapRev` (State.MAP_REV) moves the player of an older-map save to a safe spot; placements.json
+  carries `"layout": 2` (older layouts are ignored by `Game.loadLayout`).
 - Map editor: `?editor` (dev only). Builders wrap places in `world.group(id, pivot, (rng) => …, label)`;
   the layout `public/data/placements.json` (overrides + added objects) moves/deletes them at build time —
   every world sink (addSolid/addKit/spot/addLightSource/addInteractable/addFootprint/camp/addObject)
