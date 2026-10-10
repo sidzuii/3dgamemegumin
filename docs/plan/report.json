@@ -1,0 +1,796 @@
+{
+ "routes": [
+  {
+   "id": "axel_olkhovka",
+   "name": "Аксель (Восточные ворота) → въезд в Ольховку",
+   "metres": 998,
+   "walk_min": 4.9,
+   "run_min": 2.6,
+   "npc_walk_min": 12.3
+  },
+  {
+   "id": "axel_olkhovka_green",
+   "name": "Аксель (Восточные ворота) → площадь Ольховки",
+   "metres": 1045,
+   "walk_min": 5.1,
+   "run_min": 2.7,
+   "npc_walk_min": 12.9
+  },
+  {
+   "id": "axel_mist",
+   "name": "Аксель (Южные ворота) → Озеро Туманов",
+   "metres": 463,
+   "walk_min": 2.3,
+   "run_min": 1.2,
+   "npc_walk_min": 5.7
+  },
+  {
+   "id": "axel_hunters",
+   "name": "Аксель (Западные ворота) → лагерь охотников",
+   "metres": 147,
+   "walk_min": 0.7,
+   "run_min": 0.4,
+   "npc_walk_min": 1.8
+  },
+  {
+   "id": "axel_goblins",
+   "name": "Аксель (Западные ворота) → логово гоблинов",
+   "metres": 289,
+   "walk_min": 1.4,
+   "run_min": 0.8,
+   "npc_walk_min": 3.6
+  },
+  {
+   "id": "axel_cave",
+   "name": "Аксель (Северные ворота) → пещера Старой шахты",
+   "metres": 265,
+   "walk_min": 1.3,
+   "run_min": 0.7,
+   "npc_walk_min": 3.3
+  },
+  {
+   "id": "axel_astrarium",
+   "name": "Аксель (Северные ворота) → Руины Астрариума",
+   "metres": 523,
+   "walk_min": 2.6,
+   "run_min": 1.4,
+   "npc_walk_min": 6.5
+  },
+  {
+   "id": "axel_field",
+   "name": "Аксель (Северные ворота) → поле гильдии",
+   "metres": 36,
+   "walk_min": 0.2,
+   "run_min": 0.1,
+   "npc_walk_min": 0.4
+  },
+  {
+   "id": "cross_tower",
+   "name": "Развилка → сторожевая башня",
+   "metres": 240,
+   "walk_min": 1.2,
+   "run_min": 0.6,
+   "npc_walk_min": 3
+  },
+  {
+   "id": "olk_gorge",
+   "name": "Ольховка → Багровое ущелье",
+   "metres": 502,
+   "walk_min": 2.5,
+   "run_min": 1.3,
+   "npc_walk_min": 6.2
+  }
+ ],
+ "roads": [
+  {
+   "id": "east_road",
+   "length": 998,
+   "maxGrade": 0.29
+  },
+  {
+   "id": "east_pass_road",
+   "length": 65,
+   "maxGrade": 0.32
+  },
+  {
+   "id": "south_road",
+   "length": 463,
+   "maxGrade": 0.2
+  },
+  {
+   "id": "caravan_lane",
+   "length": 39,
+   "maxGrade": 0.13
+  },
+  {
+   "id": "bridge_road",
+   "length": 435,
+   "maxGrade": 0.25
+  },
+  {
+   "id": "lake_trail",
+   "length": 13,
+   "maxGrade": 0.06
+  },
+  {
+   "id": "west_road",
+   "length": 289,
+   "maxGrade": 0.27
+  },
+  {
+   "id": "glade_trail",
+   "length": 204,
+   "maxGrade": 0.13
+  },
+  {
+   "id": "thicket_trail",
+   "length": 130,
+   "maxGrade": 0.11
+  },
+  {
+   "id": "north_road",
+   "length": 523,
+   "maxGrade": 0.2
+  },
+  {
+   "id": "cave_road",
+   "length": 140,
+   "maxGrade": 0.27
+  },
+  {
+   "id": "mines_road",
+   "length": 373,
+   "maxGrade": 0.22
+  },
+  {
+   "id": "tower_trail",
+   "length": 240,
+   "maxGrade": 0.28
+  },
+  {
+   "id": "lava_road",
+   "length": 502,
+   "maxGrade": 0.31
+  }
+ ],
+ "city": {
+  "wall": {
+   "perimeter": 727,
+   "area": 40842,
+   "towers": 16,
+   "gates": 4,
+   "segments": 182,
+   "minDistanceToWater": 19.1
+  },
+  "buildings": {
+   "key": 22,
+   "generated": 94,
+   "total": 116,
+   "byDistrict": {
+    "center": 11,
+    "trade": 15,
+    "res_w": 16,
+    "res_ne": 20,
+    "caravan": 9,
+    "temple": 10,
+    "craft": 15,
+    "res_s": 20
+   },
+   "byKind": {
+    "guild": 1,
+    "tavern": 1,
+    "public": 7,
+    "military": 1,
+    "shop": 12,
+    "inn": 2,
+    "stable": 2,
+    "temple": 2,
+    "workshop": 7,
+    "house": 78,
+    "warehouse": 3
+   },
+   "footprint_m2": 8183
+  },
+  "streets": {
+   "main": 365,
+   "secondary": 354,
+   "lane": 235,
+   "ring": 676
+  },
+  "districts": [
+   {
+    "id": "center",
+    "name": "Центр",
+    "area": 5842,
+    "buildings": 11
+   },
+   {
+    "id": "temple",
+    "name": "Храмовый холм",
+    "area": 6416,
+    "buildings": 10
+   },
+   {
+    "id": "trade",
+    "name": "Торговый район",
+    "area": 5450,
+    "buildings": 15
+   },
+   {
+    "id": "caravan",
+    "name": "Караванный район",
+    "area": 5470,
+    "buildings": 9
+   },
+   {
+    "id": "craft",
+    "name": "Ремесленный район",
+    "area": 7740,
+    "buildings": 15
+   },
+   {
+    "id": "res_ne",
+    "name": "Речной квартал",
+    "area": 9400,
+    "buildings": 20
+   },
+   {
+    "id": "res_w",
+    "name": "Западная слобода",
+    "area": 3510,
+    "buildings": 16
+   },
+   {
+    "id": "res_s",
+    "name": "Южный квартал",
+    "area": 3344,
+    "buildings": 20
+   }
+  ],
+  "squares": [
+   {
+    "id": "fountain_square",
+    "name": "Площадь Фонтана",
+    "area": 1642
+   },
+   {
+    "id": "temple_square",
+    "name": "Храмовая площадь",
+    "area": 690
+   },
+   {
+    "id": "market_square",
+    "name": "Рыночная площадь",
+    "area": 936
+   },
+   {
+    "id": "well_square",
+    "name": "Колодезная площадь",
+    "area": 512
+   },
+   {
+    "id": "craft_square",
+    "name": "Мастеровая площадь",
+    "area": 628
+   },
+   {
+    "id": "caravan_yard",
+    "name": "Караванный двор",
+    "area": 850
+   },
+   {
+    "id": "west_gate_place",
+    "name": "У Западных ворот",
+    "area": 346
+   },
+   {
+    "id": "east_gate_place",
+    "name": "У Восточных ворот",
+    "area": 308
+   },
+   {
+    "id": "north_gate_place",
+    "name": "У Северных ворот",
+    "area": 264
+   },
+   {
+    "id": "south_gate_place",
+    "name": "У Южных ворот",
+    "area": 288
+   }
+  ],
+  "gateToSquare": {
+   "north": 93,
+   "east": 88,
+   "south": 91,
+   "west": 93
+  },
+  "gates": [
+   {
+    "gate": "north",
+    "local": [
+     -8,
+     -110
+    ],
+    "world": [
+     -338,
+     -90
+    ]
+   },
+   {
+    "gate": "east",
+    "local": [
+     106,
+     -8
+    ],
+    "world": [
+     -224,
+     12
+    ]
+   },
+   {
+    "gate": "south",
+    "local": [
+     6,
+     110
+    ],
+    "world": [
+     -324,
+     130
+    ]
+   },
+   {
+    "gate": "west",
+    "local": [
+     -112,
+     6
+    ],
+    "world": [
+     -442,
+     26
+    ]
+   }
+  ],
+  "keyBuildings": [
+   {
+    "id": "guild",
+    "label": "Гильдия искателей приключений",
+    "local": [
+     8,
+     -40
+    ],
+    "world": [
+     -322,
+     -20
+    ],
+    "size": [
+     22,
+     15
+    ],
+    "face": "S",
+    "floors": 2
+   },
+   {
+    "id": "tavern",
+    "label": "Таверна «Кружка и посох»",
+    "local": [
+     40,
+     -4
+    ],
+    "world": [
+     -290,
+     16
+    ],
+    "size": [
+     16,
+     13
+    ],
+    "face": "W",
+    "floors": 2
+   },
+   {
+    "id": "town_hall",
+    "label": "Ратуша",
+    "local": [
+     -38,
+     -6
+    ],
+    "world": [
+     -368,
+     14
+    ],
+    "size": [
+     18,
+     14
+    ],
+    "face": "E",
+    "floors": 2
+   },
+   {
+    "id": "exchange",
+    "label": "Меняльная контора",
+    "local": [
+     -14,
+     28
+    ],
+    "world": [
+     -344,
+     48
+    ],
+    "size": [
+     11,
+     9
+    ],
+    "face": "N",
+    "floors": 2
+   },
+   {
+    "id": "post",
+    "label": "Почтовая станция",
+    "local": [
+     24,
+     28
+    ],
+    "world": [
+     -306,
+     48
+    ],
+    "size": [
+     10,
+     9
+    ],
+    "face": "N",
+    "floors": 2
+   },
+   {
+    "id": "barracks",
+    "label": "Казармы стражи",
+    "local": [
+     20,
+     -88
+    ],
+    "world": [
+     -310,
+     -68
+    ],
+    "size": [
+     16,
+     9
+    ],
+    "face": "S",
+    "floors": 2
+   },
+   {
+    "id": "market_hall",
+    "label": "Крытый рынок",
+    "local": [
+     57,
+     30
+    ],
+    "world": [
+     -273,
+     50
+    ],
+    "size": [
+     14,
+     8
+    ],
+    "face": "N",
+    "floors": 1
+   },
+   {
+    "id": "bakery",
+    "label": "Пекарня Лины",
+    "local": [
+     56,
+     -5
+    ],
+    "world": [
+     -274,
+     15
+    ],
+    "size": [
+     9,
+     7
+    ],
+    "face": "S",
+    "floors": 2
+   },
+   {
+    "id": "store",
+    "label": "Лавка Отто «Всё для путника»",
+    "local": [
+     78,
+     -11
+    ],
+    "world": [
+     -252,
+     9
+    ],
+    "size": [
+     9,
+     7
+    ],
+    "face": "S",
+    "floors": 2
+   },
+   {
+    "id": "alchemist",
+    "label": "Алхимик",
+    "local": [
+     30,
+     48
+    ],
+    "world": [
+     -300,
+     68
+    ],
+    "size": [
+     8,
+     8
+    ],
+    "face": "N",
+    "floors": 3
+   },
+   {
+    "id": "weaponsmith",
+    "label": "Оружейник",
+    "local": [
+     82,
+     14
+    ],
+    "world": [
+     -248,
+     34
+    ],
+    "size": [
+     9,
+     7
+    ],
+    "face": "N",
+    "floors": 2
+   },
+   {
+    "id": "magic_shop",
+    "label": "Лавка магических товаров",
+    "local": [
+     58,
+     -26
+    ],
+    "world": [
+     -272,
+     -6
+    ],
+    "size": [
+     7,
+     7
+    ],
+    "face": "E",
+    "floors": 2
+   },
+   {
+    "id": "caravan_office",
+    "label": "Караванная контора (Марта)",
+    "local": [
+     46,
+     49
+    ],
+    "world": [
+     -284,
+     69
+    ],
+    "size": [
+     10,
+     7
+    ],
+    "face": "S",
+    "floors": 2
+   },
+   {
+    "id": "inn_axle",
+    "label": "Постоялый двор «Ось и колесо»",
+    "local": [
+     21,
+     74
+    ],
+    "world": [
+     -309,
+     94
+    ],
+    "size": [
+     16,
+     9
+    ],
+    "face": "E",
+    "floors": 3
+   },
+   {
+    "id": "inn_dust",
+    "label": "Постоялый двор «Пыльный тракт»",
+    "local": [
+     44,
+     84
+    ],
+    "world": [
+     -286,
+     104
+    ],
+    "size": [
+     14,
+     7
+    ],
+    "face": "N",
+    "floors": 2
+   },
+   {
+    "id": "stables",
+    "label": "Конюшни",
+    "local": [
+     72,
+     64
+    ],
+    "world": [
+     -258,
+     84
+    ],
+    "size": [
+     12,
+     7
+    ],
+    "face": "W",
+    "floors": 1
+   },
+   {
+    "id": "temple",
+    "label": "Храм Эрис",
+    "local": [
+     -60,
+     -74
+    ],
+    "world": [
+     -390,
+     -54
+    ],
+    "size": [
+     14,
+     26
+    ],
+    "face": "S",
+    "floors": 1
+   },
+   {
+    "id": "rectory",
+    "label": "Дом настоятеля",
+    "local": [
+     -40,
+     -76
+    ],
+    "world": [
+     -370,
+     -56
+    ],
+    "size": [
+     10,
+     8
+    ],
+    "face": "W",
+    "floors": 2
+   },
+   {
+    "id": "hospice",
+    "label": "Лечебница",
+    "local": [
+     -38,
+     -60
+    ],
+    "world": [
+     -368,
+     -40
+    ],
+    "size": [
+     10,
+     7
+    ],
+    "face": "W",
+    "floors": 2
+   },
+   {
+    "id": "crypt",
+    "label": "Склеп (crypt_door)",
+    "local": [
+     -86,
+     -66
+    ],
+    "world": [
+     -416,
+     -46
+    ],
+    "size": [
+     6,
+     6
+    ],
+    "face": "E",
+    "floors": 1
+   },
+   {
+    "id": "forge",
+    "label": "Кузница",
+    "local": [
+     -78,
+     28
+    ],
+    "world": [
+     -408,
+     48
+    ],
+    "size": [
+     12,
+     9
+    ],
+    "face": "N",
+    "floors": 1
+   },
+   {
+    "id": "locksmith",
+    "label": "Слесарная мастерская",
+    "local": [
+     -48,
+     30
+    ],
+    "world": [
+     -378,
+     50
+    ],
+    "size": [
+     10,
+     8
+    ],
+    "face": "W",
+    "floors": 2
+   }
+  ],
+  "templeRise": {
+   "climb": 1.9,
+   "length": 37,
+   "grade": 0.05
+  }
+ },
+ "issues": [],
+ "forests": [
+  {
+   "id": "whispering",
+   "name": "Шепчущий лес",
+   "area_ha": 11.1
+  },
+  {
+   "id": "thicket",
+   "name": "Чаща",
+   "area_ha": 1.9
+  },
+  {
+   "id": "alder",
+   "name": "Ольховая роща",
+   "area_ha": 2.2
+  },
+  {
+   "id": "north_pines",
+   "name": "Северный бор",
+   "area_ha": 4.3
+  },
+  {
+   "id": "east_groves",
+   "name": "Восточные рощи",
+   "area_ha": 4.2
+  },
+  {
+   "id": "foothills",
+   "name": "Предгорный бор",
+   "area_ha": 5.5
+  },
+  {
+   "id": "mine_woods",
+   "name": "Шахтёрский лес",
+   "area_ha": 0.7
+  }
+ ]
+}
