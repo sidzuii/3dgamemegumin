@@ -163,6 +163,9 @@ export function house(world, spec, rng) {
   F.box(w + 0.5, 0.9, d + 0.5, 0, -0.55, 0, 'stoneDark');
   const base = 0.35;
   world.addFootprint(spec.x, spec.z, w + 0.5, d + 0.5, spec.rot || 0, spec.kind || 'house');
+  // Everything below is the near model; a proxy for the distance follows (World.lodDistance).
+  const prevLod = world.lodMode;
+  world.lodMode = 'near';
   const doorX = typeof spec.door === 'number' ? spec.door : 0;
 
   let top = base;
@@ -191,6 +194,18 @@ export function house(world, spec, rng) {
     door = F.at(doorX, base, dz + 1.2);
     if (spec.lantern !== false && rng() < 0.7) lantern(world, F.sub(doorX + 1.3, base + 2.1, dz + 0.18));
   }
+  // Climbing vines on a side wall now and then.
+  if (spec.vines && rng() < spec.vines) {
+    const vs = rng() < 0.5 ? -1 : 1;
+    F.kit(V(['Prop_Vine1', 'Prop_Vine2', 'Prop_Vine5'][Math.floor(rng() * 3)]), vs * (w / 2 + 0.1), base + 2.4, (rng() - 0.5) * (d - 2), { ry: vs * Math.PI / 2, s: 1.2, collide: false, castShadow: false, detail: true });
+  }
+  // A balcony on the first upper floor.
+  if (spec.balcony && floors > 1) {
+    const bx = (rng() - 0.5) * Math.max(0, w - 4);
+    const by = base + floorH;
+    F.kit(V('Balcony_Cross_Straight'), bx, by, d / 2 + (jetty || 0) - 0.9, { s: 1, collide: false, detail: false });
+    F.box(2.0, 0.12, 1.1, bx, by - 0.12, d / 2 + (jetty || 0) + 0.45, 'plank', { collide: false, tint: 0x7a5c40 });
+  }
   const ridge = villageRoof(F, w + jetty * 2, d + jetty * 2, top, roofVar, spec);
   // Chimney.
   if (spec.chimney ?? rng() < 0.75) {
@@ -199,7 +214,20 @@ export function house(world, spec, rng) {
     F.kit(V('Prop_Chimney'), cx, top - 0.6, -d * 0.18, { sy: (hgt + 0.6) / 3.18, collide: false });
     world.addChimney(F.at(cx, top + hgt + 0.2, -d * 0.18));
   }
+  world.lodMode = 'far';
+  houseProxy(F, w + jetty * 2, d + jetty * 2, base, top, ridge, groundMat, roofVar, floors, floorH);
+  world.lodMode = prevLod;
   return { frame: F, top, door, base: gy + base, w, d };
+}
+
+/** Far version of a house: a box (wall colour), a gable roof prism and lit window strips. */
+const PROXY_WALL = { Plaster: 0xe6dac2, UnevenBrick: 0x9a8e7c };
+function houseProxy(F, w, d, base, top, ridge, groundMat, roofVar, floors, floorH) {
+  const opts = { collide: false, castShadow: false };
+  F.box(w, top - base, d, 0, base, 0, 'plaster', { ...opts, tint: PROXY_WALL[groundMat] ?? 0xe6dac2 });
+  const roofTint = ROOF_COLORS[roofVar] ?? ROOF_COLORS.red;
+  F.put(gableGeometry(d + 0.7, ridge - top + 0.1, w + 0.5), 1, 1, 1, 0, top - 0.05, 0, 'roof', { ...opts, tint: roofTint, ry: Math.PI / 2 });
+  for (let f = 0; f < floors; f++) for (const s of [-1, 1]) F.box(w * 0.62, 0.9, 0.04, 0, base + f * floorH + 1.0, s * (d / 2 + 0.02), 'window', opts);
 }
 
 /** One storey (or one row of a tall hall) of wall modules around a w × d box. */
@@ -224,9 +252,11 @@ function walls(F, w, d, y0, h, o) {
       const px = s.along === 'x' ? t : s.off - inset;
       const pz = s.along === 'x' ? s.off - inset : t;
       const T = F.sub(px, y0, pz, s.ry);
-      const put = (name, opts = {}) => T.kit(V(name), opts.x ?? 0, 0, 0, { sx, sy, sz: 1, collide: opts.collide ?? true, castShadow: opts.cast ?? true });
+      // `detail`: small inserts go into the distance-culled batches (World.detailDistance).
+      const put = (name, opts = {}) => T.kit(V(name), opts.x ?? 0, 0, 0, { sx, sy, sz: 1, collide: opts.collide ?? true, castShadow: opts.cast ?? true, detail: !!opts.detail });
       const openTile = s.front && ground && (
-        (open === 'shop' && (n <= 2 || (i > 0 && i < n - 1))) ||
+        (open === 'shop' && (n <= 2 || i < n - 1)) || // the left end stays open: the way behind the counter
+        (open === 'stable') ||
         (open === 'hall' && Math.abs(t - doorX) < gap / 2 + tw / 2 - 0.2));
       if (openTile) {
         put('Wall_Arch', { collide: false });
@@ -234,16 +264,21 @@ function walls(F, w, d, y0, h, o) {
       }
       if (s.front && ground && !open && spec.door !== false && Math.abs(t - doorX) < tw / 2) {
         put(`Wall_${mat}_Door_Round`);
-        put('DoorFrame_Round_WoodDark', { collide: false });
-        T.kit(V('Door_1_Round'), -0.5 * sx, 0, 0, { sx, sy, collide: false });
+        put('DoorFrame_Round_WoodDark', { collide: false, detail: true });
+        T.kit(V(spec.doorModel || 'Door_1_Round'), -0.5 * sx, 0, 0, { sx, sy, collide: false, detail: true });
         continue;
       }
       if (rng() < (ground ? 0.55 : 0.7)) {
         const W = WINDOW_KINDS[Math.floor(rng() * WINDOW_KINDS.length)];
         put(`Wall_${mat}_${W.wall}`);
-        put(W.insert, { collide: false });
+        put(W.insert, { collide: false, detail: true });
         const sh = rng();
-        if (sh < 0.55) put(`${W.shutter}_${sh < 0.4 ? 'Open' : 'Closed'}`, { collide: false, cast: false });
+        if (sh < (spec.shutters ?? 0.55)) put(`${W.shutter}_${sh < 0.4 ? 'Open' : 'Closed'}`, { collide: false, cast: false, detail: true });
+        if (!ground && spec.flowers && rng() < spec.flowers) {
+          // Flower box under the window.
+          T.box(1.2 * sx, 0.22, 0.3, 0, 0.92 * sy, 0.24, 'wood', { collide: false, castShadow: false, tint: 0x6a4428, detail: true });
+          for (let k = 0; k < 3; k++) T.sphere(0.15, (-0.4 + k * 0.4) * sx, 0.92 * sy + 0.28, 0.24, 'flower', { collide: false, castShadow: false, tint: [0xe0506a, 0xf0c040, 0xc070e0, 0xf08040][(i + k) % 4], detail: true });
+        }
         // A pane just inside the glass: lit at night.
         T.box(1.3 * sx, 1.45 * sy, 0.02, 0, 1.05 * sy, -0.27, 'window', { collide: false, castShadow: false });
         continue;
@@ -262,6 +297,15 @@ function walls(F, w, d, y0, h, o) {
 
 /** Ground floor that opens to the street: a shop counter or a hall interior. */
 function openGround(F, w, d, y0, h, spec) {
+  if (spec.open === 'stable') {
+    // Stalls: a plank floor, partitions, hay and a trough along the back wall.
+    F.box(w - 0.6, 0.06, d - 0.6, 0, y0 - 0.02, 0, 'plank', { castShadow: false, tint: 0x8a6a40 });
+    const n = Math.max(2, Math.round(w / 3));
+    for (let i = 1; i < n; i++) F.box(0.12, 1.3, d * 0.55, -w / 2 + (i * w) / n, y0, -d / 2 + d * 0.3, 'timber', { tint: TIMBER_DARK });
+    F.box(w - 1.2, 0.5, 0.6, 0, y0, -d / 2 + 0.7, 'wood', { tint: 0x5a4030 });
+    for (let i = 0; i < n; i++) F.kit('graveyard/hay-bale', -w / 2 + ((i + 0.5) * w) / n, y0, -d / 2 + 1.6, { s: 2.6, collide: 'box' });
+    return;
+  }
   if (spec.open === 'shop') {
     // Counter with a walk-through gap at one end (the owner comes and goes).
     const cw = w - 3.2;
@@ -372,6 +416,157 @@ export function tower(world, x, z, r, h, roofTint, opts = {}) {
   return F;
 }
 
+/**
+ * City wall from the Kenney castle kit (geometry: 'wall', 'tower-square-*', 'wall-doorway', 'gate'),
+ * faced with the Medieval Village stone texture (world-space UVs) so it matches the houses;
+ * tower roofs are the village 'Roof_Tower_RoundTiles'.
+ *
+ * nodes: [{ x, z, gate?, big?, name? }] in order around the city (closed loop). Towers stand on
+ * plain nodes, gatehouses on gate nodes; the curtain wall runs between them without gaps.
+ * opts: { height, thickness, gateWidth, groupFor(node, i) -> group id | null }
+ * Returns [{ node, frame }] of the gates (frame: +z = outside, x along the wall).
+ */
+const STONE = { mat: 'kit_village_MI_UnevenBrick', scale: 0.42, only: 'kit_castle' };
+export function cityWall(world, nodes, opts = {}) {
+  const H = opts.height ?? 7.5, T = opts.thickness ?? 3, GW = opts.gateWidth ?? 7;
+  const n = nodes.length;
+  const cx = nodes.reduce((s, p) => s + p.x, 0) / n, cz = nodes.reduce((s, p) => s + p.z, 0) / n;
+  // Wall direction at a node (bisector of the two segments) and the outward normal.
+  const dirAt = (i) => {
+    const a = nodes[(i + n - 1) % n], b = nodes[i], c = nodes[(i + 1) % n];
+    let dx = (b.x - a.x) / Math.hypot(b.x - a.x, b.z - a.z) + (c.x - b.x) / Math.hypot(c.x - b.x, c.z - b.z);
+    let dz = (b.z - a.z) / Math.hypot(b.x - a.x, b.z - a.z) + (c.z - b.z) / Math.hypot(c.x - b.x, c.z - b.z);
+    const L = Math.hypot(dx, dz);
+    return [dx / L, dz / L];
+  };
+  // Half-length of the curtain-free zone around a node (tower half-size / half a gatehouse).
+  const TW = (node) => (node.big ? 8 : 6);
+  const keep = (node) => (node.gate ? GW * 0.94 - 0.4 : TW(node) / 2 - 0.4);
+  const gates = [];
+  const groupFor = opts.groupFor || (() => null);
+  const inGroup = (id, pivot, fn, label) => (id ? world.group(id, pivot, fn, label) : fn());
+  // Curtain wall segments.
+  inGroup(opts.wallGroup, { x: cx, z: cz }, () => {
+    for (let i = 0; i < n; i++) {
+      const A = nodes[i], B = nodes[(i + 1) % n];
+      const L = Math.hypot(B.x - A.x, B.z - A.z);
+      const tx = (B.x - A.x) / L, tz = (B.z - A.z) / L;
+      const s0 = keep(A), s1 = L - keep(B);
+      const m = Math.max(1, Math.round((s1 - s0) / 4.2));
+      const len = (s1 - s0) / m;
+      const rot = Math.atan2(tx, tz) - Math.PI / 2; // local x along the wall
+      for (let k = 0; k < m; k++) {
+        const t = s0 + (k + 0.5) * len;
+        const x = A.x + tx * t, z = A.z + tz * t;
+        const y0 = Math.min(world.heightAt(A.x + tx * (t - len / 2), A.z + tz * (t - len / 2)), world.heightAt(A.x + tx * (t + len / 2), A.z + tz * (t + len / 2)));
+        const F = new Frame(world, x, y0 - 1.2, z, rot);
+        F.kit('castle/wall', 0, 0, 0, { sx: len + 0.06, sy: (H + 1.2) / 1.31, sz: T, collide: 'box', retex: STONE });
+      }
+    }
+  });
+  // Towers and gatehouses.
+  for (let i = 0; i < n; i++) {
+    const N = nodes[i];
+    const [dx, dz] = dirAt(i);
+    let rot = Math.atan2(dx, dz) - Math.PI / 2;
+    // Local +z must point outside the city.
+    const ox = Math.sin(rot), oz = Math.cos(rot);
+    if ((N.x - cx) * ox + (N.z - cz) * oz < 0) rot += Math.PI;
+    if (N.gate) {
+      inGroup(groupFor(N, i), { x: N.x, z: N.z, rot }, () => {
+        const F = new Frame(world, N.x, world.heightAt(N.x, N.z), N.z, rot);
+        gatehouse2(world, F, GW, H, N);
+        gates.push({ node: N, frame: F });
+      }, N.name || 'Ворота');
+    } else {
+      inGroup(groupFor(N, i), { x: N.x, z: N.z, rot }, () => {
+        const S = TW(N);
+        const F = new Frame(world, N.x, world.heightAt(N.x, N.z) - 1.2, N.z, rot);
+        kitTower(world, F, S, H + 1.2 + (N.big ? 6 : 3.5));
+        world.addFootprint(N.x, N.z, S, S, rot, 'tower');
+      }, N.name || 'Башня');
+    }
+  }
+  return gates;
+}
+
+/** Square tower: castle-kit base / mid floors / crenellated top, village tile roof. Base at the frame. */
+function kitTower(world, F, S, height) {
+  const baseH = Math.min(5, height * 0.4);
+  F.kit('castle/tower-square-base', 0, 0, 0, { sx: S, sy: baseH / 1.01, sz: S, collide: 'box', retex: STONE });
+  const mids = Math.max(1, Math.round((height - baseH - 1) / 4.5));
+  const midH = (height - baseH - 0.9) / mids;
+  for (let k = 0; k < mids; k++) F.kit(k === mids - 1 ? 'castle/tower-square-mid-windows' : 'castle/tower-square-mid', 0, baseH + k * midH, 0, { sx: S, sy: midH / 1.01, sz: S, collide: 'box', retex: STONE });
+  F.kit('castle/tower-square-top', 0, height - 0.9, 0, { sx: S * 1.04, sy: 3, sz: S * 1.04, collide: false, retex: STONE });
+  const rs = (S * 1.08) / 5.66;
+  F.kit('village/Roof_Tower_RoundTiles', 0, height - 0.9 + 0.57 * rs + 0.25, 0, { s: rs, collide: false });
+}
+
+/**
+ * Gatehouse: the castle kit's 'tower-square-arch' stretched into a gate tower with a carriage
+ * passage (≈ gw wide, 5.6 m high at the crown), a floor and a tiled roof above; open gate leaves.
+ */
+function gatehouse2(world, F, gw, H, node) {
+  const SX = gw * 2, SZ = 7, SY = (H + 1.2) / 1.01;
+  const y = -1.2;
+  F.kit('castle/tower-square-arch', 0, y, 0, { sx: SX, sy: SY, sz: SZ, collide: true, retex: STONE });
+  F.kit('castle/tower-square-mid-windows', 0, y + SY * 1.01, 0, { sx: SX * 0.9, sy: 3.4, sz: SZ * 0.9, collide: 'box', retex: STONE });
+  F.kit('castle/tower-square-top', 0, y + SY * 1.01 + 3.4, 0, { sx: SX * 0.94, sy: 3, sz: SZ * 0.94, collide: false, retex: STONE });
+  F.kit('village/Roof_Tower_RoundTiles', 0, y + SY * 1.01 + 3.4 + 0.9, 0, { sx: (SX * 0.95) / 5.66, sy: 1.1, sz: (SZ * 0.95) / 5.42, collide: false });
+  // Opened gate leaves against the passage walls.
+  for (const sx of [-1, 1]) F.kit('castle/gate', sx * (gw / 2 - 0.2), 0, -0.4, { sx: 1.2, sy: 4.2, sz: 4.4, collide: false });
+  // Banners on the outer face, lanterns at night.
+  const tint = { north: 0x2f5a8a, east: 0xa82a2a, south: 0xc89a30, west: 0x3a7a4a }[node.gate] ?? 0xa82a2a;
+  const face = (SZ * 0.94) / 2 + 0.05;
+  for (const sx of [-1, 1]) {
+    F.box(1.4, 3.0, 0.06, sx * (gw / 2 + 2.2), H - 3.4, face, 'cloth', { ...deco, tint });
+    F.box(0.6, 0.6, 0.07, sx * (gw / 2 + 2.2), H - 1.8, face + 0.02, 'cloth', { ...decoNS, tint: 0xf0c050 });
+  }
+  world.addLightSource(F.at(-gw / 2 - 1, 4.0, face + 0.6), { color: 0xffa050, intensity: 6, distance: 12, night: true });
+  world.addLightSource(F.at(gw / 2 + 1, 4.0, -face - 0.6), { color: 0xffa050, intensity: 6, distance: 12, night: true });
+  world.addFootprint(F.origin.x, F.origin.z, SX * 0.94, SZ * 0.94, F.rot, 'gate');
+}
+
+// -----------------------------------------------------------------------------------------
+// Paving
+// -----------------------------------------------------------------------------------------
+/**
+ * Cobbled street along a polyline that follows the ground (slabs ≤ 6 m, discs at the bends).
+ * opts: { tint, kerb }
+ */
+export function paveLine(world, pts, width, opts = {}) {
+  const tint = opts.tint ?? 0xb0a898;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [ax, az] = pts[i], [bx, bz] = pts[i + 1];
+    const L = Math.hypot(bx - ax, bz - az);
+    const m = Math.max(1, Math.ceil(L / 6));
+    const rot = Math.atan2(bx - ax, bz - az);
+    for (let k = 0; k < m; k++) {
+      const t0 = k / m, t1 = (k + 1) / m;
+      const x0 = ax + (bx - ax) * t0, z0 = az + (bz - az) * t0, x1 = ax + (bx - ax) * t1, z1 = az + (bz - az) * t1;
+      const h0 = world.heightAt(x0, z0), h1 = world.heightAt(x1, z1);
+      const l = L / m;
+      const F = new Frame(world, (x0 + x1) / 2, (h0 + h1) / 2 - 0.06, (z0 + z1) / 2, rot);
+      F.box(width, 0.14, l + 0.04, 0, 0, 0, 'cobble', { castShadow: false, tint, rx: -Math.atan2(h1 - h0, l) });
+      if (opts.kerb) for (const s of [-1, 1]) F.box(0.25, 0.2, l + 0.04, s * (width / 2 + 0.1), -0.02, 0, 'stoneDark', { castShadow: false, collide: false, rx: -Math.atan2(h1 - h0, l), detail: true });
+    }
+    if (i > 0) {
+      const h = world.heightAt(ax, az);
+      new Frame(world, ax, h - 0.06, az, 0).cyl(width / 2, 0.14, 0, 0, 0, 'cobble', { seg: 12, castShadow: false, tint });
+    }
+  }
+}
+
+/** Flat cobbled polygon (a square) at the ground level of its centroid. */
+export function pavePoly(world, pts, tint = 0xbab2a2) {
+  const cx = pts.reduce((s, p) => s + p[0], 0) / pts.length, cz = pts.reduce((s, p) => s + p[1], 0) / pts.length;
+  const y = world.heightAt(cx, cz);
+  const shape = new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x - cx, -(z - cz))));
+  const g = new THREE.ExtrudeGeometry(shape, { depth: 0.14, bevelEnabled: false });
+  g.rotateX(-Math.PI / 2); // shape (x, -z) -> world (x, z), extrusion up
+  new Frame(world, cx, y - 0.06, cz, 0).geo(g, 0, 0, 0, 'cobble', { castShadow: false, tint });
+}
+
 // -----------------------------------------------------------------------------------------
 // Bridges, fences, small structures
 // -----------------------------------------------------------------------------------------
@@ -473,7 +668,7 @@ export function crate(world, F, lx, lz, s = 0.8, ry = 0) {
 
 /** Food kit model at real size (the kit is modelled ~2.5× too large). */
 export function food(F, name, lx, ly, lz, opts = {}) {
-  F.kit('food/' + name, lx, ly, lz, { s: 0.42 * (opts.s ?? 1), ry: opts.ry ?? 0, collide: false, castShadow: false });
+  F.kit('food/' + name, lx, ly, lz, { s: 0.42 * (opts.s ?? 1), ry: opts.ry ?? 0, collide: false, castShadow: false, detail: true });
 }
 
 /**

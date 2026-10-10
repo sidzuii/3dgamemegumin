@@ -5,8 +5,9 @@ import { fbm, mulberry32, smoothstep, clamp } from '../core/math.js';
 import { createSky } from './Sky.js';
 import { createGrass } from './Grass.js';
 import { Signpost, ModelChest } from './Interactables.js';
-import { HALF, REGIONS, REGION, RIVER, LAKES, LAVA, CAMPS, SIGNS } from './MapData.js';
-import { Heightfield, GRID_N, GRID_STEP, roadInfo, riverDistance, surfaceAt } from './Terrain.js';
+import { HALF, REGIONS, REGION, RIVERS, LAKES, LAVA, CAMPS, SIGNS, FORESTS } from './MapData.js';
+import { Heightfield, GRID_N, GRID_STEP, roadInfo, riverDistance, surfaceAt, polygonDistance } from './Terrain.js';
+import { WALL, toWorld } from './AxelPlan.js';
 import { createWaterSurface, riverGeometry, lakeGeometry } from './Water.js';
 import { createLava } from './Surfaces.js';
 import { makeNoiseTexture } from './textures.js';
@@ -25,7 +26,32 @@ THREE.BufferGeometry.prototype.disposeBoundsTree = disposeBoundsTree;
 export const SUN_DIR = new THREE.Vector3(0.55, 0.78, 0.32).normalize();
 
 const CHUNK = 128; // static batches are split into map chunks for frustum culling
+const DETAIL_CHUNK = 48; // small parts (window inserts, shutters…) — hidden beyond `detailDistance`
+const LOD_CHUNK = 64; // buildings: full model within `lodDistance` of the cell, a cheap proxy beyond
+const TERRAIN_CHUNK = 68; // terrain grid cells per chunk side (170 m)
 const LIGHT_POOL = 8; // fixed number of point lights (no shader recompiles)
+
+/** The city wall as a world polygon (+ bbox) for the "inside Axel" tests. */
+const CITY = WALL.nodes.map((n) => toWorld(n.u, n.v));
+const CITY_BOX = [Math.min(...CITY.map((p) => p[0])), Math.min(...CITY.map((p) => p[1])), Math.max(...CITY.map((p) => p[0])), Math.max(...CITY.map((p) => p[1]))];
+/** Signed distance to the city wall line (negative inside the walls); far away: a cheap lower bound. */
+export function cityDistance(x, z) {
+  const dx = Math.max(CITY_BOX[0] - x, 0, x - CITY_BOX[2]), dz = Math.max(CITY_BOX[1] - z, 0, z - CITY_BOX[3]);
+  if (dx > 30 || dz > 30) return Math.hypot(dx, dz);
+  return polygonDistance(CITY, x, z);
+}
+const FOREST_BOX = FORESTS.map((f) => [Math.min(...f.pts.map((p) => p[0])), Math.min(...f.pts.map((p) => p[1])), Math.max(...f.pts.map((p) => p[0])), Math.max(...f.pts.map((p) => p[1]))]);
+/** Signed distance to the nearest forest polygon (negative inside) and that forest. */
+export function forestAt(x, z) {
+  let best = Infinity, forest = null;
+  FORESTS.forEach((f, i) => {
+    const b = FOREST_BOX[i];
+    if (x < b[0] - 40 || x > b[2] + 40 || z < b[1] - 40 || z > b[3] + 40) return;
+    const d = polygonDistance(f.pts, x, z);
+    if (d < best) { best = d; forest = f; }
+  });
+  return { d: best, forest };
+}
 
 /**
  * The overworld: sky + lighting, heightfield terrain, rivers/lakes, every static structure
@@ -55,6 +81,12 @@ export class World {
     this.npcSpots = {}; // named positions for NPC schedules
     this._staticCollision = [];
     this._visualBatches = new Map();
+    this.detailMeshes = []; // { mesh, center, r } — distance-culled small parts
+    this.lodMeshes = []; // { mesh, center, far } — buildings: near models / far proxies per cell
+    this.detailDistance = 75;
+    this.lodDistance = 120;
+    this.lodMode = null; // 'near' | 'far' while a builder emits the two versions of a building
+    this.terrainChunks = [];
     this.rng = mulberry32(1337);
     this.campSpawns = [];
     this.regions = REGIONS;
@@ -362,7 +394,7 @@ export class World {
       snow: new THREE.Color(0xe8eef2), scorch: new THREE.Color(0x3b2a24), mud: new THREE.Color(0x6e5e44),
       sand: new THREE.Color(0xb9a77e), town: new THREE.Color(0x8e8a64), ruin: new THREE.Color(0x9a9a86),
     };
-    const forestC = REGION.forest.center, thicket = REGION.thicket.center, farms = REGION.farms.center;
+    const farms = REGION.farms.center;
     const gorge = REGION.crimson_gorge.center, astra = REGION.astrarium.center;
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i), z = pos.getZ(i), y = pos.getY(i);
@@ -370,14 +402,14 @@ export class World {
       const big = fbm(x * 0.012 + 40, z * 0.012, 2) * 0.5 + 0.5;
       c.copy(T.grassA).lerp(T.grassB, n * 0.7 + big * 0.3);
       // Biomes.
-      const df = Math.min(Math.hypot(x - forestC.x, z - forestC.z) - 70, Math.hypot(x - thicket.x, z - thicket.z) - 40);
-      c.lerp(T.forest, (1 - smoothstep(-10, 30, df)) * 0.75);
+      const df = forestAt(x, z).d;
+      c.lerp(T.forest, (1 - smoothstep(-25, 15, df)) * 0.75);
       const dfa = Math.hypot(x - farms.x, z - farms.z);
       c.lerp(T.farm, (1 - smoothstep(30, 70, dfa)) * 0.45);
       c.lerp(T.meadow, smoothstep(0.62, 0.8, big) * 0.35);
       // Town ground inside the walls: worn earth.
-      const dt = Math.hypot(x, z);
-      c.lerp(T.town, (1 - smoothstep(52, 64, dt)) * 0.55);
+      const dt = cityDistance(x, z);
+      if (dt < 6) c.lerp(T.town, (1 - smoothstep(-6, 6, dt)) * 0.55);
       // River banks.
       const rd = riverDistance(x, z);
       c.lerp(T.mud, (1 - smoothstep(-1, 4, rd)) * 0.9);
@@ -403,20 +435,51 @@ export class World {
     const uv = geo.attributes.uv;
     for (let i = 0; i < uv.count; i++) uv.setXY(i, pos.getX(i) * 0.25, pos.getZ(i) * 0.25);
     const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.96, map: this.noiseTex });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.receiveShadow = true;
-    mesh.name = 'Terrain';
-    this.scene.add(mesh);
-    this.terrain = mesh;
-    this._staticCollision.push(geo);
+    this.terrainMaterial = mat;
+    // Chunks (frustum culling): each a slice of the full grid with the shared normals/colours.
+    const N = GRID_N;
+    const nrmA = geo.attributes.normal.array, posA = pos.array, uvA = geo.attributes.uv.array;
+    for (let cj = 0; cj < N - 1; cj += TERRAIN_CHUNK) {
+      for (let ci = 0; ci < N - 1; ci += TERRAIN_CHUNK) {
+        const w = Math.min(TERRAIN_CHUNK, N - 1 - ci) + 1, h = Math.min(TERRAIN_CHUNK, N - 1 - cj) + 1;
+        const P = new Float32Array(w * h * 3), Nn = new Float32Array(w * h * 3), Cc = new Float32Array(w * h * 3), U = new Float32Array(w * h * 2);
+        for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+          const src = (cj + j) * N + ci + i, dst = j * w + i;
+          for (let k = 0; k < 3; k++) { P[dst * 3 + k] = posA[src * 3 + k]; Nn[dst * 3 + k] = nrmA[src * 3 + k]; Cc[dst * 3 + k] = colors[src * 3 + k]; }
+          U[dst * 2] = uvA[src * 2]; U[dst * 2 + 1] = uvA[src * 2 + 1];
+        }
+        const idx = [];
+        for (let j = 0; j < h - 1; j++) for (let i = 0; i < w - 1; i++) {
+          const a = j * w + i, b = a + 1, c2 = a + w, d = c2 + 1;
+          idx.push(a, c2, b, c2, d, b); // PlaneGeometry's triangulation (Heightfield.sample matches it)
+        }
+        const g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.BufferAttribute(P, 3));
+        g.setAttribute('normal', new THREE.BufferAttribute(Nn, 3));
+        g.setAttribute('color', new THREE.BufferAttribute(Cc, 3));
+        g.setAttribute('uv', new THREE.BufferAttribute(U, 2));
+        g.setIndex(idx);
+        g.computeBoundingSphere();
+        const mesh = new THREE.Mesh(g, mat);
+        mesh.receiveShadow = true;
+        mesh.name = 'Terrain';
+        mesh.matrixAutoUpdate = false;
+        this.scene.add(mesh);
+        this.terrainChunks.push(mesh);
+        this._staticCollision.push(g);
+      }
+    }
+    geo.dispose();
     // Low-res colour copy for the map screen.
     this.terrainColors = colors;
   }
 
   _buildWater() {
-    const river = createWaterSurface(riverGeometry(RIVER), RIVER.level, { flow: 0.6 });
-    this.scene.add(river.mesh);
-    this.updatables.push(river);
+    for (const R of RIVERS) {
+      const river = createWaterSurface(riverGeometry(R), R.level, { flow: R.width > 5 ? 0.6 : 1.0 });
+      this.scene.add(river.mesh);
+      this.updatables.push(river);
+    }
     for (const L of LAKES) {
       const lake = createWaterSurface(lakeGeometry(L), L.level);
       this.scene.add(lake.mesh);
@@ -434,7 +497,7 @@ export class World {
    * Add a static solid: merged visual batch (by material + map chunk) + optional collider.
    * opts: { collide = true, castShadow = true, tint, collideOnly }
    */
-  addSolid(geometry, matrix, materialKey, { collide = true, castShadow = true, tint = null, collideOnly = false } = {}) {
+  addSolid(geometry, matrix, materialKey, { collide = true, castShadow = true, tint = null, collideOnly = false, detail = false } = {}) {
     const g = geometry.index ? geometry.toNonIndexed() : geometry.clone();
     g.applyMatrix4(this._D ? _dm.multiplyMatrices(this._D, matrix) : matrix);
     if (collideOnly) {
@@ -452,7 +515,7 @@ export class World {
     const tc = _tint.set(tint ?? this.baseTint[materialKey] ?? 0xffffff);
     for (let i = 0; i < n; i++) { col[i * 3] = tc.r; col[i * 3 + 1] = tc.g; col[i * 3 + 2] = tc.b; }
     g.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    this._pushBatch(g, materialKey, castShadow);
+    this._pushBatch(g, materialKey, castShadow, detail);
     if (collide) this._staticCollision.push(g);
     return g;
   }
@@ -460,23 +523,29 @@ export class World {
   /**
    * Place a kit piece ('town/wall-wood-door', world/KitLibrary.js): its parts join the static
    * batches of their kit material (texture UVs and colours kept; `tint` multiplies).
-   * opts: { collide = true | false | 'box', castShadow = true, tint, variant } — `variant` picks a
-   * recoloured palette of the kit (e.g. a roof colour, KitLibrary VARIANTS).
+   * opts: { collide = true | false | 'box', castShadow = true, tint, variant, detail, retex } —
+   * `variant` picks a recoloured palette of the kit (e.g. a roof colour, KitLibrary VARIANTS);
+   * `detail` puts the parts into the distance-culled detail batches; `retex: { mat, scale }`
+   * swaps the material for a tiling one (e.g. the village stone) with world-space planar UVs.
    */
-  addKit(name, matrix, { collide = true, castShadow = true, tint = null, variant = null } = {}) {
+  addKit(name, matrix, { collide = true, castShadow = true, tint = null, variant = null, detail = false, retex = null } = {}) {
     const parts = this.kits.get(name);
     if (this._D) matrix = _dm.multiplyMatrices(this._D, matrix);
     if (tint !== null) _tint.set(tint);
     for (const part of parts) {
       const { geometry } = part;
-      const mat = variant && this.mats[part.mat + '@' + variant] ? part.mat + '@' + variant : part.mat;
+      let mat = variant && this.mats[part.mat + '@' + variant] ? part.mat + '@' + variant : part.mat;
       const g = geometry.clone();
       g.applyMatrix4(matrix);
+      if (retex && (!retex.only || retex.only === part.mat)) {
+        planarUVs(g, retex.scale ?? 0.5);
+        mat = retex.mat;
+      }
       if (tint !== null) {
         const c = g.attributes.color;
         for (let i = 0; i < c.count; i++) c.setXYZ(i, c.getX(i) * _tint.r, c.getY(i) * _tint.g, c.getZ(i) * _tint.b);
       }
-      this._pushBatch(g, mat, castShadow);
+      this._pushBatch(g, mat, castShadow, detail);
       if (collide === true) this._staticCollision.push(g);
     }
     if (collide === 'box') {
@@ -489,7 +558,7 @@ export class World {
     }
   }
 
-  _pushBatch(g, materialKey, castShadow) {
+  _pushBatch(g, materialKey, castShadow, detail = false) {
     if (this._group?.batches) {
       // Map editor: each editable group keeps its own meshes so it can move live.
       const key = `${materialKey}|${castShadow ? 1 : 0}`;
@@ -498,8 +567,10 @@ export class World {
       return;
     }
     g.computeBoundingSphere();
-    const cx = Math.floor(g.boundingSphere.center.x / CHUNK), cz = Math.floor(g.boundingSphere.center.z / CHUNK);
-    const key = `${materialKey}|${castShadow ? 1 : 0}|${cx},${cz}`;
+    const tier = detail ? 'd' : this.lodMode === 'near' ? 'n' : this.lodMode === 'far' ? 'f' : '';
+    const S = tier === 'd' ? DETAIL_CHUNK : tier ? LOD_CHUNK : CHUNK;
+    const cx = Math.floor(g.boundingSphere.center.x / S), cz = Math.floor(g.boundingSphere.center.z / S);
+    const key = `${materialKey}|${castShadow && tier !== 'd' && tier !== 'f' ? 1 : 0}|${cx},${cz}${tier ? '|' + tier : ''}`;
     if (!this._visualBatches.has(key)) this._visualBatches.set(key, []);
     this._visualBatches.get(key).push(g);
   }
@@ -556,13 +627,24 @@ export class World {
   _flushVisualBatches() {
     if (this.editorMode) for (const rec of this.groups.values()) this.buildGroupObject(rec);
     for (const [key, list] of this._visualBatches) {
-      const [matKey, shadow] = key.split('|');
+      const [matKey, shadow, cell, tier] = key.split('|');
       const merged = mergeGeometries(list, false);
+      if (!merged) { console.warn('[world] batch did not merge', key); continue; }
+      merged.computeBoundingSphere();
       const mesh = new THREE.Mesh(merged, this.mats[matKey]);
       mesh.castShadow = shadow === '1';
       mesh.receiveShadow = true;
       mesh.name = 'static:' + key;
+      mesh.matrixAutoUpdate = false;
       this.scene.add(mesh);
+      if (tier) {
+        // Visibility by the cell (near / far versions of one cell swap exactly together).
+        const S = tier === 'd' ? DETAIL_CHUNK : LOD_CHUNK;
+        const [cx, cz] = cell.split(',').map(Number);
+        const center = new THREE.Vector3((cx + 0.5) * S, merged.boundingSphere.center.y, (cz + 0.5) * S);
+        if (tier === 'd') this.detailMeshes.push({ mesh, center, r: S * 0.71 });
+        else this.lodMeshes.push({ mesh, center, r: S * 0.71, far: tier === 'f' });
+      }
     }
     this._visualBatches.clear();
   }
@@ -588,7 +670,7 @@ export class World {
   // ---------------------------------------------------------------------------
   /** Is (x,z) free for scattered decoration (no structure, road, water, settlement)? */
   _freeForPlants(x, z, pad = 2) {
-    if (Math.hypot(x, z) < 72) return false; // town and its wall
+    if (cityDistance(x, z) < 12) return false; // the city and its wall
     if (roadInfo(x, z).d < 2 + pad) return false;
     if (riverDistance(x, z) < 2.5 + pad) return false;
     for (const L of LAKES) if (Math.hypot(x - L.center.x, z - L.center.z) < L.radius * 1.15) return false;
@@ -625,25 +707,36 @@ export class World {
   _buildVegetation() {
     const rng = this.rng;
     const kitTree = tree;
-    const forest = REGION.forest.center, thicket = REGION.thicket.center;
-    const clearings = [REGION.hunters, REGION.glade, REGION.goblin_den, REGION.farms, REGION.olkhovka, REGION.astrarium, REGION.watchtower, REGION.cave, REGION.old_mines, REGION.crimson_gorge, REGION.caravan];
+    const clearings = [REGION.hunters, REGION.glade, REGION.goblin_den, REGION.farms, REGION.olkhovka, REGION.astrarium, REGION.watchtower, REGION.cave, REGION.old_mines, REGION.crimson_gorge, REGION.crossroads, REGION.guild_field, REGION.east_pass];
     const inClearing = (x, z, extra = 0) => clearings.some((R) => Math.hypot(x - R.center.x, z - R.center.z) < (R.clear ?? R.r * 0.75) + extra);
-    // Dense forests.
-    for (const [c, R, count, kinds] of [[forest, 95, 640, ['oak', 'oak', 'pine', 'birch']], [thicket, 50, 190, ['dark', 'pine', 'dark']]]) {
+    // Random point inside a forest polygon.
+    const inForest = (f) => {
+      const b = FOREST_BOX[FORESTS.indexOf(f)];
+      for (let k = 0; k < 30; k++) {
+        const x = b[0] + rng() * (b[2] - b[0]), z = b[1] + rng() * (b[3] - b[1]);
+        if (polygonDistance(f.pts, x, z) < 0) return [x, z];
+      }
+      return null;
+    };
+    // Forests: trees per hectare by kind (budget ≈ 2 000 for the whole map; TreeField instances them).
+    const KIND = { mixed: [70, ['oak', 'oak', 'pine', 'birch']], dark: [120, ['dark', 'pine', 'dark']], alder: [110, ['oak', 'birch', 'oak', 'birch', 'oak']], pine: [40, ['pine', 'pine', 'pine', 'dark']] };
+    for (const f of FORESTS) {
+      const [perHa, kinds] = KIND[f.kind] || KIND.mixed;
+      const count = Math.round((polyArea(f.pts) / 10000) * perHa);
       let placed = 0;
       for (let i = 0; i < count * 4 && placed < count; i++) {
-        const a = rng() * Math.PI * 2, r = Math.sqrt(rng()) * R;
-        const x = c.x + Math.cos(a) * r, z = c.z + Math.sin(a) * r;
-        if (!this._freeForPlants(x, z, 1) || inClearing(x, z)) continue;
-        const s = 0.85 + rng() * 0.7;
-        kitTree(this, x, z, s, rng, kinds[Math.floor(rng() * kinds.length)]);
+        const p = inForest(f);
+        if (!p) continue;
+        const [x, z] = p;
+        if (!this._freeForPlants(x, z, 1) || inClearing(x, z) || this.heightAt(x, z) > 32) continue;
+        kitTree(this, x, z, 0.85 + rng() * 0.7, rng, kinds[Math.floor(rng() * kinds.length)]);
         placed++;
       }
     }
     // Scattered trees, groves and bushes across the valley.
     let placed = 0;
-    for (let i = 0; i < 9000 && placed < 420; i++) {
-      const x = (rng() * 2 - 1) * (HALF - 40), z = (rng() * 2 - 1) * (HALF - 40);
+    for (let i = 0; i < 16000 && placed < 520; i++) {
+      const x = (rng() * 2 - 1) * (HALF - 60), z = (rng() * 2 - 1) * (HALF - 60);
       if (!this._freeForPlants(x, z, 2) || inClearing(x, z, 6)) continue;
       const y = this.heightAt(x, z);
       if (y > 30) continue;
@@ -653,8 +746,8 @@ export class World {
       kitTree(this, x, z, 0.8 + rng() * 0.6, rng, kind);
       placed++;
     }
-    for (let i = 0; i < 1400; i++) {
-      const x = (rng() * 2 - 1) * (HALF - 50), z = (rng() * 2 - 1) * (HALF - 50);
+    for (let i = 0; i < 2600; i++) {
+      const x = (rng() * 2 - 1) * (HALF - 70), z = (rng() * 2 - 1) * (HALF - 70);
       if (!this._freeForPlants(x, z, 1)) continue;
       const y = this.heightAt(x, z);
       if (y > 26) continue;
@@ -663,41 +756,47 @@ export class World {
     }
     // Meadow flowers (in drifts), forest floor: mushrooms, stumps, fallen logs.
     const FLOWERS = ['flower_redA', 'flower_redB', 'flower_yellowA', 'flower_yellowB', 'flower_yellowC', 'flower_purpleA', 'flower_purpleB', 'flower_redC', 'flower_purpleC'];
-    for (let i = 0; i < 6000; i++) {
-      const x = (rng() * 2 - 1) * (HALF - 60), z = (rng() * 2 - 1) * (HALF - 60);
+    for (let i = 0; i < 11000; i++) {
+      const x = (rng() * 2 - 1) * (HALF - 80), z = (rng() * 2 - 1) * (HALF - 80);
       if (fbm(x * 0.03 + 11, z * 0.03 - 5, 2) < 0.25) continue;
       if (this.heightAt(x, z) > 22 || !this._freeForPlants(x, z, 0.3)) continue;
       const kind = FLOWERS[Math.floor((fbm(x * 0.01, z * 0.01, 1) * 0.5 + 0.5) * FLOWERS.length) % FLOWERS.length];
       decor(this, x, z, kind, 0.35 + rng() * 0.25, rng);
     }
-    for (const [c, R, n] of [[forest, 95, 420], [thicket, 50, 160], [REGION.glade.center, 20, 40]]) {
-      for (let i = 0; i < n; i++) {
-        const a = rng() * Math.PI * 2, r = Math.sqrt(rng()) * R;
-        const x = c.x + Math.cos(a) * r, z = c.z + Math.sin(a) * r;
-        if (!this._freeForPlants(x, z, 0.5)) continue;
-        const k = rng();
-        if (k < 0.6) decor(this, x, z, pick(['mushroom_red', 'mushroom_redGroup', 'mushroom_tan', 'mushroom_tanGroup', 'mushroom_redTall', 'mushroom_tanTall'], rng), 0.25 + rng() * 0.35, rng);
-        else if (k < 0.85) decor(this, x, z, pick(['stump_old', 'stump_round', 'stump_roundDetailed', 'stump_oldTall'], rng), 0.5 + rng() * 0.5, rng);
-        else decor(this, x, z, pick(['log', 'log_large'], rng), 0.55, rng, { castShadow: true });
-      }
+    const floor = (x, z) => {
+      if (!this._freeForPlants(x, z, 0.5)) return;
+      const k = rng();
+      if (k < 0.6) decor(this, x, z, pick(['mushroom_red', 'mushroom_redGroup', 'mushroom_tan', 'mushroom_tanGroup', 'mushroom_redTall', 'mushroom_tanTall'], rng), 0.25 + rng() * 0.35, rng);
+      else if (k < 0.85) decor(this, x, z, pick(['stump_old', 'stump_round', 'stump_roundDetailed', 'stump_oldTall'], rng), 0.5 + rng() * 0.5, rng);
+      else decor(this, x, z, pick(['log', 'log_large'], rng), 0.55, rng, { castShadow: true });
+    };
+    for (const f of FORESTS) {
+      const n = Math.round((polyArea(f.pts) / 10000) * (f.kind === 'pine' ? 15 : 40));
+      for (let i = 0; i < n; i++) { const p = inForest(f); if (p) floor(p[0], p[1]); }
     }
+    const G = REGION.glade.center;
+    for (let i = 0; i < 40; i++) { const a = rng() * Math.PI * 2, r = Math.sqrt(rng()) * 20; floor(G.x + Math.cos(a) * r, G.z + Math.sin(a) * r); }
   }
 
   _buildGrass() {
     const patches = [];
     const add = (x, z, r, count, opt = {}) => patches.push({ x, z, r, count, ...opt });
     const notFree = (x, z) => !this._freeForPlants(x, z, -1.2);
-    // Around town and the farms (meadows), along the river and into the forest edge.
-    add(0, 0, 150, 26000, { skip: notFree });
-    add(4, 128, 70, 9000, { skip: notFree, hue: 0.2 });
-    add(-150, 30, 90, 9000, { skip: notFree, hue: 0.24, scale: 1.2 });
-    add(175, -25, 50, 4000, { skip: notFree, hue: 0.18 });
-    add(55, -130, 40, 2500, { skip: notFree });
-    add(-240, -40, 16, 1600, { skip: notFree, hue: 0.28, scale: 1.25 });
-    add(215, 215, 70, 4000, { skip: notFree, hue: 0.24 });
-    add(-20, -300, 50, 2500, { skip: notFree, hue: 0.16, scale: 0.9 });
-    // Town gardens inside the walls.
-    add(0, 0, 58, 3500, { hue: 0.22, scale: 0.8 });
+    const R = (id) => REGION[id].center;
+    // Meadows round the city, the farms, the east fields and the forest edge; the settlements.
+    add(-330, 20, 190, 26000, { skip: notFree });
+    add(R('farms').x, R('farms').z, 75, 8000, { skip: notFree, hue: 0.2 });
+    add(-60, 0, 100, 8000, { skip: notFree, hue: 0.19 });
+    add(-540, 60, 90, 8000, { skip: notFree, hue: 0.24, scale: 1.2 });
+    add(R('crossroads').x, R('crossroads').z, 45, 2500, { skip: notFree, hue: 0.2 });
+    add(R('alder_wood').x, R('alder_wood').z, 75, 4500, { skip: notFree, hue: 0.26, scale: 1.15 });
+    add(R('olkhovka').x, R('olkhovka').z, 60, 4500, { skip: notFree, hue: 0.18 });
+    add(R('watchtower').x, R('watchtower').z, 40, 2500, { skip: notFree });
+    add(R('glade').x, R('glade').z, 16, 1600, { skip: notFree, hue: 0.28, scale: 1.25 });
+    add(R('mist_lake').x, R('mist_lake').z, 70, 4000, { skip: notFree, hue: 0.24 });
+    add(R('astrarium').x, R('astrarium').z, 50, 2500, { skip: notFree, hue: 0.16, scale: 0.9 });
+    // Gardens and yards inside the walls (never on the paving or in the houses).
+    if (this.cityGround) add(-330, 20, 125, 6000, { hue: 0.22, scale: 0.8, skip: (x, z) => !this.cityGround(x, z) });
     this.grass = createGrass(this, patches);
     this.scene.add(this.grass.mesh);
     this.updatables.push(this.grass);
@@ -778,6 +877,12 @@ export class World {
   update(dt, ctx) {
     for (const u of this.updatables) u.update(dt, ctx);
     this._updateLightPool(dt, ctx.playerPos);
+    if (ctx.camera) {
+      // Small building parts only near the camera (the walls keep their window panes).
+      const cp = ctx.camera.position, D = this.detailDistance, L = this.lodDistance;
+      for (const d of this.detailMeshes) d.mesh.visible = Math.hypot(d.center.x - cp.x, d.center.z - cp.z) - d.r < D;
+      for (const d of this.lodMeshes) d.mesh.visible = (Math.hypot(d.center.x - cp.x, d.center.z - cp.z) - d.r < L) !== d.far;
+    }
     if (ctx.camera) this.trees.update(dt, ctx.camera);
     // Chimney smoke near the player (daytime cooking fires, evenings).
     const vfx = ctx.vfx;
@@ -822,6 +927,7 @@ function hashId(s) {
   return h >>> 0;
 }
 const EMPTY = [];
+const polyArea = (pts) => Math.abs(pts.reduce((s, p, i) => { const q = pts[(i + 1) % pts.length]; return s + p[0] * q[1] - q[0] * p[1]; }, 0)) / 2;
 
 /** World-space planar UV projection per face (cheap triplanar bake). */
 function planarUVs(g, scale) {

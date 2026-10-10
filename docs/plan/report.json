@@ -19,7 +19,7 @@
   {
    "id": "axel_mist",
    "name": "Аксель (Южные ворота) → Озеро Туманов",
-   "metres": 463,
+   "metres": 465,
    "walk_min": 2.3,
    "run_min": 1.2,
    "npc_walk_min": 5.7
@@ -85,7 +85,7 @@
   {
    "id": "east_road",
    "length": 998,
-   "maxGrade": 0.29
+   "maxGrade": 0.31
   },
   {
    "id": "east_pass_road",
@@ -94,13 +94,13 @@
   },
   {
    "id": "south_road",
-   "length": 463,
-   "maxGrade": 0.2
+   "length": 465,
+   "maxGrade": 0.18
   },
   {
    "id": "caravan_lane",
    "length": 39,
-   "maxGrade": 0.13
+   "maxGrade": 0.12
   },
   {
    "id": "bridge_road",
@@ -115,7 +115,7 @@
   {
    "id": "west_road",
    "length": 289,
-   "maxGrade": 0.27
+   "maxGrade": 0.29
   },
   {
    "id": "glade_trail",
@@ -164,32 +164,32 @@
   },
   "buildings": {
    "key": 22,
-   "generated": 94,
-   "total": 116,
+   "generated": 92,
+   "total": 114,
    "byDistrict": {
-    "center": 11,
-    "trade": 15,
-    "res_w": 16,
-    "res_ne": 20,
+    "center": 9,
+    "trade": 13,
+    "res_w": 17,
+    "res_ne": 21,
     "caravan": 9,
-    "temple": 10,
-    "craft": 15,
-    "res_s": 20
+    "temple": 8,
+    "craft": 16,
+    "res_s": 21
    },
    "byKind": {
     "guild": 1,
     "tavern": 1,
     "public": 7,
     "military": 1,
-    "shop": 12,
+    "shop": 14,
     "inn": 2,
-    "stable": 2,
+    "stable": 3,
     "temple": 2,
-    "workshop": 7,
-    "house": 78,
-    "warehouse": 3
+    "workshop": 8,
+    "house": 70,
+    "warehouse": 5
    },
-   "footprint_m2": 8183
+   "footprint_m2": 8153
   },
   "streets": {
    "main": 365,
@@ -202,19 +202,19 @@
     "id": "center",
     "name": "Центр",
     "area": 5842,
-    "buildings": 11
+    "buildings": 9
    },
    {
     "id": "temple",
     "name": "Храмовый холм",
     "area": 6416,
-    "buildings": 10
+    "buildings": 8
    },
    {
     "id": "trade",
     "name": "Торговый район",
     "area": 5450,
-    "buildings": 15
+    "buildings": 13
    },
    {
     "id": "caravan",
@@ -226,25 +226,25 @@
     "id": "craft",
     "name": "Ремесленный район",
     "area": 7740,
-    "buildings": 15
+    "buildings": 16
    },
    {
     "id": "res_ne",
     "name": "Речной квартал",
     "area": 9400,
-    "buildings": 20
+    "buildings": 21
    },
    {
     "id": "res_w",
     "name": "Западная слобода",
     "area": 3510,
-    "buildings": 16
+    "buildings": 17
    },
    {
     "id": "res_s",
     "name": "Южный квартал",
     "area": 3344,
-    "buildings": 20
+    "buildings": 21
    }
   ],
   "squares": [
@@ -698,12 +698,12 @@
     "id": "crypt",
     "label": "Склеп (crypt_door)",
     "local": [
-     -86,
-     -66
+     -79,
+     -70
     ],
     "world": [
-     -416,
-     -46
+     -409,
+     -50
     ],
     "size": [
      6,
@@ -750,9 +750,9 @@
    }
   ],
   "templeRise": {
-   "climb": 1.9,
+   "climb": 2.4,
    "length": 37,
-   "grade": 0.05
+   "grade": 0.07
   }
  },
  "issues": [],

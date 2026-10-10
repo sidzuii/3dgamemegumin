@@ -267,7 +267,7 @@ export const DIALOGUES = {
       { text: 'Вперёд!', next: 'go' },
       { text: 'Подожди минутку.', next: 'end' },
     ] },
-    go: { text: 'Хорошо… Пусть Эрис нас бережёт.', next: 'end', do: [{ advance: 'c_escort_tobias' }, { escort: { npc: 'tobias', to: 'olkhovka_tobias', route: [[60, 0], [100, -3], [140, -17]], ambush: { spot: 'ambush_point', type: 'mushroom', n: 3 } } }] },
+    go: { text: 'Хорошо… Пусть Эрис нас бережёт.', next: 'end', do: [{ advance: 'c_escort_tobias' }, { escort: { npc: 'tobias', to: 'olkhovka_tobias', road: 'east_road', ambush: { spot: 'ambush_point', type: 'mushroom', n: 3 } } }] },
   }),
   tobias_pay: D({
     start: { text: 'Дошли! Живые! Знаешь, я много с кем ходил, но так, чтобы гриб улетел за реку от одного удара посохом…', next: 'p1' },

@@ -1,5 +1,5 @@
 import { fbm, smoothstep, clamp } from '../core/math.js';
-import { HALF, RIVER, LAKES, LAVA, ROADS, FLATS, HILLS, RIDGES, REGION } from './MapData.js';
+import { HALF, RIVER, RIVERS, LAKES, LAVA, ROADS, FLATS, HILLS, RIDGES, REGION } from './MapData.js';
 
 /**
  * Terrain height model.
@@ -8,6 +8,8 @@ import { HALF, RIVER, LAKES, LAVA, ROADS, FLATS, HILLS, RIDGES, REGION } from '.
  * passes, edge mountains, river valley + channel, lakes, flattened settlements, levelled
  * roads, lava basin). It is evaluated once per grid cell at load; afterwards `heightAt`
  * samples the cached grid bilinearly, so gameplay queries are cheap and match the mesh.
+ * Roads and rivers are looked up through a coarse grid of their segments (only the ones near a
+ * point are measured; farther than their reach the distance is reported as Infinity).
  */
 
 export const GRID_STEP = 2.5;
@@ -25,12 +27,38 @@ export function polylineDistance(points, x, z) {
   return d;
 }
 
-/** Distance to the nearest road edge (negative inside), and that road's kind. */
+/** Segments of polylines bucketed into CELL x CELL squares (each within `reach` of its cell). */
+const CELL = 32;
+function segmentGrid(lines, reach) {
+  const grid = new Map();
+  for (const L of lines) {
+    const P = L.points;
+    for (let i = 0; i < P.length - 1; i++) {
+      const [ax, az] = P[i], [bx, bz] = P[i + 1];
+      const r = reach + (L.width || 0) / 2;
+      const seg = { ax, az, bx, bz, line: L };
+      for (let cx = Math.floor((Math.min(ax, bx) - r) / CELL); cx <= Math.floor((Math.max(ax, bx) + r) / CELL); cx++) {
+        for (let cz = Math.floor((Math.min(az, bz) - r) / CELL); cz <= Math.floor((Math.max(az, bz) + r) / CELL); cz++) {
+          const k = cx * 4099 + cz;
+          if (!grid.has(k)) grid.set(k, []);
+          grid.get(k).push(seg);
+        }
+      }
+    }
+  }
+  return grid;
+}
+const NONE = [];
+const ROAD_GRID = segmentGrid(ROADS, 16);
+const RIVER_GRID = segmentGrid(RIVERS, 70);
+const _near = (grid, x, z) => grid.get(Math.floor(x / CELL) * 4099 + Math.floor(z / CELL)) || NONE;
+
+/** Distance to the nearest road edge (negative inside), and that road's kind (Infinity far from roads). */
 export function roadInfo(x, z) {
   let best = Infinity, kind = null;
-  for (const r of ROADS) {
-    const d = polylineDistance(r.points, x, z) - r.width / 2;
-    if (d < best) { best = d; kind = r.kind; }
+  for (const s of _near(ROAD_GRID, x, z)) {
+    const d = distToSeg(x, z, s.ax, s.az, s.bx, s.bz) - s.line.width / 2;
+    if (d < best) { best = d; kind = s.line.kind; }
   }
   return { d: best, kind };
 }
@@ -39,8 +67,29 @@ export function roadDistance(x, z) {
   return roadInfo(x, z).d;
 }
 
+/** Nearest water ribbon (river or creek): { d: distance to its bank (negative in the water), river }. */
+export function riverInfo(x, z) {
+  let best = Infinity, river = RIVERS[0];
+  for (const s of _near(RIVER_GRID, x, z)) {
+    const d = distToSeg(x, z, s.ax, s.az, s.bx, s.bz) - s.line.width / 2;
+    if (d < best) { best = d; river = s.line; }
+  }
+  return { d: best, river };
+}
+
 export function riverDistance(x, z) {
-  return polylineDistance(RIVER.points, x, z) - RIVER.width / 2;
+  return riverInfo(x, z).d;
+}
+
+/** Signed distance to a polygon [[x, z]...] (negative inside). */
+export function polygonDistance(pts, x, z) {
+  let inside = false, d = Infinity;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const [xi, zi] = pts[i], [xj, zj] = pts[j];
+    if (zi > z !== zj > z && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) inside = !inside;
+    d = Math.min(d, distToSeg(x, z, xi, zi, xj, zj));
+  }
+  return inside ? -d : d;
 }
 
 function ridgeHeight(x, z) {
@@ -68,34 +117,45 @@ function naturalHeight(x, z) {
   h += ridgeHeight(x, z);
   // Mountains around the edge of the world.
   const e = Math.max(Math.abs(x), Math.abs(z)) * 0.7 + Math.hypot(x, z) * 0.3;
-  h += smoothstep(330, 430, e) * 60 * (0.7 + 0.3 * fbm(x * 0.012, z * 0.012, 3));
+  if (e > HALF - 120) h += smoothstep(HALF - 120, HALF - 20, e) * 60 * (0.7 + 0.3 * fbm(x * 0.012, z * 0.012, 3));
   return h;
 }
 
 const autoLevels = new Map();
 
+function polyBox(pts) {
+  return [Math.min(...pts.map((p) => p[0])), Math.min(...pts.map((p) => p[1])), Math.max(...pts.map((p) => p[0])), Math.max(...pts.map((p) => p[1]))];
+}
+
 export function analyticHeight(x, z) {
   let h = naturalHeight(x, z);
-  // River valley: the land eases down towards the water.
-  const rd = riverDistance(x, z);
+  // River valley: the land eases down towards the water (a creek has a narrow valley).
+  const { d: rd, river: R } = riverInfo(x, z);
+  const V = R.valley ?? 48;
   // Banks never sink below the water (no dry hollows beside the river, no water above the bank):
   // they rise gently from just over the surface towards the valley sides.
-  const valley = 1 - smoothstep(4, 48, rd);
+  const valley = 1 - smoothstep(V / 12, V, rd);
   if (valley > 0) {
-    const bank = Math.max(Math.min(h, 0.45), RIVER.level + 0.35 + Math.max(0, rd) * 0.03);
+    const bank = Math.max(Math.min(h, 0.45), R.level + 0.35 + Math.max(0, rd) * 0.03);
     h = h * (1 - valley) + bank * valley;
   }
   // Settlements, camps and landmarks sit on flattened ground.
   for (const F of FLATS) {
-    const d = Math.hypot(x - F.x, z - F.z);
-    if (d > F.r + F.feather) continue;
+    let d, r = F.r;
+    if (F.poly) {
+      F.bbox ??= polyBox(F.poly);
+      if (x < F.bbox[0] - F.feather || x > F.bbox[2] + F.feather || z < F.bbox[1] - F.feather || z > F.bbox[3] + F.feather) continue;
+      d = polygonDistance(F.poly, x, z);
+      r = 0;
+    } else d = Math.hypot(x - F.x, z - F.z);
+    if (d > r + F.feather) continue;
     let level = F.level;
     if (level === 'auto') {
       const key = F.x + ',' + F.z;
       if (!autoLevels.has(key)) autoLevels.set(key, naturalHeight(F.x, F.z));
       level = autoLevels.get(key);
     }
-    const w = 1 - smoothstep(F.r, F.r + F.feather, d);
+    const w = 1 - smoothstep(r, r + F.feather, d);
     h = h * (1 - w) + level * w;
   }
   // Roads: levelled (small bumps removed, steep slopes softened).
@@ -106,11 +166,11 @@ export function analyticHeight(x, z) {
     h = h * (1 - w * 0.55) + smooth * w * 0.55;
   }
   // Bank floor (after the road levelling, which can dig below it).
-  const fw = 1 - smoothstep(24, 56, rd);
-  if (fw > 0) h += Math.max(0, RIVER.level + 0.35 + Math.max(0, rd) * 0.03 - h) * fw;
+  const fw = 1 - smoothstep(V / 2, V * 1.16, rd);
+  if (fw > 0) h += Math.max(0, R.level + 0.35 + Math.max(0, rd) * 0.03 - h) * fw;
   // River channel.
-  const ch = 1 - smoothstep(-1.5, 2.5, rd);
-  if (ch > 0) h = h * (1 - ch) + RIVER.bed * ch;
+  const ch = 1 - smoothstep(-R.width * 0.15, R.width * 0.25, rd);
+  if (ch > 0) h = h * (1 - ch) + R.bed * ch;
   // Lakes.
   for (const L of LAKES) {
     const d = Math.hypot(x - L.center.x, z - L.center.z);
