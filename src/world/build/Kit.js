@@ -180,6 +180,12 @@ export function house(world, spec, rng) {
       walls(F, fw, fd, y0 + r * rh, rh, { spec, rng, mat: f === 0 && r === 0 ? groundMat : 'Plaster', grid: grid && (f > 0 || r > 0), ground: f === 0 && r === 0, open: f === 0 ? open : false, doorX });
     }
     if (f === 0 && open) openGround(F, w, d, y0, floorH, spec);
+    if (f === 0 && spec.interior && !open) {
+      // Walk-in ground floor: a plank floor and a ceiling under the upper storey / the roof.
+      F.box(w - 0.62, 0.06, d - 0.62, 0, y0 - 0.02, 0, 'plank', { castShadow: false, tint: spec.floorTint ?? 0x8a6a44 });
+      F.box(w - 0.5, 0.18, d - 0.5, 0, y0 + floorH - 0.2, 0, 'plank', { castShadow: false, tint: 0x6a4e34 });
+      for (let k = -1; k <= 1; k++) F.box(0.22, 0.24, d - 0.6, (k * (w - 1)) / 3, y0 + floorH - 0.44, 0, 'timber', { collide: false, castShadow: false, tint: 0x4a3222 });
+    }
     if (f > 0 && jetty) {
       // Corbels under the overhang.
       for (const sx of [-1, 1]) for (const sz of [-1, 1]) F.box(0.18, 0.4, 0.18, sx * (w / 2 - 0.1), y0 - 0.4, sz * (d / 2 + jetty * 0.5), 'timber', { ...deco, tint: TIMBER_DARK, rz: sx * 0.6 });
@@ -256,16 +262,23 @@ function walls(F, w, d, y0, h, o) {
       const put = (name, opts = {}) => T.kit(V(name), opts.x ?? 0, 0, 0, { sx, sy, sz: 1, collide: opts.collide ?? true, castShadow: opts.cast ?? true, detail: !!opts.detail });
       const openTile = s.front && ground && (
         (open === 'shop' && (n <= 2 || i < n - 1)) || // the left end stays open: the way behind the counter
-        (open === 'stable') ||
+        (open === 'stable' || open === 'work') ||
         (open === 'hall' && Math.abs(t - doorX) < gap / 2 + tw / 2 - 0.2));
       if (openTile) {
         put('Wall_Arch', { collide: false });
         continue;
       }
       if (s.front && ground && !open && spec.door !== false && Math.abs(t - doorX) < tw / 2) {
+        if (spec.entrance === 'arch') {
+          // Walk-in building: an open archway (≈ 1.8 m) with the leaf swung in against the jamb.
+          put('Wall_Arch', { collide: false });
+          T.kit(V(spec.doorModel || 'Door_1_Round'), -0.86 * sx, 0, -0.32, { sx: sx * 0.9, sy, ry: Math.PI / 2, collide: false, detail: true });
+          continue;
+        }
         put(`Wall_${mat}_Door_Round`);
         put('DoorFrame_Round_WoodDark', { collide: false, detail: true });
-        T.kit(V(spec.doorModel || 'Door_1_Round'), -0.5 * sx, 0, 0, { sx, sy, collide: false, detail: true });
+        // A closed house: the shut leaf blocks the doorway (no walking into an empty shell).
+        T.kit(V(spec.doorModel || 'Door_1_Round'), -0.5 * sx, 0, 0, { sx, sy, collide: 'box', detail: true });
         continue;
       }
       if (rng() < (ground ? 0.55 : 0.7)) {
@@ -297,6 +310,12 @@ function walls(F, w, d, y0, h, o) {
 
 /** Ground floor that opens to the street: a shop counter or a hall interior. */
 function openGround(F, w, d, y0, h, spec) {
+  if (spec.open === 'work') {
+    // Workshop with an open front: a flagstone floor and a ceiling; the builder adds the tools.
+    F.box(w - 0.6, 0.06, d - 0.6, 0, y0 - 0.02, 0, 'stone', { castShadow: false, tint: 0x9a9284 });
+    F.box(w - 0.4, 0.2, d - 0.4, 0, y0 + h - 0.2, 0, 'plank', { tint: 0x5a4030 });
+    return;
+  }
   if (spec.open === 'stable') {
     // Stalls: a plank floor, partitions, hay and a trough along the back wall.
     F.box(w - 0.6, 0.06, d - 0.6, 0, y0 - 0.02, 0, 'plank', { castShadow: false, tint: 0x8a6a40 });

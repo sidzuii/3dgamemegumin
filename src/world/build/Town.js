@@ -7,6 +7,7 @@ import { ROOF_COLORS } from '../KitLibrary.js';
 import { REGION, offsetPolygon } from '../MapData.js';
 import { AXEL, WALL, RING, SQUARES, AREAS, STREETS, BUILDINGS, toWorld, FACE_ROT } from '../AxelPlan.js';
 import { LOTS } from './AxelLots.js';
+import { FY, weaponShop, alchemyShop, generalStore, bakeryShop, forgeShop, caravanOffice, guildExtras, tavernExtras, templeExtras } from './Interiors.js';
 
 /**
  * Axel — the walled city of beginner adventurers (plan: docs/axel-city-plan.md, data:
@@ -65,7 +66,7 @@ export function buildTown(world) {
   W.group('alchemist', at('alchemist'), (r) => alchemist(r), 'Алхимик');
   W.group('weaponsmith', at('weaponsmith'), (r) => weaponsmith(r), 'Оружейник');
   W.group('magic_shop', at('magic_shop'), (r) => signHouse('magic_shop', r, { style: 'plaster', roof: 'purple', sign: 0x7a4aa8, open: 'shop', awning: 0x5a3a8a }), 'Лавка магических товаров');
-  W.group('caravan_office', at('caravan_office'), (r) => signHouse('caravan_office', r, { style: 'wood', roof: 'brown', sign: 0xb08a5a }), 'Караванная контора');
+  W.group('caravan_office', at('caravan_office'), (r) => office(r), 'Караванная контора');
   W.group('inn_axle', at('inn_axle'), (r) => inn('inn_axle', r, 0x8a3a2a, true), 'Постоялый двор «Ось и колесо»');
   W.group('inn_dust', at('inn_dust'), (r) => inn('inn_dust', r, 0xc2a05a, false), 'Постоялый двор «Пыльный тракт»');
   W.group('stables', at('stables'), (r) => stables('stables', r), 'Конюшни');
@@ -171,6 +172,7 @@ function guild(rng) {
     W.addLightSource(F.at(lx, 4.3, 0.5), { color: 0xffc070, intensity: 9, distance: 14, always: true, flicker: true });
   }
   F.sphere(0.5, 0, 4.4, -6.1, 'bone', { collide: false, sz: 0.6 });
+  inside(() => guildExtras(F));
   W.spot('guild_door', F.at(0, fy, 8.6), rot);
 }
 
@@ -220,6 +222,7 @@ function tavern(rng) {
   F.box(3, 0.3, 2.4, 5.6, fy, 3.9, 'plank', { tint: 0x7a5432 });
   W.spot('tavern_stage', F.at(5.6, fy + 0.3, 3.9), rot - Math.PI * 0.75);
   for (const lx of [-1, 4]) W.addLightSource(F.at(lx, 3.4, 0), { color: 0xffb060, intensity: 6, distance: 11, always: true, flicker: true });
+  inside(() => tavernExtras(F));
   W.spot('tavern_door', F.at(0, fy, 7.5), rot);
 }
 
@@ -250,6 +253,7 @@ function temple(rng) {
   W.addLightSource(F.at(0, fy + 2.5, back + 0.5), { color: 0x9ff0ff, intensity: 5, distance: 12, always: true });
   W.addLightSource(F.at(0, 5.2, 0), { color: 0xffd8a0, intensity: 6, distance: 16, always: true });
   W.addInteractable(new HealingCrystal(F.at(0, fy + 0.5, back - 0.3)));
+  inside(() => templeExtras(F, w, d));
   W.spot('temple_door', F.at(0, fy, d / 2 + 2.4), rot);
 }
 
@@ -296,7 +300,7 @@ function signHouse(id, rng, o = {}) {
   }
   if (o.open === 'shop') {
     shopGoods(F, b.w, b.d, 'store', rng);
-    W.spot(id + '_counter', F.at(0, 0.35, 1.2), rot + Math.PI);
+    W.spot(id + '_counter', F.at(0, 0.35, 1.2), rot);
   } else if (h.door) W.spot(id + '_door', h.door, rot);
   return h;
 }
@@ -334,79 +338,82 @@ function marketHall(rng) {
   W.addFootprint(x, z, w, d, rot, 'shop');
 }
 
+/** Interior furniture: shown with the building's near model only (World.lodMode). */
+function inside(fn) {
+  const prev = W.lodMode;
+  W.lodMode = 'near';
+  try { return fn(); } finally { W.lodMode = prev; }
+}
+
+/**
+ * Walk-in shop: an archway at the left end of the front, a plank floor, a ceiling; `furnish`
+ * fills it (Interiors.js) and returns the NPC points; spots <prefix>_counter / _front.
+ */
+function walkIn(id, rng, spec, furnish, prefix = id) {
+  const b = B[id];
+  const { x, z, rot } = at(id);
+  const h = house(W, { x, z, rot, w: b.w, d: b.d, floors: b.floors || 2, interior: true, entrance: 'arch', door: -b.w / 2 + 1.0, lantern: false, ...spec }, rng);
+  const F = h.frame;
+  const pts = inside(() => furnish(F, b.w, b.d, rng));
+  if (pts.counter) W.spot(prefix + '_counter', F.at(pts.counter[0], FY, pts.counter[1]), rot);
+  if (pts.front) W.spot(prefix + '_front', F.at(pts.front[0], FY, pts.front[1]), rot + Math.PI);
+  // Shop sign over the archway.
+  F.box(0.08, 0.08, 1.2, -b.w / 2 + 1.0, 3.2, b.d / 2 + 0.6, 'metal', { collide: false });
+  F.box(1.0, 0.7, 0.06, -b.w / 2 + 1.0, 2.5, b.d / 2 + 1.15, 'wood', { collide: false, tint: spec.sign ?? 0x6a4428 });
+  W.spot(id + '_entrance', F.at(-b.w / 2 + 1.0, 0, b.d / 2 + 1.8), rot);
+  return { h, F, pts };
+}
+
 function bakery(rng) {
-  const b = B.bakery;
-  const { x, z, rot } = at('bakery');
-  const h = house(W, { x, z, rot, w: b.w, d: b.d, floors: 2, open: 'shop', roofTint: 0xa0522d, awningTint: 0xd8a030, chimney: true, kind: 'shop', flowers: 0.5 }, rng);
-  h.frame.box(1.6, 1.2, 0.08, 0, 3.1, b.d / 2 + 0.2, 'wood', { collide: false, tint: 0x6a4428 });
-  h.frame.sphere(0.35, 0, 3.7, b.d / 2 + 0.28, 'hay', { collide: false, sx: 1.3, sy: 0.7 });
-  shopGoods(h.frame, b.w, b.d, 'bakery', rng);
-  W.spot('bakery_counter', h.frame.at(0, 0.35, 1.0), rot + Math.PI);
-  W.spot('bakery_front', h.frame.at(0, 0.35, b.d / 2 + 1.2), rot);
+  const { F } = walkIn('bakery', rng, { roofTint: 0xa0522d, chimney: true, flowers: 0.5, sign: 0xd8a030 }, bakeryShop);
+  F.sphere(0.3, -B.bakery.w / 2 + 1.0, 2.5, B.bakery.d / 2 + 1.22, 'hay', { collide: false, sx: 1.3, sy: 0.7 });
 }
 
 function store(rng) {
   const b = B.store;
-  const { x, z, rot } = at('store');
-  const s = house(W, { x, z, rot, w: b.w, d: b.d, floors: 2, open: 'shop', roofTint: 0x4c6e5a, awningTint: 0x3a7ac8, kind: 'shop' }, rng);
-  for (let i = 0; i < 3; i++) crate(W, s.frame.sub(-b.w / 2 + 0.9 + i * 0.9, 0.35, b.d / 2 + 1.0), 0, 0, 0.7, i);
-  barrel(W, s.frame.sub(b.w / 2 - 0.9, 0.35, b.d / 2 + 0.9), 0, 0);
-  shopGoods(s.frame, b.w, b.d, 'store', rng);
-  W.spot('store_counter', s.frame.at(0, 0.35, 1.2), rot + Math.PI);
-  W.spot('store_front', s.frame.at(0, 0.35, b.d / 2 + 1.4), rot);
+  const { F } = walkIn('store', rng, { roofTint: 0x4c6e5a, sign: 0x3a7ac8 }, generalStore);
+  for (let i = 0; i < 2; i++) crate(W, F.sub(b.w / 2 - 0.9 - i * 0.9, 0.35, b.d / 2 + 0.9), 0, 0, 0.7, i);
+  barrel(W, F.sub(b.w / 2 - 2.8, 0.35, b.d / 2 + 0.9), 0, 0);
 }
 
 function alchemist(rng) {
   const b = B.alchemist;
-  const { x, z, rot } = at('alchemist');
-  const a = house(W, { x, z, rot, w: b.w, d: b.d, floors: 2, open: 'shop', roofTint: 0x5a4a6e, awningTint: 0x7a4aa8, chimney: true, kind: 'shop', vines: 1 }, rng);
-  const F = a.frame;
-  for (let i = 0; i < 6; i++) F.cyl(0.09, 0.3, -2.4 + i * 0.95, 1.43, b.d / 2 - 0.9, 'glass', { seg: 8, collide: false, tint: [0xe04050, 0x4080f0, 0x50d080][i % 3] });
-  shopGoods(F, b.w, b.d, 'alchemist', rng);
-  // The purple turret (landmark) on the back corner.
-  const T = F.sub(b.w / 2 - 1.2, 0, -b.d / 2 + 1.2);
-  T.cyl(1.4, 11, 0, -0.4, 0, 'plaster', { seg: 10, tint: 0xe8dcf0 });
-  T.cone(1.9, 3.6, 0, 10.6, 0, 'roof', { seg: 10, tint: 0x6a4e80 });
-  T.box(0.6, 0.9, 0.06, 0, 8.2, 1.38, 'window', { collide: false, castShadow: false });
-  W.addLightSource(F.at(0, 2.2, 0.6), { color: 0xc080ff, intensity: 3, distance: 7, always: true });
-  W.spot('alchemist_counter', F.at(0, 0.35, 1.0), rot + Math.PI);
-  W.spot('alchemist_front', F.at(0, 0.35, b.d / 2 + 1.4), rot);
+  const { F } = walkIn('alchemist', rng, { floors: 3, roofTint: 0x5a4a6e, chimney: true, vines: 1, sign: 0x7a4aa8 }, alchemyShop);
+  // The purple turret (landmark) corbelled out over the back corner, from the first floor up.
+  const T = F.sub(b.w / 2 + 0.5, 3.3, -b.d / 2 - 0.5); // outside the corner: nothing pokes into the shop
+  T.cone(1.2, 1.2, 0, -1.1, 0, 'stone', { seg: 10, tint: 0xb0a8b8, rx: Math.PI });
+  T.cyl(1.4, 8.2, 0, 0, 0, 'plaster', { seg: 10, tint: 0xe8dcf0 });
+  T.cone(1.9, 3.6, 0, 8.1, 0, 'roof', { seg: 10, tint: 0x6a4e80 });
+  T.box(0.6, 0.9, 0.06, 0, 5.4, 1.38, 'window', { collide: false, castShadow: false });
 }
 
 function weaponsmith(rng) {
-  const b = B.weaponsmith;
-  const { x, z, rot } = at('weaponsmith');
-  const w = house(W, { x, z, rot, w: b.w, d: b.d, floors: 2, open: 'shop', roofTint: 0x7d3a3a, awningTint: 0x8a2a2a, kind: 'shop', style: 'brick' }, rng);
-  for (let i = 0; i < 5; i++) w.frame.box(0.06, 1.6, 0.06, -2.5 + i * 1.2, 1.3, -b.d / 2 + 0.6, 'wood', { collide: false, tint: 0x8a6a48, rz: 0.12 });
-  for (let i = 0; i < 3; i++) w.frame.sphere(0.3, -2 + i * 2, 2.2, -b.d / 2 + 0.55, 'metal', { collide: false, sz: 0.2 });
-  W.spot('weapons_counter', w.frame.at(0, 0.35, 1.2), rot + Math.PI);
-  W.spot('weapons_front', w.frame.at(0, 0.35, b.d / 2 + 1.4), rot);
+  walkIn('weaponsmith', rng, { roofTint: 0x7d3a3a, style: 'brick', sign: 0x8a2a2a }, weaponShop, 'weapons');
 }
 
 function forge(rng) {
   const b = B.forge;
   const { x, z, rot } = at('forge');
-  const f = house(W, { x, z, rot, w: b.w, d: b.d, floors: 1, floorH: 3.6, open: 'shop', roofTint: 0x5a4a40, awningTint: 0x6a5a4a, chimney: true, kind: 'shop', style: 'brick' }, rng);
+  // Open-fronted smithy (stone floor, a ceiling under the roof); tall chimney over the furnace.
+  const f = house(W, { x, z, rot, w: b.w, d: b.d, floors: 1, floorH: 3.8, open: 'work', door: false, roofTint: 0x5a4a40, chimney: false, kind: 'shop', style: 'brick' }, rng);
   const F = f.frame;
-  F.box(2.2, 1.6, 1.6, 3.2, 0.35, -b.d / 2 + 1.2, 'stone', { tint: 0x8a7e70 });
-  F.box(1.2, 0.5, 0.2, 3.2, 0.9, -b.d / 2 + 2.05, 'metal', { collide: false });
-  // Big chimney (landmark, smoke).
-  F.box(1.6, 9, 1.6, 3.2, 1.9, -b.d / 2 + 1.2, 'stone', { tint: 0x8a7e70 });
-  W.addChimney(F.at(3.2, 11.2, -b.d / 2 + 1.2));
-  W.addChimney(F.at(3.2, 11.4, -b.d / 2 + 1.2));
-  W.addLightSource(F.at(3.2, 1.2, -b.d / 2 + 2.4), { color: 0xff7a2a, intensity: 7, distance: 9, always: true, flicker: true });
-  W.forgeFire = F.at(3.2, 1.3, -b.d / 2 + 1.8);
-  prop(F, 'survival/workbench-anvil', -1.5, 0, b.d / 2 + 1.6, { s: 2.6, ry: Math.PI / 2 });
-  prop(F, 'survival/workbench', -3.4, 0.35, -b.d / 2 + 1.2, { s: 2.6 });
-  for (const [t, xx] of [['tool-hammer', -2.4], ['tool-pickaxe', -3.0], ['tool-axe', -3.6]]) prop(F, 'survival/' + t, xx, 0.35, -b.d / 2 + 0.5, { s: 2.4, collide: false, ry: Math.PI / 2 });
-  F.box(1.6, 0.6, 0.7, 2.6, 0, b.d / 2 + 1.6, 'wood', { tint: 0x5a4a3a });
-  F.box(1.4, 0.05, 0.5, 2.6, 0.55, b.d / 2 + 1.6, 'water', { collide: false });
-  W.spot('forge_anvil', F.at(-1.5, 0, b.d / 2 + 0.8), rot + Math.PI);
-  W.spot('forge_counter', F.at(0, 0.35, 1.2), rot + Math.PI);
+  F.box(1.6, 10, 1.6, b.w / 2 - 2, 0.35, -b.d / 2 + 0.6, 'stone', { tint: 0x8a7e70 });
+  W.addChimney(F.at(b.w / 2 - 2, 10.7, -b.d / 2 + 0.6));
+  W.addChimney(F.at(b.w / 2 - 2, 10.9, -b.d / 2 + 0.6));
+  const pts = inside(() => forgeShop(F, b.w, b.d, rng));
+  W.spot('forge_anvil', F.at(pts.anvil[0], FY, pts.anvil[1]), rot);
+  W.spot('forge_counter', F.at(pts.counter[0], FY, pts.counter[1]), rot);
   W.spot('forge_front', F.at(0, 0, b.d / 2 + 2.6), rot);
+  // The trough outside for the horses, a sign.
+  F.box(0.08, 0.08, 1.2, -b.w / 2 + 1.2, 3.4, b.d / 2 + 0.6, 'metal', { collide: false });
+  F.box(1.0, 0.7, 0.06, -b.w / 2 + 1.2, 2.7, b.d / 2 + 1.15, 'wood', { collide: false, tint: 0x4a4440 });
 }
 
-/** Workshop: an open ground floor with a bench, tools and stock outside. */
+function office(rng) {
+  const { F, pts } = walkIn('caravan_office', rng, { style: 'wood', roofTint: ROOF_COLORS.brown, sign: 0xb08a5a }, caravanOffice);
+  W.spot('caravan_office_desk', F.at(pts.desk[0], FY, pts.desk[1]), at('caravan_office').rot);
+}
+
 function workshop(b, rng, style) {
   const [x, z] = P(b.u, b.v);
   const rot = b.rot ?? FACE_ROT[b.face];
