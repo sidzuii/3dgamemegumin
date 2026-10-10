@@ -1,0 +1,683 @@
+import * as THREE from 'three';
+import { buildPlacement, PLACEABLES, placeableLabel, STALL_COLORS } from '../world/build/Placements.js';
+import { ROOF_COLORS } from '../world/KitLibrary.js';
+import './editor.css';
+
+/**
+ * Map editor (open the game with `?editor`, dev server only).
+ *
+ * Everything the builders mark with `world.group(id, …)` (houses, shops, camps, places…) and
+ * everything placed here is a separate object in editor mode: select it, drag it over the
+ * ground, turn, scale, raise, delete. New objects come from a palette (houses, trees, props,
+ * any Kenney piece). The result is a layout file, public/data/placements.json:
+ *   overrides: { groupId: { x, z, rot, s, dy } | { deleted: true } }   — built-in places
+ *   added:     [ { id, type, x, z, rot, s, dy, ...params } ]           — placed objects
+ * The game applies it when it builds the world, so colliders, NPC spots, lights and quest
+ * objects follow their group after a reload.
+ */
+const _v = new THREE.Vector3();
+const _f = new THREE.Vector3();
+const _r = new THREE.Vector3();
+const _ray = new THREE.Raycaster();
+const _ndc = new THREE.Vector2();
+const DEG = Math.PI / 180;
+
+export class Editor {
+  constructor(game) {
+    this.g = game;
+    this.W = game.world;
+    this.cam = game.camera;
+    this.layout = JSON.parse(JSON.stringify(this.W.layout));
+    this.history = [];
+    this.future = [];
+    this.dirty = false;
+    this.sel = null;
+    this.tool = null; // { type, name? } while placing
+    this.ghost = null;
+    this.keys = new Set();
+    this.snap = true;
+    this.drag = null;
+    this.look = null;
+    this.mouse = { x: 0, y: 0 };
+    this.yaw = 0; // looking north (-z) at the town
+    this.pitch = -0.75;
+    this.cam.position.set(0, 55, 62);
+    this._applyCam();
+    // Daylight, no fog wall in the way of an overview.
+    game.dayNight.update(0, 12, 0);
+    this.fogFar = this.g.scene.fog.far;
+    this.g.scene.fog.far = 900;
+    this.cam.far = 1600;
+    this.cam.updateProjectionMatrix();
+    this.box = new THREE.BoxHelper(undefined, 0xffd24a);
+    this.box.visible = false;
+    this.g.scene.add(this.box);
+    for (const rec of this.W.groups.values()) this._remember(rec);
+    document.body.classList.add('editor-mode');
+    this._buildUI();
+    this._bindInput();
+    this._refreshList();
+    this._status('Редактор карты. Выберите объект мышью или возьмите новый в палитре слева.');
+  }
+
+  // ---------------------------------------------------------------------------
+  // Frame
+  // ---------------------------------------------------------------------------
+  frame(dt) {
+    this._moveCamera(dt);
+    if (this.box.visible && this.sel?.object) this.box.setFromObject(this.sel.object);
+    this.W.followShadow(this._groundAhead(_v));
+    this.W.trees.update(dt, this.cam);
+    this.g.composer.render();
+  }
+
+  _applyCam() {
+    this.cam.quaternion.setFromEuler(new THREE.Euler(this.pitch, this.yaw, 0, 'YXZ'));
+    this.cam.updateMatrixWorld();
+  }
+
+  _moveCamera(dt) {
+    const k = this.keys;
+    if (document.activeElement?.matches?.('input, select, textarea')) return;
+    const ground = this.W.heightAt(this.cam.position.x, this.cam.position.z);
+    const speed = THREE.MathUtils.clamp((this.cam.position.y - ground) * 0.9, 10, 120) * (k.has('ShiftLeft') || k.has('ShiftRight') ? 3 : 1);
+    _f.set(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
+    _r.set(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
+    _v.set(0, 0, 0);
+    if (k.has('KeyW')) _v.add(_f);
+    if (k.has('KeyS')) _v.sub(_f);
+    if (k.has('KeyD')) _v.add(_r);
+    if (k.has('KeyA')) _v.sub(_r);
+    if (k.has('KeyE') || k.has('Space')) _v.y += 1;
+    if (k.has('KeyQ') || k.has('KeyC')) _v.y -= 1;
+    if (_v.lengthSq() > 0) {
+      this.cam.position.addScaledVector(_v.normalize(), speed * dt);
+      this.cam.position.y = Math.max(this.cam.position.y, this.W.heightAt(this.cam.position.x, this.cam.position.z) + 1.5);
+      this.cam.updateMatrixWorld();
+    }
+  }
+
+  /** Ground point the camera looks at (for the shadow frustum). */
+  _groundAhead(target) {
+    _ndc.set(0, 0);
+    return this._groundHit(_ndc, target) || target.copy(this.cam.position);
+  }
+
+  /** Ray (from screen NDC) against the terrain: march + refine. */
+  _groundHit(ndc, target) {
+    _ray.setFromCamera(ndc, this.cam);
+    const o = _ray.ray.origin, d = _ray.ray.direction;
+    let prev = 0;
+    for (let t = 1; t < 1500; t += Math.max(1, t * 0.02)) {
+      const y = o.y + d.y * t;
+      const h = this.W.heightAt(o.x + d.x * t, o.z + d.z * t);
+      if (y <= h) {
+        let a = prev, b = t;
+        for (let i = 0; i < 18; i++) {
+          const m = (a + b) / 2;
+          if (o.y + d.y * m <= this.W.heightAt(o.x + d.x * m, o.z + d.z * m)) b = m; else a = m;
+        }
+        return target.copy(d).multiplyScalar(b).add(o);
+      }
+      prev = t;
+    }
+    return null;
+  }
+
+  _mouseNdc(e) {
+    const r = this.g.renderer.domElement.getBoundingClientRect();
+    return _ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  }
+
+  _pick(e) {
+    _ray.setFromCamera(this._mouseNdc(e), this.cam);
+    const objs = [];
+    for (const rec of this.W.groups.values()) if (rec.object?.visible && rec !== this.ghost) objs.push(rec.object);
+    const hit = _ray.intersectObjects(objs, true)[0];
+    if (!hit) return null;
+    let o = hit.object;
+    while (o && !o.userData.groupId) o = o.parent;
+    return o ? this.W.groups.get(o.userData.groupId) : null;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Layout <-> objects
+  // ---------------------------------------------------------------------------
+  /** Current placement of a group (layout values, defaults from the builder pivot). */
+  place(rec) {
+    const o = rec.added ? this._added(rec.id) || {} : this.layout.overrides[rec.id] || {};
+    const p = rec.pivot;
+    return { x: o.x ?? p.x, z: o.z ?? p.z, rot: o.rot ?? p.rot, s: o.s ?? 1, dy: o.dy ?? 0 };
+  }
+
+  _added(id) {
+    return this.layout.added.find((a) => a.id === id);
+  }
+
+  _setPlace(rec, T) {
+    const round = (v, n = 100) => Math.round(v * n) / n;
+    const vals = { x: round(T.x), z: round(T.z), rot: round(T.rot, 10000), s: round(T.s, 1000), dy: round(T.dy) };
+    if (rec.added) Object.assign(this._added(rec.id), vals);
+    else this.layout.overrides[rec.id] = vals;
+    this._applyObject(rec);
+    this.dirty = true;
+  }
+
+  _applyObject(rec) {
+    const obj = rec.object;
+    if (!obj) return;
+    const T = this.place(rec);
+    obj.position.set(T.x, this.W.heightAt(T.x, T.z) + T.dy, T.z);
+    obj.rotation.y = T.rot;
+    obj.scale.setScalar(T.s);
+    obj.visible = !(!rec.added && this.layout.overrides[rec.id]?.deleted);
+    obj.updateMatrixWorld(true);
+  }
+
+  _remember(rec) {
+    if (rec.added) rec.built = JSON.stringify(this._paramsOf(this._added(rec.id)));
+  }
+
+  _paramsOf(a) {
+    if (!a) return null;
+    const { x, z, rot, s, dy, ...rest } = a;
+    void x; void z; void rot; void dy;
+    // Scale changes geometry only for scalable types; otherwise it is a live transform.
+    return PLACEABLES[a.type]?.scalable ? { ...rest, s } : rest;
+  }
+
+  /** Build (or rebuild) a placed object from its record. */
+  _buildAdded(a) {
+    const old = this.W.groups.get(a.id);
+    if (old) this._dispose(old);
+    const rec = buildPlacement(this.W, a);
+    this.W.buildGroupObject(rec);
+    this._remember(rec);
+    this._applyObject(rec);
+    return rec;
+  }
+
+  _dispose(rec) {
+    if (rec.object) {
+      this.g.scene.remove(rec.object);
+      rec.object.traverse((o) => o.geometry?.dispose());
+    }
+    this.W.groups.delete(rec.id);
+  }
+
+  /** Make the scene match the layout (after undo / redo). */
+  _sync() {
+    for (const rec of [...this.W.groups.values()]) {
+      if (rec === this.ghost) continue;
+      if (rec.added) {
+        const a = this._added(rec.id);
+        if (!a) this._dispose(rec);
+        else if (JSON.stringify(this._paramsOf(a)) !== rec.built) this._buildAdded(a);
+        else this._applyObject(rec);
+      } else this._applyObject(rec);
+    }
+    for (const a of this.layout.added) if (!this.W.groups.has(a.id)) this._buildAdded(a);
+    if (this.sel && !this.W.groups.has(this.sel.id)) this.select(null);
+    else this.select(this.sel ? this.W.groups.get(this.sel.id) : null);
+    this._refreshList();
+  }
+
+  _snapshot() {
+    this.history.push(JSON.stringify(this.layout));
+    if (this.history.length > 200) this.history.shift();
+    this.future.length = 0;
+  }
+
+  undo() {
+    if (!this.history.length) return;
+    this.future.push(JSON.stringify(this.layout));
+    this.layout = JSON.parse(this.history.pop());
+    this.dirty = true;
+    this._sync();
+    this._status('Отменено');
+  }
+
+  redo() {
+    if (!this.future.length) return;
+    this.history.push(JSON.stringify(this.layout));
+    this.layout = JSON.parse(this.future.pop());
+    this.dirty = true;
+    this._sync();
+    this._status('Повторено');
+  }
+
+  // ---------------------------------------------------------------------------
+  // Actions
+  // ---------------------------------------------------------------------------
+  select(rec) {
+    this.sel = rec;
+    this.box.visible = !!rec?.object;
+    if (rec?.object) this.box.setFromObject(rec.object);
+    this._inspector();
+    this._refreshList(true);
+  }
+
+  focus(rec) {
+    if (!rec) return;
+    const T = this.place(rec);
+    const y = this.W.heightAt(T.x, T.z);
+    this.yaw = 0;
+    this.pitch = -0.6;
+    this.cam.position.set(T.x, y + 18, T.z + 22);
+    this._applyCam();
+  }
+
+  remove(rec = this.sel) {
+    if (!rec) return;
+    if (rec.added) {
+      this._snapshot();
+      this.layout.added = this.layout.added.filter((a) => a.id !== rec.id);
+      this._dispose(rec);
+    } else {
+      if (rec.hasLogic && !window.confirm(`«${rec.label}» содержит места NPC, квестов или интерактивные объекты. Удалить всё равно? (Можно вернуть в списке «На карте».)`)) return;
+      this._snapshot();
+      this.layout.overrides[rec.id] = { deleted: true };
+      this._applyObject(rec);
+    }
+    this.dirty = true;
+    this.select(null);
+    this._refreshList();
+    this._status('Удалено. Ctrl+Z — отменить.');
+  }
+
+  restore(rec = this.sel) {
+    if (!rec || rec.added) return;
+    this._snapshot();
+    delete this.layout.overrides[rec.id];
+    this.dirty = true;
+    if (!rec.object) {
+      this._status('Объект был удалён до запуска редактора: он появится после сохранения и перезапуска.');
+    } else this._applyObject(rec);
+    this._refreshList();
+    this._inspector();
+  }
+
+  duplicate(rec = this.sel) {
+    if (!rec?.added) return this._status('Копировать можно только объекты, поставленные в редакторе.');
+    this._snapshot();
+    const a = { ...this._added(rec.id), id: newId() };
+    a.x += 3; a.z += 3;
+    this.layout.added.push(a);
+    const r = this._buildAdded(a);
+    this.dirty = true;
+    this.select(r);
+    this._refreshList();
+  }
+
+  transform(fn) {
+    if (!this.sel || this.sel.deleted) return;
+    this._snapshot();
+    const T = this.place(this.sel);
+    fn(T);
+    this._setPlace(this.sel, T);
+    this._inspector(true);
+  }
+
+  arm(tool) {
+    this.tool = tool;
+    if (this.ghost) { this._dispose(this.ghost); this.ghost = null; }
+    for (const b of this.ui.querySelectorAll('.ed-item.on')) b.classList.remove('on');
+    if (tool) {
+      this.ui.querySelector(`[data-tool="${tool.type === 'kit' ? 'kit:' + tool.name : tool.type}"]`)?.classList.add('on');
+      this._status(`Ставим: ${tool.type === 'kit' ? tool.name : PLACEABLES[tool.type].label}. ЛКМ — поставить, R — повернуть, Esc / ПКМ-клик — закончить.`);
+      this.select(null);
+    }
+  }
+
+  _ghostAt(p) {
+    if (!this.tool) return;
+    const t = this.tool;
+    if (!this.ghost || this.ghost.toolKey !== JSON.stringify(t)) {
+      if (this.ghost) this._dispose(this.ghost);
+      const a = { id: '__ghost', type: t.type, x: p.x, z: p.z, rot: this.ghostRot || 0, s: 1, dy: 0, ...JSON.parse(JSON.stringify(PLACEABLES[t.type].defaults)) };
+      if (t.type === 'kit') a.name = t.name;
+      this.ghostData = a;
+      this.ghost = buildPlacement(this.W, a);
+      this.W.buildGroupObject(this.ghost);
+      this.ghost.toolKey = JSON.stringify(t);
+      this.ghost.object.traverse((o) => { if (o.isMesh) o.castShadow = false; });
+    }
+    const a = this.ghostData;
+    a.x = this._snapV(p.x); a.z = this._snapV(p.z); a.rot = this.ghostRot || 0;
+    const o = this.ghost.object;
+    o.position.set(a.x, this.W.heightAt(a.x, a.z), a.z);
+    o.rotation.y = a.rot;
+    o.updateMatrixWorld(true);
+  }
+
+  _placeGhost() {
+    if (!this.ghost) return;
+    this._snapshot();
+    const a = { ...this.ghostData, id: newId() };
+    this.layout.added.push(a);
+    this._dispose(this.ghost);
+    this.ghost = null;
+    this._buildAdded(a);
+    this.dirty = true;
+    this._refreshList();
+    this._status(`Поставлено: ${placeableLabel(a)}. Можно ставить ещё; Esc — закончить.`);
+  }
+
+  _snapV(v) {
+    return this.snap ? Math.round(v * 2) / 2 : Math.round(v * 100) / 100;
+  }
+
+  async save() {
+    this._status('Сохраняю…');
+    try {
+      const r = await fetch('/__editor/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(this.layout) });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || r.status);
+      this.dirty = false;
+      this._status('Сохранено в public/data/placements.json. Коллизии, места NPC и свет пересоберутся при следующем запуске игры.');
+    } catch (e) {
+      this._status('Не удалось сохранить: ' + e.message + ' (редактор сохраняет только при запущенном npm run dev)');
+    }
+  }
+
+  play() {
+    if (this.dirty && !window.confirm('Есть несохранённые изменения. Выйти без сохранения?')) return;
+    this.dirty = false;
+    location.search = '';
+  }
+
+  // ---------------------------------------------------------------------------
+  // Input
+  // ---------------------------------------------------------------------------
+  _bindInput() {
+    const el = this.g.renderer.domElement;
+    const typing = () => document.activeElement?.matches?.('input, select, textarea');
+    window.addEventListener('keydown', (e) => {
+      if (typing()) return;
+      this.keys.add(e.code);
+      const ctrl = e.ctrlKey || e.metaKey;
+      if (ctrl && e.code === 'KeyS') { e.preventDefault(); this.save(); }
+      else if (ctrl && e.code === 'KeyZ') { e.preventDefault(); e.shiftKey ? this.redo() : this.undo(); }
+      else if (ctrl && e.code === 'KeyY') { e.preventDefault(); this.redo(); }
+      else if (ctrl && e.code === 'KeyD') { e.preventDefault(); this.duplicate(); }
+      else if (e.code === 'Delete' || e.code === 'Backspace') this.remove();
+      else if (e.code === 'Escape') { if (this.tool) this.arm(null); else this.select(null); }
+      else if (e.code === 'KeyR') {
+        const step = (e.altKey ? 1 : 15) * DEG * (e.shiftKey ? -1 : 1);
+        if (this.tool) { this.ghostRot = (this.ghostRot || 0) + step; if (this.ghost) this._ghostAt(this.ghostData); }
+        else this.transform((T) => { T.rot += step; });
+      } else if (e.code === 'KeyF') this.focus(this.sel);
+      else if (e.code === 'KeyG') { this.snap = !this.snap; this._topState(); }
+      else if (e.code === 'PageUp') this.transform((T) => { T.dy += e.shiftKey ? 1 : 0.1; });
+      else if (e.code === 'PageDown') this.transform((T) => { T.dy -= e.shiftKey ? 1 : 0.1; });
+      else if (e.code === 'Equal' || e.code === 'NumpadAdd') this._scale(1.05);
+      else if (e.code === 'Minus' || e.code === 'NumpadSubtract') this._scale(1 / 1.05);
+    });
+    window.addEventListener('keyup', (e) => this.keys.delete(e.code));
+    window.addEventListener('blur', () => this.keys.clear());
+    window.addEventListener('beforeunload', (e) => { if (this.dirty) { e.preventDefault(); e.returnValue = ''; } });
+    el.addEventListener('contextmenu', (e) => e.preventDefault());
+    el.addEventListener('mousedown', (e) => {
+      if (e.button === 2) { this.look = { x: e.clientX, y: e.clientY, moved: false }; return; }
+      if (e.button !== 0) return;
+      if (this.tool) { this._placeGhost(); return; }
+      const rec = this._pick(e);
+      if (rec && rec === this.sel) {
+        const p = this._groundHit(this._mouseNdc(e), new THREE.Vector3());
+        if (p) {
+          const T = this.place(rec);
+          this._snapshot();
+          this.drag = { dx: T.x - p.x, dz: T.z - p.z, moved: false };
+        }
+      } else this.select(rec);
+    });
+    window.addEventListener('mousemove', (e) => {
+      this.mouse.x = e.clientX; this.mouse.y = e.clientY;
+      if (this.look) {
+        this.yaw -= e.movementX * 0.004;
+        this.pitch = THREE.MathUtils.clamp(this.pitch - e.movementY * 0.004, -1.55, 1.2);
+        this.look.moved = true;
+        this._applyCam();
+        return;
+      }
+      if (e.target !== el) return;
+      const p = this._groundHit(this._mouseNdc(e), new THREE.Vector3());
+      if (!p) return;
+      if (this.tool) this._ghostAt(p);
+      else if (this.drag && this.sel) {
+        const T = this.place(this.sel);
+        T.x = this._snapV(p.x + this.drag.dx);
+        T.z = this._snapV(p.z + this.drag.dz);
+        this._setPlace(this.sel, T);
+        this.drag.moved = true;
+        this._inspector(true);
+      }
+    });
+    window.addEventListener('mouseup', (e) => {
+      if (e.button === 2 && this.look) {
+        if (!this.look.moved && this.tool) this.arm(null);
+        this.look = null;
+      }
+      if (e.button === 0 && this.drag) {
+        if (!this.drag.moved) this.history.pop(); // a click on the selection is not an edit
+        this.drag = null;
+      }
+    });
+    el.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const ground = this.W.heightAt(this.cam.position.x, this.cam.position.z);
+      const k = THREE.MathUtils.clamp((this.cam.position.y - ground) * 0.08, 0.6, 12);
+      _f.set(0, 0, -1).applyQuaternion(this.cam.quaternion);
+      this.cam.position.addScaledVector(_f, -Math.sign(e.deltaY) * k * 2.5);
+      this.cam.position.y = Math.max(this.cam.position.y, this.W.heightAt(this.cam.position.x, this.cam.position.z) + 1.5);
+      this.cam.updateMatrixWorld();
+    }, { passive: false });
+  }
+
+  _scale(k) {
+    if (!this.sel) return;
+    if (this.sel.added && !PLACEABLES[this._added(this.sel.id)?.type]?.scalable) return this._status('У этого объекта нет масштаба.');
+    this.transform((T) => { T.s = THREE.MathUtils.clamp(T.s * k, 0.2, 5); });
+    if (this.sel.added) this._buildAdded(this._added(this.sel.id));
+  }
+
+  // ---------------------------------------------------------------------------
+  // UI
+  // ---------------------------------------------------------------------------
+  _buildUI() {
+    const ui = document.createElement('div');
+    ui.id = 'editor';
+    ui.innerHTML = `
+      <div class="ed-top">
+        <b>Редактор карты</b>
+        <button data-act="save" title="Ctrl+S">Сохранить</button>
+        <button data-act="undo" title="Ctrl+Z">Отменить</button>
+        <button data-act="redo" title="Ctrl+Y">Повторить</button>
+        <button data-act="snap" title="G">Сетка 0.5 м</button>
+        <button data-act="play" class="ed-play">Играть ▶</button>
+        <span class="ed-status"></span>
+      </div>
+      <div class="ed-left">
+        <div class="ed-tabs"><button data-tab="add" class="on">Добавить</button><button data-tab="list">На карте</button></div>
+        <div class="ed-pane" data-pane="add"></div>
+        <div class="ed-pane" data-pane="list" hidden><input class="ed-search" data-search="list" placeholder="Поиск…"><div class="ed-list"></div></div>
+      </div>
+      <div class="ed-right" hidden></div>
+      <div class="ed-help">ПКМ + мышь — осмотр · WASD — полёт · E/Q — выше/ниже · Shift — быстрее · колесо — ближе/дальше ·
+        ЛКМ — выбрать, тащить выбранное — переместить · R / Shift+R — поворот 15° (Alt — 1°) · PgUp/PgDn — высота ·
+        +/− — масштаб · Del — удалить · Ctrl+D — копия · F — показать · Ctrl+Z — отмена</div>`;
+    document.body.appendChild(ui);
+    this.ui = ui;
+    ui.querySelector('.ed-top').addEventListener('click', (e) => {
+      const a = e.target.closest('button')?.dataset.act;
+      if (a === 'save') this.save();
+      else if (a === 'undo') this.undo();
+      else if (a === 'redo') this.redo();
+      else if (a === 'snap') { this.snap = !this.snap; this._topState(); }
+      else if (a === 'play') this.play();
+    });
+    for (const b of ui.querySelectorAll('.ed-tabs button')) {
+      b.addEventListener('click', () => {
+        for (const x of ui.querySelectorAll('.ed-tabs button')) x.classList.toggle('on', x === b);
+        for (const p of ui.querySelectorAll('.ed-pane')) p.hidden = p.dataset.pane !== b.dataset.tab;
+        if (b.dataset.tab === 'list') this._refreshList();
+      });
+    }
+    // Palette.
+    const add = ui.querySelector('[data-pane="add"]');
+    const cats = {};
+    for (const [type, P] of Object.entries(PLACEABLES)) if (type !== 'kit') (cats[P.cat] ||= []).push([type, P]);
+    let html = '';
+    for (const [cat, items] of Object.entries(cats)) {
+      html += `<div class="ed-cat">${cat}</div><div class="ed-grid">` + items.map(([t, P]) => `<button class="ed-item" data-tool="${t}">${P.label}</button>`).join('') + '</div>';
+    }
+    html += `<div class="ed-cat">Модели Kenney</div><input class="ed-search" data-search="kit" placeholder="Поиск: house, tree, barrel, grave…"><div class="ed-kits"></div>`;
+    add.innerHTML = html;
+    add.addEventListener('click', (e) => {
+      const b = e.target.closest('.ed-item');
+      if (!b) return;
+      const t = b.dataset.tool;
+      if (this.tool && (this.tool.type === t || 'kit:' + this.tool.name === t)) return this.arm(null);
+      this.arm(t.startsWith('kit:') ? { type: 'kit', name: t.slice(4) } : { type: t });
+    });
+    const kitSearch = add.querySelector('[data-search="kit"]');
+    const allKits = [...this.W.kits.pieces.keys()].sort();
+    const renderKits = () => {
+      const q = kitSearch.value.trim().toLowerCase();
+      const list = allKits.filter((n) => !q || n.toLowerCase().includes(q)).slice(0, 160);
+      add.querySelector('.ed-kits').innerHTML = list.map((n) => `<button class="ed-item ed-kit" data-tool="kit:${n}">${n}</button>`).join('') + (list.length === 160 ? '<div class="ed-more">…уточните поиск</div>' : '');
+    };
+    kitSearch.addEventListener('input', renderKits);
+    renderKits();
+    ui.querySelector('[data-search="list"]').addEventListener('input', () => this._refreshList());
+    ui.querySelector('.ed-list').addEventListener('click', (e) => {
+      const row = e.target.closest('[data-id]');
+      if (!row) return;
+      const rec = this.W.groups.get(row.dataset.id);
+      if (e.target.dataset.act === 'restore') return this.restore(rec);
+      this.arm(null);
+      this.select(rec);
+      this.focus(rec);
+    });
+    this._topState();
+  }
+
+  _topState() {
+    const b = this.ui.querySelector('[data-act="snap"]');
+    b.textContent = this.snap ? 'Сетка 0.5 м: вкл' : 'Сетка: выкл';
+    b.classList.toggle('on', this.snap);
+  }
+
+  _status(t) {
+    this.ui.querySelector('.ed-status').textContent = t;
+  }
+
+  _refreshList(onlyMarks = false) {
+    const box = this.ui.querySelector('.ed-list');
+    if (!box) return;
+    if (onlyMarks && box.childElementCount) {
+      for (const r of box.children) r.classList.toggle('on', r.dataset.id === this.sel?.id);
+      return;
+    }
+    const q = this.ui.querySelector('[data-search="list"]').value.trim().toLowerCase();
+    const rows = [];
+    for (const rec of this.W.groups.values()) {
+      if (rec === this.ghost) continue;
+      const del = !rec.added && this.layout.overrides[rec.id]?.deleted;
+      const moved = !rec.added && this.layout.overrides[rec.id] && !del;
+      if (q && !(rec.label + ' ' + rec.id).toLowerCase().includes(q)) continue;
+      rows.push(`<div class="ed-row${rec === this.sel ? ' on' : ''}${del ? ' del' : ''}" data-id="${rec.id}">
+        <span>${esc(rec.label)}</span><small>${rec.added ? 'новый' : del ? 'удалён' : moved ? 'изменён' : ''}</small>
+        ${del ? '<button data-act="restore">вернуть</button>' : ''}</div>`);
+    }
+    box.innerHTML = rows.join('') || '<div class="ed-more">Ничего не найдено</div>';
+  }
+
+  _inspector(valuesOnly = false) {
+    const box = this.ui.querySelector('.ed-right');
+    const rec = this.sel;
+    if (!rec) { box.hidden = true; return; }
+    box.hidden = false;
+    const T = this.place(rec);
+    if (valuesOnly && box.dataset.id === rec.id) {
+      for (const [k, v] of Object.entries({ x: T.x, z: T.z, dy: T.dy, rot: Math.round(T.rot / DEG * 10) / 10, s: T.s })) {
+        const inp = box.querySelector(`[data-f="${k}"]`);
+        if (inp && document.activeElement !== inp) inp.value = typeof v === 'number' ? +v.toFixed(2) : v;
+      }
+      return;
+    }
+    box.dataset.id = rec.id;
+    const a = rec.added ? this._added(rec.id) : null;
+    const scalable = !a || PLACEABLES[a.type]?.scalable;
+    const num = (f, label, v, step) => `<label>${label}<input type="number" data-f="${f}" step="${step}" value="${+(+v).toFixed(2)}"></label>`;
+    let params = '';
+    if (a?.type === 'house') {
+      params = num('p:w', 'Ширина, м', a.w, 0.5) + num('p:d', 'Глубина, м', a.d, 0.5) + num('p:floors', 'Этажей', a.floors, 1)
+        + sel('p:roof', 'Крыша', a.roof, Object.keys(ROOF_COLORS), { red: 'красная', blue: 'синяя', green: 'зелёная', brown: 'коричневая', slate: 'серая', purple: 'фиолетовая', straw: 'соломенная' })
+        + sel('p:style', 'Низ стен', a.style, ['plaster', 'brick'], { plaster: 'штукатурка', brick: 'камень' });
+    } else if (a?.type === 'stall') {
+      params = sel('p:color', 'Навес', a.color, Object.keys(STALL_COLORS), { red: 'красный', green: 'зелёный' })
+        + sel('p:goods', 'Товар', a.goods, ['fruit', 'veg', 'bread', 'mixed'], { fruit: 'фрукты', veg: 'овощи', bread: 'хлеб', mixed: 'разное' });
+    } else if (a?.type === 'fence') params = num('p:len', 'Длина, м', a.len, 0.5);
+    else if (a?.type === 'kit') params = `<div class="ed-note">${esc(a.name)}</div><label class="ed-check"><input type="checkbox" data-f="p:collide" ${a.collide === false ? '' : 'checked'}> Твёрдый (коллизия)</label>`;
+    const overridden = !rec.added && this.layout.overrides[rec.id];
+    box.innerHTML = `
+      <div class="ed-title">${esc(rec.label)}</div>
+      <div class="ed-id">${rec.id}${rec.hasLogic ? ' · есть места NPC / квестов' : ''}</div>
+      ${num('x', 'X', T.x, 0.5)}${num('z', 'Z', T.z, 0.5)}${num('dy', 'Высота над землёй', T.dy, 0.1)}
+      ${num('rot', 'Поворот, °', T.rot / DEG, 15)}${scalable ? num('s', 'Масштаб', T.s, 0.05) : ''}
+      ${params}
+      <div class="ed-btns">
+        <button data-act="focus">Показать (F)</button>
+        ${rec.added ? '<button data-act="dup">Копия (Ctrl+D)</button>' : ''}
+        ${overridden ? '<button data-act="restore">Вернуть как было</button>' : ''}
+        <button data-act="del" class="ed-danger">Удалить (Del)</button>
+      </div>
+      ${rec.added ? '' : '<div class="ed-note">Встроенное место. После сохранения NPC, квестовые точки, свет и коллизии сдвинутся вместе с ним.</div>'}`;
+    box.onchange = (e) => this._field(e.target);
+    box.onclick = (e) => {
+      const act = e.target.dataset.act;
+      if (act === 'focus') this.focus(rec);
+      else if (act === 'dup') this.duplicate(rec);
+      else if (act === 'restore') this.restore(rec);
+      else if (act === 'del') this.remove(rec);
+    };
+  }
+
+  _field(inp) {
+    const f = inp.dataset.f;
+    if (!f || !this.sel) return;
+    const rec = this.sel;
+    if (f.startsWith('p:')) {
+      const a = this._added(rec.id);
+      if (!a) return;
+      this._snapshot();
+      const k = f.slice(2);
+      a[k] = inp.type === 'checkbox' ? (inp.checked ? 'box' : false) : inp.type === 'number' ? Math.max(k === 'floors' ? 1 : 0.5, +inp.value) : inp.value;
+      if (k === 'floors') a[k] = Math.min(4, Math.round(a[k]));
+      this.dirty = true;
+      this.select(this._buildAdded(a));
+      return;
+    }
+    const v = +inp.value;
+    if (!Number.isFinite(v)) return;
+    this.transform((T) => {
+      if (f === 'rot') T.rot = v * DEG;
+      else if (f === 's') T.s = THREE.MathUtils.clamp(v, 0.2, 5);
+      else T[f] = v;
+    });
+    if (f === 's' && rec.added) this.select(this._buildAdded(this._added(rec.id)));
+  }
+}
+
+function sel(f, label, value, options, names) {
+  return `<label>${label}<select data-f="${f}">${options.map((o) => `<option value="${o}"${o === value ? ' selected' : ''}>${names[o] || o}</option>`).join('')}</select></label>`;
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+function newId() {
+  return 'p_' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
+}

@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Мегумин: Дорога приключений</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Ccircle cx=%2216%22 cy=%2216%22 r=%2212%22 fill=%22%23ff5a1f%22/%3E%3C/svg%3E" />
+  <script type="module" crossorigin src="/assets/index-BVuLi_fR.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-C7ULknJW.css">
+</head>
+<body>
+  <div id="app"></div>
+
+  <div id="hud" class="hud hidden">
+    <div id="world-ui" class="world-ui"></div>
+    <div class="crosshair"></div>
+
+    <!-- Top centre: compass + boss bar + location banner -->
+    <div class="compass" id="compass"><div class="compass-strip" id="compass-strip"></div><div class="compass-needle"></div></div>
+    <div class="clock" id="clock"></div>
+    <div class="boss-bar" id="boss-bar">
+      <div class="boss-name" id="boss-name"></div>
+      <div class="boss-track"><div class="boss-trail" id="boss-trail"></div><div class="boss-fill" id="boss-fill"></div></div>
+    </div>
+    <div class="banner" id="banner"><div class="banner-name" id="banner-name"></div><div class="banner-sub" id="banner-sub"></div></div>
+
+    <!-- Top left: tracked quest -->
+    <div class="tracker" id="tracker"></div>
+
+    <!-- Right top: character info -->
+    <div class="char-card">
+      <div class="char-portrait">
+        <svg viewBox="0 0 40 40" aria-hidden="true">
+          <path d="M6 30 L20 3 L24 14 L34 30 Z" fill="#2a1c22" stroke="#e8a33a" stroke-width="1.5" stroke-linejoin="round"/>
+          <path d="M3 30 Q20 36 37 30" fill="none" stroke="#e8a33a" stroke-width="2.2" stroke-linecap="round"/>
+          <circle cx="20" cy="22" r="2.6" fill="#ff3b3b"/>
+        </svg>
+      </div>
+      <div class="char-text">
+        <div class="char-name">Мегумин</div>
+        <div class="char-sub">Архимаг · Клан Алых Демонов</div>
+        <div class="char-state"><span class="dot"></span><span id="char-state">Idle</span></div>
+      </div>
+    </div>
+    <div class="notify" id="notify"></div>
+
+    <!-- Left bottom: vitals -->
+    <div class="vitals">
+      <div class="lvl-row"><span class="lvl" id="lvl">Ур. 1</span><div class="xp"><div class="xp-fill" id="xp-fill"></div></div></div>
+      <div class="bar-row">
+        <span class="bar-label">HP</span>
+        <div class="bar hp"><div class="bar-trail" id="hp-trail"></div><div class="bar-fill" id="hp-fill"></div></div>
+        <span class="bar-value" id="hp-value">100</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">MP</span>
+        <div class="bar mp"><div class="bar-trail" id="mp-trail"></div><div class="bar-fill" id="mp-fill"></div></div>
+        <span class="bar-value" id="mp-value">100</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">ST</span>
+        <div class="bar st"><div class="bar-trail" id="st-trail"></div><div class="bar-fill" id="st-fill"></div></div>
+        <span class="bar-value" id="st-value">100</span>
+      </div>
+    </div>
+
+    <!-- Bottom center: ability -->
+    <div class="ability-wrap">
+      <div class="interact-hint" id="interact-hint"><kbd>E</kbd><span>—</span><em id="interact-name"></em></div>
+      <div class="ability" id="ability">
+        <div class="ability-icon">
+          <svg viewBox="0 0 48 48" aria-hidden="true">
+            <defs>
+              <radialGradient id="exg" cx="50%" cy="55%" r="55%">
+                <stop offset="0" stop-color="#fff6c8"/>
+                <stop offset="0.35" stop-color="#ffb12e"/>
+                <stop offset="0.7" stop-color="#ff3d14"/>
+                <stop offset="1" stop-color="#5a0b0b"/>
+              </radialGradient>
+            </defs>
+            <circle cx="24" cy="24" r="21" fill="none" stroke="#ff7a3a" stroke-width="1.2" stroke-dasharray="3 2.4" opacity="0.8"/>
+            <path d="M24 6 L28 18 L41 18 L30.5 26 L34.5 39 L24 31 L13.5 39 L17.5 26 L7 18 L20 18 Z" fill="none" stroke="#ffcf7a" stroke-width="1" opacity="0.7"/>
+            <circle cx="24" cy="25" r="10" fill="url(#exg)"/>
+          </svg>
+          <div class="ability-cd" id="ability-cd"></div>
+          <div class="ability-cd-text" id="ability-cd-text"></div>
+          <kbd class="ability-key">Q</kbd>
+        </div>
+        <div class="ability-name">Explosion<span>Взрыв</span></div>
+      </div>
+      <div class="kills" id="kills"></div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+    <div class="loot-feed" id="loot-feed"></div>
+    <div class="quick">
+      <div class="quick-slot t-hp" id="quick-3"><span class="ico">🧪</span><b>0</b><kbd>3</kbd></div>
+      <div class="quick-slot t-st" id="quick-4"><span class="ico">🧪</span><b>0</b><kbd>4</kbd></div>
+      <div class="quick-slot t-mana" id="quick-5"><span class="ico">🧪</span><b>0</b><kbd>5</kbd></div>
+      <div class="hud-eris" id="hud-eris">🪙 0</div>
+    </div>
+
+    <!-- Windows -->
+    <div class="menu" id="menu">
+      <div class="menu-tabs" id="menu-tabs"></div>
+      <div class="menu-body" id="menu-body"></div>
+      <div class="menu-foot"><span id="menu-foot"></span><span class="menu-close"><kbd>Esc</kbd> закрыть</span></div>
+    </div>
+    <div class="dialogue" id="dialogue">
+      <div class="dlg-portrait" id="dlg-portrait"></div>
+      <div class="dlg-main">
+        <div class="dlg-name"><b id="dlg-name"></b><span id="dlg-title"></span></div>
+        <div class="dlg-text" id="dlg-text"></div>
+        <div class="dlg-choices" id="dlg-choices"></div>
+      </div>
+    </div>
+    <div class="shop" id="shop">
+      <div class="shop-head"><b id="shop-name"></b><span class="shop-eris" id="shop-eris"></span><span class="menu-close"><kbd>Esc</kbd> закрыть</span></div>
+      <div class="shop-body" id="shop-body"></div>
+      <div class="shop-msg" id="shop-msg"></div>
+    </div>
+    <div class="book" id="book"><div class="book-page"><div class="book-title" id="book-title"></div><div class="book-text" id="book-text"></div><div class="book-hint">клик или Esc — закрыть</div></div></div>
+    <div class="help" id="help">
+      <b>WASD</b> движение · <b>Shift</b> бег · <b>Space</b> прыжок · <b>ЛКМ / F</b> удар · <b>Q</b> способность · <b>E</b> взаимодействие · <b>I</b> инвентарь · <b>J</b> журнал · <b>M</b> карта · <b>C</b> персонаж · <b>G</b> гильдия · <b>3/4/5</b> зелья · <b>F9</b> графика · <b>F8</b> FPS · <b>H</b> скрыть
+    </div>
+    <div class="flash" id="flash"></div>
+    <div class="fade" id="fade"></div>
+    <div class="vignette" id="vignette"></div>
+  </div>
+
+  <div id="overlay" class="overlay">
+    <div class="overlay-card">
+      <div class="overlay-title">Мегумин</div>
+      <div class="overlay-tag">Дорога приключений</div>
+      <div class="overlay-sub" id="overlay-sub">Загрузка мира… <span id="load-pct">0%</span></div>
+      <div class="overlay-bar"><div id="load-bar"></div></div>
+      <div class="overlay-buttons">
+        <button id="play-btn" class="play-btn" disabled>Продолжить</button>
+        <button id="new-btn" class="play-btn secondary" disabled>Новая игра</button>
+      </div>
+      <div class="overlay-note" id="overlay-note"></div>
+      <div class="overlay-hint">Клик — захват мыши · Esc — освободить курсор</div>
+    </div>
+  </div>
+
+</body>
+</html>
