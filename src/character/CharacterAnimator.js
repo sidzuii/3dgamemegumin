@@ -15,11 +15,14 @@ import { solveTwoBone } from './rigUtils.js';
  * feet don't slide when the speed changes. Cross-fades are explicit weight ramps.
  */
 
+// Upper-body softening of the library's locomotion (it hunches 15-50° at the upper chest).
+const SOFT = { chest: 0.55, neck: 0.55, lShoulder: 0.5, rShoulder: 0.5 };
+
 export const CLIPSET = {
-  Idle: { src: 'Idle_Loop', loop: true },
-  Walk: { src: 'Walk_Loop', loop: true },
-  Jog: { src: 'Jog_Fwd_Loop', loop: true },
-  Sprint: { src: 'Sprint_Loop', loop: true },
+  Idle: { src: 'Idle_Loop', loop: true, damp: SOFT },
+  Walk: { src: 'Walk_Loop', loop: true, damp: { chest: 0.7, neck: 0.7, lShoulder: 0.6, rShoulder: 0.6 } },
+  Jog: { src: 'Jog_Fwd_Loop', loop: true, damp: SOFT },
+  Sprint: { src: 'Sprint_Loop', loop: true, damp: SOFT },
   JumpStart: { src: 'Jump_Start', hipsY: 'down' },
   Fall: { src: 'Jump_Loop', loop: true, hipsY: 'none' },
   Land: { src: 'Jump_Land', hipsY: 'down' },
@@ -62,7 +65,8 @@ const BASE_FADE = { Loco: 0.22, JumpStart: 0.08, Fall: 0.25, Land: 0.08, CastEnt
 
 export class CharacterAnimator {
   /**
-   * @param {object} model   { mixerRoot, rigRoot, anim(Group), uniforms, setWind?, setCapeWind? }
+   * @param {object} model   { mixerRoot, rigRoot, anim(Group), uniforms, setWind?, setCapeWind?, retarget? }
+   *   retarget: 'rest' keeps the model's own bind posture as the neutral (see prepareTarget).
    * @param {AnimationLibrary} lib
    * @param {string} mapName 'mixamo' | 'cc'
    */
@@ -70,12 +74,13 @@ export class CharacterAnimator {
     this.model = model;
     this.map = MAPS[mapName];
     this.mixer = new THREE.AnimationMixer(model.mixerRoot);
-    const ctx = lib.prepareTarget(model.rigRoot, mapName);
+    const rest = model.retarget === 'rest';
+    const ctx = lib.prepareTarget(model.rigRoot, mapName, { match: rest ? 'rest' : 'dir' });
     this.lower = {};
     this.upper = {};
     this.info = {};
     for (const [name, def] of Object.entries(CLIPSET)) {
-      const clip = lib.bake(ctx, def.src, { name, hipsY: def.hipsY, reverse: def.reverse });
+      const clip = lib.bake(ctx, def.src, { name, hipsY: def.hipsY, reverse: def.reverse, damp: rest ? def.damp : undefined });
       const { lower, upper } = splitClip(clip, this.map);
       const speed = def.speed || 1;
       for (const [layer, c] of [[this.lower, lower], [this.upper, upper]]) {
@@ -108,6 +113,14 @@ export class CharacterAnimator {
       }));
     this.hips = b.hips;
     this.stance = 0;
+    // Standing reference (rig space): straight-leg hip height, ankle height and the bind leg
+    // line (ankle behind the hip joint). 'rest' rigs stand up straight in idle.
+    this.stand = rest && b.lFoot && b.rFoot ? {
+      hipsY: ctx.refP.hips.y,
+      footY: (ctx.refP.lFoot.y + ctx.refP.rFoot.y) / 2,
+      footDZ: ((ctx.refP.lFoot.z - ctx.refP.lThigh.z) + (ctx.refP.rFoot.z - ctx.refP.rThigh.z)) / 2,
+      hipDrop: 0.004, // knees ≈ 168° (the library idle sinks 4-5 cm into a ready stance -> 143°)
+    } : null;
     // Hit frames of attacks (fastest hand motion), in scaled seconds.
     for (const n of ['Attack1', 'Attack2', 'Attack3']) {
       const def = CLIPSET[n];
@@ -388,16 +401,28 @@ export class CharacterAnimator {
     const rootQ = root.getWorldQuaternion(_rq);
     const inv = _m4.copy(root.matrixWorld).invert();
     const local = (o, v) => o.getWorldPosition(v).applyMatrix4(inv);
+    const st = this.stand;
+    if (st) {
+      // Stand up: hips back to (almost) the straight-leg height.
+      const hp = local(this.hips, _p0);
+      const want = st.hipsY - st.hipDrop;
+      if (hp.y < want) {
+        _p1.copy(hp).setY(hp.y + (want - hp.y) * w).applyMatrix4(root.matrixWorld);
+        this.hips.position.copy(this.hips.parent.worldToLocal(_p1));
+        this.hips.updateMatrixWorld(true);
+      }
+    }
     const hips = local(this.hips, _p0);
     const [L, R] = this.legs;
     const tl = local(L.thigh, _p1), tr = local(R.thigh, _p2);
     const fl = local(L.foot, _p3), fr = local(R.foot, _p4);
-    const half = Math.abs(tl.x - tr.x) * 0.5 * 1.2;
+    const half = Math.abs(tl.x - tr.x) * 0.5 * (st ? 1.1 : 1.2);
     const side = Math.sign(tl.x - tr.x) || 1;
-    const y = Math.min(fl.y, fr.y);
+    const y = st ? st.footY : Math.min(fl.y, fr.y);
     const pole = _ax.set(0, 0, 1).applyQuaternion(rootQ);
-    for (const [leg, s] of [[L, side], [R, -side]]) {
-      const target = _p5.set(hips.x + s * half, y, hips.z + 0.02).applyMatrix4(root.matrixWorld);
+    for (const [leg, s, th] of [[L, side, tl], [R, -side, tr]]) {
+      const z = st ? th.z + st.footDZ : hips.z + 0.02;
+      const target = _p5.set(hips.x + s * half, y, z).applyMatrix4(root.matrixWorld);
       solveTwoBone(leg.thigh, leg.shin, leg.foot, target, pole, w);
       // Toes forward with a slight outward splay, sole flat.
       const cur = _f.copy(leg.fwd).applyQuaternion(leg.foot.getWorldQuaternion(_hq));
