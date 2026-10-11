@@ -60,6 +60,13 @@ function rotateBoneWorld(b, q) {
   b.updateMatrixWorld(true);
 }
 
+/**
+ * Locomotion blend by ground speed (m/s): pure walk below `walk` (the CapsLock stroll,
+ * ~1.5), walk -> jog up to `jog`, pure jog up to `jogTop` (the default W speed 3.4),
+ * jog -> sprint up to `sprint` (Shift runs at 6.4).
+ */
+const GAIT = { walk: 1.8, jog: 2.8, jogTop: 4.4, sprint: 5.6 };
+
 /** Lower-layer states (full-body unless an upper action overrides). */
 const BASE_FADE = { Loco: 0.22, JumpStart: 0.08, Fall: 0.25, Land: 0.08, CastEnter: 0.2, CastLoop: 0.15, CastShoot: 0.06, Death: 0.15, Crouch: 0.6, Roll: 0.08 };
 
@@ -129,9 +136,11 @@ export class CharacterAnimator {
     }
     // Reference speeds (m/s) of locomotion loops for foot-locking playback rates.
     // Foot travel underestimates fast gaits (flight phase), so jog/sprint get a stride factor.
+    // The walk's planted foot moves at ≈ its foot travel; 1.15 keeps the 1.5 m/s stroll at
+    // ~135 steps/min with little slip (1.35 gave ~0.4 m/s of skating).
     const k = ctx.scale;
     this.refSpeed = {
-      Walk: loopSpeed(lib, 'Walk_Loop') * k * 1.35,
+      Walk: loopSpeed(lib, 'Walk_Loop') * k * 1.15,
       Jog: loopSpeed(lib, 'Jog_Fwd_Loop') * k * 1.45,
       Sprint: loopSpeed(lib, 'Sprint_Loop') * k * 2.0,
     };
@@ -242,9 +251,10 @@ export class CharacterAnimator {
       const wIdle = 1 - clamp(s / 0.6, 0, 1);
       let wWalk = 0, wJog = 0, wSprint = 0;
       const mov = 1 - wIdle;
-      if (s < 2.2) wWalk = mov;
-      else if (s < 3.6) { const k = (s - 2.2) / 1.4; wWalk = mov * (1 - k); wJog = mov * k; }
-      else if (s < 5.6) { const k = (s - 3.6) / 2.0; wJog = mov * (1 - k); wSprint = mov * k; }
+      if (s < GAIT.walk) wWalk = mov;
+      else if (s < GAIT.jog) { const k = (s - GAIT.walk) / (GAIT.jog - GAIT.walk); wWalk = mov * (1 - k); wJog = mov * k; }
+      else if (s < GAIT.jogTop) wJog = mov;
+      else if (s < GAIT.sprint) { const k = (s - GAIT.jogTop) / (GAIT.sprint - GAIT.jogTop); wJog = mov * (1 - k); wSprint = mov * k; }
       else wSprint = mov;
       tl.Idle = wIdle; tl.Walk = wWalk; tl.Jog = wJog; tl.Sprint = wSprint;
       // Shared phase: cycle duration = weighted (clip duration * refSpeed / speed).
@@ -315,7 +325,8 @@ export class CharacterAnimator {
     if (this.model.holdStaff) {
       let w;
       if (this.action) w = this.action.name === 'Hit' ? 0.6 : 0;
-      else if (this.base === 'Loco') w = 1 - 0.3 * clamp((this.speed - 2.5) / 3, 0, 1);
+      // A little of the clip's arm swing shows through while walking and running.
+      else if (this.base === 'Loco') w = 1 - 0.2 * (tl.Walk || 0) - 0.3 * clamp((this.speed - 2.5) / 3, 0, 1);
       else if (this.base === 'JumpStart' || this.base === 'Fall' || this.base === 'Land') w = 0.85;
       else w = 0;
       this.model.holdStaff(w, dt);

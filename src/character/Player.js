@@ -61,6 +61,7 @@ export class Player {
     this.respawnPending = false;
     this.invuln = 0;
     this.envSpeedMul = 1; // water / terrain slowdown set by the world each frame
+    this.strolling = false; // walk mode (CapsLock): walking pace instead of the default jog
   }
 
   /** Called after the model is loaded and the world is built. */
@@ -285,6 +286,10 @@ export class Player {
 
     const wantsRun = (input.isDown('ShiftLeft') || input.isDown('ShiftRight')) && moving;
     const run = wantsRun && !this.staminaDepleted && this.stamina > 0 && !attacking;
+    if (input.wasPressed('CapsLock')) {
+      this.strolling = !this.strolling;
+      this.game.hud.toast(this.strolling ? 'Режим шага: вкл.' : 'Режим шага: выкл.', 1.6);
+    }
 
     let jumpPressed = input.wasPressed('Space') && canMove && !attacking;
     const canJump = this.stamina >= STAMINA.jumpCost * 0.5 || this.controller.grounded;
@@ -292,6 +297,7 @@ export class Player {
     const cmd = {
       moveDir: _move,
       run,
+      stroll: this.strolling,
       jumpPressed,
       jumpHeld: input.isDown('Space'),
       canMove,
