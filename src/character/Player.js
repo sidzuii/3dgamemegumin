@@ -404,7 +404,8 @@ export class Player {
     // Retargeted idle/locomotion clips can lower a toe a few centimetres below
     // the controller's ground plane. Lift the rendered rig slightly while grounded.
     // `toeMargin`: height of the toe joint above the sole (Megumin's rest retarget stands on
-    // her bind soles, so she needs only a few millimetres).
+    // her bind soles, so she needs only a few millimetres). The ground probe starts just above
+    // her feet: from the sky it hit ceilings, roofs and bridge decks (a 12 cm float indoors).
     if (c.grounded && this.model.feet?.length) {
       root.updateMatrixWorld(true);
       let lift = 0;
@@ -412,7 +413,7 @@ export class Player {
       const margin = this.model.toeMargin ?? 0.015;
       for (const foot of this.model.feet) {
         foot.getWorldPosition(toe);
-        lift = Math.max(lift, this.game.world.groundAt(toe.x, toe.z) - toe.y + margin);
+        lift = Math.max(lift, this.game.world.groundAt(toe.x, toe.z, c.position.y + 0.6) - toe.y + margin);
       }
       root.position.y += clamp(lift, 0, 0.12);
     }
