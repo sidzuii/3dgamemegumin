@@ -276,6 +276,16 @@ export class AnimationLibrary {
     ctx.root.updateMatrixWorld(true);
   }
 
+  /** Height of the lowest foot above the ground in the current library pose (library scale). */
+  footClearance() {
+    let c = Infinity;
+    for (const s of ['l', 'r']) {
+      c = Math.min(c, relPos(this.bones[s + 'Foot'], this.root, _v).y - this.refP[s + 'Foot'].y);
+      c = Math.min(c, relPos(this.bones[s + 'Toe'], this.root, _v).y - this.refP[s + 'Toe'].y);
+    }
+    return Math.max(0, c);
+  }
+
   /**
    * Bake one library clip for a prepared target.
    * opts: { name, fps=30, hipsY: 'keep'|'down'|'none', reverse=false, levelHead=0 }
@@ -284,6 +294,9 @@ export class AnimationLibrary {
    * (the townsfolk; the heroines level their heads at runtime).
    * `damp` ({ role: k }) scales a role's model-space rotation away from the reference pose
    * (e.g. { chest: 0.55, neck: 0.55 } halves the library jog's 40° upper-back hunch).
+   * `flight` (0..1) scales the airborne height: the body is lowered by (1 - k) of the lowest
+   * foot's clearance, so ground contacts are unchanged and the leaps get flatter (the
+   * library jog bounds 26 cm off the ground with both feet up two thirds of the cycle).
    */
   bake(ctx, clipName, opts = {}) {
     const src = this.clips[clipName];
@@ -338,6 +351,7 @@ export class AnimationLibrary {
       sp.sub(this.refP.hips).multiplyScalar(ctx.scale);
       if (opts.hipsY === 'down') sp.y = Math.min(sp.y, 0);
       if (opts.hipsY === 'none') sp.y = 0;
+      if (opts.flight !== undefined) sp.y -= (1 - opts.flight) * this.footClearance() * ctx.scale;
       if (opts.inPlace !== false) { sp.x *= 0.15; sp.z *= 0.15; }
       sp.add(ctx.refP.hips);
       inv.copy(ctx.root.matrixWorld).invert().multiply(hipsParent.matrixWorld).invert();
@@ -435,4 +449,45 @@ export function loopSpeed(lib, clipName) {
   }
   a.stop();
   return ((maxZ - minZ) * 2) / src.duration;
+}
+
+/**
+ * Ground contact of a locomotion loop, for time-warped playback: per interval (n over the
+ * clip) how planted the feet are (0..1, from the lowest foot's clearance) and the median
+ * backward speed of a planted toe (m/s, library scale) — the ground speed at which the
+ * planted foot would not slide when the clip plays at its natural rate.
+ */
+export function gaitProfile(lib, clipName, n = 48) {
+  const src = lib.clips[clipName];
+  const mix = lib.mixer;
+  mix.stopAllAction();
+  const a = mix.clipAction(src);
+  a.reset().play();
+  const S = [];
+  for (let i = 0; i <= n; i++) {
+    mix.setTime((i / n) * src.duration);
+    lib.root.updateMatrixWorld(true);
+    S.push(['l', 'r'].map((s) => {
+      const f = relPos(lib.bones[s + 'Foot'], lib.root, new THREE.Vector3());
+      const t = relPos(lib.bones[s + 'Toe'], lib.root, new THREE.Vector3());
+      return { c: Math.min(f.y - lib.refP[s + 'Foot'].y, t.y - lib.refP[s + 'Toe'].y), z: t.z };
+    }));
+  }
+  a.stop();
+  const raw = new Float32Array(n);
+  const speeds = [];
+  const dt = src.duration / n;
+  for (let i = 0; i < n; i++) {
+    let planted = 0;
+    for (let s = 0; s < 2; s++) {
+      const c = (S[i][s].c + S[i + 1][s].c) / 2;
+      planted = Math.max(planted, 1 - THREE.MathUtils.smoothstep(c, 0.015, 0.04));
+      if (c < 0.015) speeds.push((S[i][s].z - S[i + 1][s].z) / dt);
+    }
+    raw[i] = planted;
+  }
+  // Soften the edges (the playback rate changes over a few frames, not in one step).
+  const m = raw.map((v, i) => 0.25 * raw[(i + n - 1) % n] + 0.5 * v + 0.25 * raw[(i + 1) % n]);
+  speeds.sort((x, y) => x - y);
+  return { n, m, contact: m.reduce((x, y) => x + y, 0) / n, footSpeed: speeds.length ? speeds[speeds.length >> 1] : 0 };
 }

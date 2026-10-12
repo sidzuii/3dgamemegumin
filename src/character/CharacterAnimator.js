@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { splitClip, strikeTime, loopSpeed, MAPS } from './Retarget.js';
+import { splitClip, strikeTime, loopSpeed, gaitProfile, MAPS } from './Retarget.js';
 import { damp, clamp } from '../core/math.js';
 import { solveTwoBone } from './rigUtils.js';
 
@@ -15,14 +15,15 @@ import { solveTwoBone } from './rigUtils.js';
  * feet don't slide when the speed changes. Cross-fades are explicit weight ramps.
  */
 
-// Upper-body softening of the library's locomotion (it hunches 15-50° at the upper chest).
+// 'rest' rigs only (see CharacterAnimator): `damp` softens the library's upper-body hunch
+// (15-50° at the upper chest), `flight` flattens the leaps of its jog/sprint (bake options).
 const SOFT = { chest: 0.55, neck: 0.55, lShoulder: 0.5, rShoulder: 0.5 };
 
 export const CLIPSET = {
   Idle: { src: 'Idle_Loop', loop: true, damp: SOFT },
   Walk: { src: 'Walk_Loop', loop: true, damp: { chest: 0.7, neck: 0.7, lShoulder: 0.6, rShoulder: 0.6 } },
-  Jog: { src: 'Jog_Fwd_Loop', loop: true, damp: SOFT },
-  Sprint: { src: 'Sprint_Loop', loop: true, damp: SOFT },
+  Jog: { src: 'Jog_Fwd_Loop', loop: true, damp: SOFT, flight: 0.5 },
+  Sprint: { src: 'Sprint_Loop', loop: true, damp: SOFT, flight: 0.7 },
   JumpStart: { src: 'Jump_Start', hipsY: 'down' },
   Fall: { src: 'Jump_Loop', loop: true, hipsY: 'none' },
   Land: { src: 'Jump_Land', hipsY: 'down' },
@@ -87,7 +88,10 @@ export class CharacterAnimator {
     this.upper = {};
     this.info = {};
     for (const [name, def] of Object.entries(CLIPSET)) {
-      const clip = lib.bake(ctx, def.src, { name, hipsY: def.hipsY, reverse: def.reverse, damp: rest ? def.damp : undefined });
+      const clip = lib.bake(ctx, def.src, {
+        name, hipsY: def.hipsY, reverse: def.reverse,
+        damp: rest ? def.damp : undefined, flight: rest ? def.flight : undefined,
+      });
       const { lower, upper } = splitClip(clip, this.map);
       const speed = def.speed || 1;
       for (const [layer, c] of [[this.lower, lower], [this.upper, upper]]) {
@@ -144,6 +148,17 @@ export class CharacterAnimator {
       Jog: loopSpeed(lib, 'Jog_Fwd_Loop') * k * 1.45,
       Sprint: loopSpeed(lib, 'Sprint_Loop') * k * 2.0,
     };
+    // 'rest' rigs: the library jog and sprint are fast runs (a planted foot sweeps back at
+    // ~5.1 / 7.6 m/s on Megumin) played at 3.4 / 6.4 m/s, so the feet skated backwards. Their
+    // ground contacts are slowed down and the swings sped up (same cadence), see _warpPhase.
+    this.warp = {};
+    if (rest) {
+      for (const n of ['Jog', 'Sprint']) {
+        const g = gaitProfile(lib, CLIPSET[n].src);
+        g.footSpeed *= k;
+        if (g.contact > 0.05 && g.contact < 0.95 && g.footSpeed > 0.1) this.warp[n] = g;
+      }
+    }
 
     this.base = 'Loco';
     this.baseTime = 0;
@@ -258,21 +273,24 @@ export class CharacterAnimator {
       else wSprint = mov;
       tl.Idle = wIdle; tl.Walk = wWalk; tl.Jog = wJog; tl.Sprint = wSprint;
       // Shared phase: cycle duration = weighted (clip duration * refSpeed / speed).
+      let cyc = 0;
       if (mov > 0.01) {
-        let cyc = 0, ws = 0;
+        let ws = 0;
         for (const [n, w] of [['Walk', wWalk], ['Jog', wJog], ['Sprint', wSprint]]) {
           if (w <= 0) continue;
           const d = this.lower[n].getClip().duration;
           cyc += w * d * (this.refSpeed[n] / Math.max(speed, 0.3));
           ws += w;
         }
-        cyc /= ws;
-        this.phase = (this.phase + dt / Math.max(cyc, 0.2)) % 1;
+        cyc = Math.max(cyc / ws, 0.2);
+        this.phase = (this.phase + dt / cyc) % 1;
       }
       for (const n of ['Walk', 'Jog', 'Sprint']) {
         const d = this.lower[n].getClip().duration;
-        this.lower[n].time = this.phase * d;
-        this.upper[n].time = this.phase * d;
+        const W = this.warp[n];
+        const u = W && cyc > 0 ? this._warpPhase(W, this.phase, speed, cyc, d) : this.phase;
+        this.lower[n].time = u * d;
+        this.upper[n].time = u * d;
         this.lower[n].timeScale = 0;
         this.upper[n].timeScale = 0;
       }
@@ -402,6 +420,25 @@ export class CharacterAnimator {
     const neckShare = this.neckBone ? 0.35 : 0;
     if (neckShare) rotateBoneWorld(this.neckBone, _cq.identity().slerp(_corr, neckShare));
     rotateBoneWorld(head, _cq.identity().slerp(_corr, 1 - neckShare));
+  }
+
+  /**
+   * Clip position (0..1) of a time-warped loop at the shared phase `p`: the planted intervals
+   * (gaitProfile) get the share of the cycle in which a planted foot moves back at the ground
+   * speed, the swing gets the rest. Monotonic, 0 -> 0 and 1 -> 1, so the loop stays seamless.
+   */
+  _warpPhase(W, p, speed, cyc, dur) {
+    const C = W.contact;
+    const rate = Math.max(speed, 0.3) / W.footSpeed; // clip rate that locks a planted foot
+    const a = clamp((C * dur) / rate / cyc, C * 0.75, 0.6);
+    const kc = a / C, kf = (1 - a) / (1 - C);
+    let acc = 0;
+    for (let i = 0; i < W.n; i++) {
+      const l = (W.m[i] * kc + (1 - W.m[i]) * kf) / W.n;
+      if (acc + l >= p) return (i + (p - acc) / l) / W.n;
+      acc += l;
+    }
+    return p;
   }
 
   /** Feet side by side under the hips, toes forward (weight w over the animated pose). */
