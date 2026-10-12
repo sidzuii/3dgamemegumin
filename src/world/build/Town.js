@@ -1,11 +1,11 @@
 import * as THREE from 'three';
 import { mulberry32 } from '../../core/math.js';
-import { Frame, house, cityWall, paveLine, pavePoly, lamp, lantern, barrel, crate, stall, well, bench, wagon, haystack, fence, tree, bush, food, prop, tableware } from './Kit.js';
+import { Frame, house, cityWall, paveRibbon, pavePoly, lamp, lantern, barrel, crate, stall, well, bench, wagon, haystack, fence, tree, bush, food, prop, tableware } from './Kit.js';
 import { HealingCrystal, Brazier, QuestProp } from '../Interactables.js';
 import { TrainingDummy } from '../TrainingDummy.js';
 import { ROOF_COLORS } from '../KitLibrary.js';
 import { REGION, offsetPolygon } from '../MapData.js';
-import { AXEL, WALL, RING, SQUARES, AREAS, STREETS, BUILDINGS, toWorld, FACE_ROT } from '../AxelPlan.js';
+import { AXEL, WALL, RING, SQUARES, AREAS, STREETS, BUILDINGS, ENVELOPE, toWorld, FACE_ROT, streetLine, ringLine } from '../AxelPlan.js';
 import { LOTS } from './AxelLots.js';
 import { FY, weaponShop, alchemyShop, generalStore, bakeryShop, forgeShop, caravanOffice, guildExtras, tavernExtras, templeExtras } from './Interiors.js';
 
@@ -47,6 +47,7 @@ function at(id) {
 
 export function buildTown(world) {
   W = world;
+  DOORS.length = 0;
   const rng = mulberry32(2024);
 
   walls();
@@ -99,19 +100,75 @@ function walls() {
     p.y = W.heightAt(p.x, p.z);
     W.spot('gate_' + node.gate, p, frame.rot);
     const a = frame.at(0, 0, -9), b = frame.at(0, 0, 9);
-    paveLine(W, [[a.x, a.z], [b.x, b.z]], WALL.gateWidth - 0.6, { tint: 0xa89e8c });
+    paveRibbon(W, [[a.x, a.z], [b.x, b.z]], WALL.gateWidth - 0.6, { tint: 0xa89e8c, lift: PAVE_LIFT.gate, covered: underSquare });
   }
 }
 
+/**
+ * Paving lifts over the ground (m): squares over main streets over secondary streets over lanes
+ * over the pomerium and the gate passages — where they overlap, the higher one shows (no
+ * coplanar faces). Streets of one kind that meet alternate by a few millimetres.
+ */
+const PAVE_LIFT = { square: 0.125, main: 0.105, secondary: 0.093, lane: 0.083, ring: 0.07, gate: 0.075 };
 const TINT = { main: 0xb0a898, secondary: 0xaba292, lane: 0xa2988a };
+const SQW = SQUARES.map((q) => q.pts.map(([u, v]) => P(u, v)));
+const inPolygon = (pts, x, z) => {
+  let c = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const [xi, zi] = pts[i], [xj, zj] = pts[j];
+    if (zi > z !== zj > z && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) c = !c;
+  }
+  return c;
+};
+const segDist = (x, z, [ax, az], [bx, bz]) => {
+  const dx = bx - ax, dz = bz - az, t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1)));
+  return Math.hypot(x - ax - dx * t, z - az - dz * t);
+};
+const lineDist = (pts, x, z) => { let d = Infinity; for (let i = 0; i < pts.length - 1; i++) d = Math.min(d, segDist(x, z, pts[i], pts[i + 1])); return d; };
+/** Under a square's paving (squares lie on top of the streets that run into them). */
+const underSquare = (x, z) => SQW.some((q) => inPolygon(q, x, z));
+/** Built centre lines (world) of the streets and the pomerium (AxelPlan, rounded bends). */
+const STREET_W = Object.fromEntries(STREETS.map((s) => [s.id, streetLine(s).map(([u, v]) => P(u, v))]));
+const RING_W = () => { const r = ringLine().map(([u, v]) => P(u, v)); return [...r, r[0]]; };
+/** Streets of the same kind whose paving overlaps get different lifts (greedy colouring). */
+const LIFT_STEP = Object.fromEntries((() => {
+  const along = (pts) => pts.slice(1).flatMap((q, i) => { const p = pts[i], n = Math.ceil(Math.hypot(q[0] - p[0], q[1] - p[1]) / 2); return [...Array(n + 1).keys()].map((k) => [p[0] + ((q[0] - p[0]) * k) / n, p[1] + ((q[1] - p[1]) * k) / n]); });
+  const near = (a, b) => along(STREET_W[a.id]).some(([x, z]) => lineDist(STREET_W[b.id], x, z) < (a.width + b.width) / 2 + 0.5);
+  const col = {};
+  for (const s of STREETS) {
+    const used = new Set(STREETS.filter((o) => o.kind === s.kind && col[o.id] !== undefined && (near(s, o) || near(o, s))).map((o) => col[o.id]));
+    let c = 0;
+    while (used.has(c)) c++;
+    col[s.id] = c;
+  }
+  return Object.entries(col);
+})());
+
 function streets() {
+  // One editable part; inside it every street / square has its own builder (by id).
   W.group('axel_streets', { x: AXEL.x, z: AXEL.z }, () => {
-    for (const s of STREETS) paveLine(W, s.pts.map(([u, v]) => P(u, v)), s.width, { tint: TINT[s.kind], kerb: s.kind === 'main' });
-    // Pomerium: a darker, rougher ring inside the wall.
-    const ring = offsetPolygon(WALL.nodes.map((n) => [n.u, n.v]), -RING.inset);
-    paveLine(W, [...ring, ring[0]].map(([u, v]) => P(u, v)), RING.width, { tint: 0x9a9284 });
-    for (const q of SQUARES) pavePoly(W, q.pts.map(([u, v]) => P(u, v)), q.id === 'fountain_square' ? 0xbab2a2 : q.id === 'caravan_yard' ? 0xa09684 : 0xb4ac9c);
+    for (const s of STREETS) paveStreet(s);
+    paveRing();
+    for (const q of SQUARES) paveSquare(q);
   }, 'Улицы и площади');
+}
+
+/** A street: draped paving (kerbs on the main streets, cut at squares and crossing streets). */
+function paveStreet(s) {
+  const pts = STREET_W[s.id];
+  const others = STREETS.filter((o) => o.id !== s.id).map((o) => ({ pts: STREET_W[o.id], half: o.width / 2 + 0.4 }));
+  const ring = RING_W();
+  const kerbSkip = (x, z) => SQW.some((q) => inPolygon(q, x, z) || lineDist([...q, q[0]], x, z) < 0.6) || others.some((o) => lineDist(o.pts, x, z) < o.half) || lineDist(ring, x, z) < RING.width / 2 + 0.4;
+  paveRibbon(W, pts, s.width, { tint: TINT[s.kind], lift: PAVE_LIFT[s.kind] + Math.min(2, LIFT_STEP[s.id]) * 0.004, kerb: s.kind === 'main', covered: underSquare, kerbSkip });
+}
+
+/** Pomerium: a darker, rougher ring inside the wall. */
+function paveRing() {
+  paveRibbon(W, RING_W().slice(0, -1), RING.width, { tint: 0x9a9284, lift: PAVE_LIFT.ring, closed: true, covered: underSquare });
+}
+
+function paveSquare(q) {
+  pavePoly(W, q.pts.map(([u, v]) => P(u, v)), { tint: q.id === 'fountain_square' ? 0xbab2a2 : q.id === 'caravan_yard' ? 0xa09684 : 0xb4ac9c, lift: PAVE_LIFT.square });
 }
 
 // -----------------------------------------------------------------------------------------
@@ -119,7 +176,8 @@ function streets() {
 // -----------------------------------------------------------------------------------------
 function guild(rng) {
   const { x, z, rot } = at('guild');
-  const g = house(W, { x, z, rot, w: 18, d: 13, floors: 1, floorH: 6.2, open: 'hall', wallTint: 0xf0e2c4, roofTint: 0x2f5a8a, chimney: true, door: 0, doorWidth: 3.4, kind: 'guild', lantern: false }, rng);
+  // Interior below is laid out for the plan size 18 × 13 (AxelPlan; the bell tower is its annex).
+  const g = house(W, { x, z, rot, w: B.guild.w, d: B.guild.d, floors: 1, floorH: 6.2, open: 'hall', arcade: true, wallTint: 0xf0e2c4, roofTint: 0x2f5a8a, chimney: true, door: 0, doorWidth: 3.4, kind: 'guild', lantern: false }, rng);
   const F = g.frame;
   const fy = 0.35;
   F.box(5, 0.8, 1.6, 0, -0.55, 7.6, 'stone', { tint: 0xc8bca8 });
@@ -178,7 +236,8 @@ function guild(rng) {
 
 function tavern(rng) {
   const { x, z, rot } = at('tavern');
-  const t = house(W, { x, z, rot, w: 16, d: 12, floors: 2, floorH: 4.2, open: 'hall', wallTint: 0xead6b0, roofTint: 0x8a3a2a, chimney: true, door: 0, doorWidth: 2.6, kind: 'tavern', lantern: false, jetty: 0.3, flowers: 0.6 }, rng);
+  // One wide arch over the two middle tiles; the interior is laid out for 16 × 12 (AxelPlan).
+  const t = house(W, { x, z, rot, w: B.tavern.w, d: B.tavern.d, floors: 2, floorH: 4.2, open: 'hall', wallTint: 0xead6b0, roofTint: 0x8a3a2a, chimney: true, door: 0, doorWidth: 2.6, kind: 'tavern', lantern: false, jetty: 0.3, flowers: 0.6 }, rng);
   const F = t.frame;
   const fy = 0.35;
   F.box(0.1, 0.1, 1.6, 4.5, 3.6, 6.9, 'metal', { collide: false });
@@ -229,7 +288,7 @@ function tavern(rng) {
 /** Temple of Eris: a long nave (14 × 24) with a bell spire over the entrance, the altar at the back. */
 function temple(rng) {
   const { x, z, rot } = at('temple');
-  const w = 12, d = 22;
+  const { w, d } = B.temple; // 12 × 22
   const t = house(W, { x, z, rot, w, d, floors: 1, floorH: 7, open: 'hall', wallTint: 0xf4f0e8, roofTint: 0x3a6a8a, chimney: false, door: 0, doorWidth: 2.6, kind: 'temple', lantern: false, pitch: 0.95, style: 'plaster' }, rng);
   const F = t.frame;
   const fy = 0.35;
@@ -269,7 +328,8 @@ function crypt() {
 /** Town hall: a two-storey stone hall with a clock tower over the door. */
 function townHall(rng) {
   const { x, z, rot } = at('town_hall');
-  const h = house(W, { x, z, rot, w: 16, d: 12, floors: 2, floorH: 3.6, style: 'brick', roofTint: ROOF_COLORS.slate, chimney: true, door: 0, kind: 'public', lantern: false, shutters: 0.2 }, rng);
+  // The entrance is the clock tower's door (the tower stands in front of the middle of the facade).
+  const h = house(W, { x, z, rot, w: B.town_hall.w, d: B.town_hall.d, floors: 2, floorH: 3.6, style: 'brick', roofTint: ROOF_COLORS.slate, chimney: true, door: false, kind: 'public', lantern: false, shutters: 0.2 }, rng);
   const F = h.frame;
   const T = F.sub(0, 0, 4.4);
   T.box(4.2, 15.5, 3.4, 0, -0.5, 0, 'stone', { tint: 0xc8bca8 });
@@ -279,7 +339,11 @@ function townHall(rng) {
   T.cyl(1.2, 0.12, 0, 11.2, 1.72, 'plaster', { seg: 16, rx: Math.PI / 2, collide: false, tint: 0xf4ecd8 });
   T.box(0.08, 0.9, 0.05, 0, 11.2, 1.85, 'metal', { collide: false });
   T.box(0.6, 0.08, 0.05, 0.25, 11.2, 1.85, 'metal', { collide: false });
-  T.box(2.0, 2.6, 0.2, 0, 0, 1.75, 'door', { collide: false, tint: 0x5a3a22 });
+  // Double door on the steps, in a stone frame.
+  T.box(2.0, 2.6, 0.2, 0, 0.3, 1.75, 'door', { collide: false, tint: 0x5a3a22 });
+  for (const s of [-1, 1]) T.box(0.3, 2.9, 0.3, s * 1.15, 0.3, 1.78, 'stone', { collide: false, tint: 0xb0a492 });
+  T.box(2.6, 0.35, 0.3, 0, 3.05, 1.78, 'stone', { collide: false, tint: 0xb0a492 });
+  T.box(0.04, 2.5, 0.04, 0, 0.35, 1.86, 'metal', { collide: false });
   for (const s of [-1, 1]) {
     T.box(1.0, 2.6, 0.06, s * 1.5, 5.5, 1.73, 'cloth', { collide: false, tint: 0xa82a2a });
     lantern(W, T.sub(s * 1.6, 2.4, 1.9));
@@ -372,8 +436,8 @@ function bakery(rng) {
 function store(rng) {
   const b = B.store;
   const { F } = walkIn('store', rng, { roofTint: 0x4c6e5a, sign: 0x3a7ac8 }, generalStore);
-  for (let i = 0; i < 2; i++) crate(W, F.sub(b.w / 2 - 0.9 - i * 0.9, 0.35, b.d / 2 + 0.9), 0, 0, 0.7, i);
-  barrel(W, F.sub(b.w / 2 - 2.8, 0.35, b.d / 2 + 0.9), 0, 0);
+  for (let i = 0; i < 2; i++) crate(W, F.sub(b.w / 2 - 0.9 - i * 0.9, 0, b.d / 2 + 0.9), 0, 0, 0.7, i);
+  barrel(W, F.sub(b.w / 2 - 2.8, 0, b.d / 2 + 0.9), 0, 0);
 }
 
 function alchemist(rng) {
@@ -505,6 +569,7 @@ function lots() {
     W.group('axel_' + l.id, { x, z, rot: l.rot }, (r) => {
       const h = lotBuilding(l, x, z, r);
       if (!h?.door) return;
+      DOORS.push([h.door.x, h.door.z]);
       const n = named.get(l.id);
       if (n !== undefined) W.spot('house_' + n, h.door, l.rot);
       if (l.id === mia.id) {
@@ -517,6 +582,25 @@ function lots() {
   }
 }
 const KIND_LABEL = { house: 'Дом', shop: 'Лавка', workshop: 'Мастерская', warehouse: 'Склад', stable: 'Конюшня' };
+
+const STREET_UV = STREETS.map((s) => [s, streetLine(s)]);
+/** Local (lx, lz) of a lot / key building (front = +z) -> plan (u, v). */
+const lotUV = (l, lx, lz) => { const c = Math.cos(l.rot), sn = Math.sin(l.rot); return [l.u + lx * c + lz * sn, l.v - lx * sn + lz * c]; };
+/** Is the plan point inside another building's envelope (walls + ENVELOPE) or a street? */
+function blocked(u, v, self) {
+  for (const o of [...LOTS, ...BUILDINGS.map((b) => ({ ...b, rot: FACE_ROT[b.face] }))]) {
+    if (o === self || o.id === self.id) continue;
+    const c = Math.cos(o.rot), sn = Math.sin(o.rot), du = u - o.u, dv = v - o.v;
+    const lx = du * c - dv * sn, lz = du * sn + dv * c;
+    if (Math.abs(lx) < o.w / 2 + ENVELOPE.side && lz > -o.d / 2 - ENVELOPE.back && lz < o.d / 2 + (ENVELOPE.front[o.kind] ?? 1)) return true;
+  }
+  return STREET_UV.some(([s, pts]) => lineDist(pts, u, v) < s.width / 2 + 0.3);
+}
+/** Room for barrels / crates by the +x side wall of a lot (a 1.4 × 2.6 m strip). */
+function sideRoom(l) {
+  for (const lx of [0.2, 0.8, 1.4]) for (const lz of [0, -1.3, -2.6]) if (blocked(...lotUV(l, l.w / 2 + lx, l.d / 2 + lz), l)) return false;
+  return true;
+}
 
 function lotBuilding(l, x, z, rng) {
   const L = LOOK[l.district] || LOOK.res_s;
@@ -548,11 +632,12 @@ function lotBuilding(l, x, z, rng) {
     jetty: floors > 1 && rng() < L.jetty ? 0.3 : 0, flowers: L.flowers, vines: L.vines, balcony: rng() < (L.balcony || 0),
     door: l.w >= 7 ? (rng() - 0.5) * (l.w - 4) : 0, doorModel: pickOf(['Door_1_Round', 'Door_1_Round', 'Door_4_Round', 'Door_8_Round'], rng),
   }, rng);
-  // Yard clutter by the side wall.
+  // Yard clutter by the side wall (on the ground; only where the next house leaves room).
   if (rng() < 0.55) {
     const F = h.frame;
-    barrel(W, F.sub(l.w / 2 + 0.5, 0.35, l.d / 2 - 0.6), 0, 0);
-    if (rng() < 0.5) crate(W, F.sub(l.w / 2 + 0.5, 0.35, l.d / 2 - 1.7), 0, 0, 0.7, 0.4);
+    const room = sideRoom(l);
+    if (room) barrel(W, F.sub(l.w / 2 + 0.75, 0, l.d / 2 - 0.8), 0, 0);
+    if (rng() < 0.5 && room) crate(W, F.sub(l.w / 2 + 0.65, 0, l.d / 2 - 1.9), 0, 0, 0.7, 0.4);
   }
   return h;
 }
@@ -604,8 +689,10 @@ function places(rng) {
 
 function fountainSquare(rng) {
   const F = new Frame(W, AXEL.x, AXEL.level, AXEL.z, 0);
-  F.cyl(13.5, 0.04, 0, 0.07, 0, 'stoneDark', { seg: 24, castShadow: false, collide: false, tint: 0x9a9284 });
-  F.kit('town/fountain-round', 0, 0.08, 0, { s: 4.3 });
+  // Dark stone ring on the square's paving (PAVE_LIFT.square), the fountain on it.
+  const top = PAVE_LIFT.square;
+  F.cyl(13.5, 0.04, 0, top - 0.01, 0, 'stoneDark', { seg: 24, castShadow: false, collide: false, tint: 0x9a9284 });
+  F.kit('town/fountain-round', 0, top + 0.02, 0, { s: 4.3 });
   F.cyl(0.9, 2.2, 0, 0.5, 0, 'stone', { seg: 12, tint: 0xd6ccbc });
   F.cyl(1.6, 0.3, 0, 2.6, 0, 'stone', { seg: 12, tint: 0xd6ccbc });
   F.cyl(0.38, 1.4, 0, 2.9, 0, 'stone', { seg: 10, tint: 0xece4d8, collide: false });
@@ -733,9 +820,10 @@ function guildYard() {
 // -----------------------------------------------------------------------------------------
 // Lamps: along the main streets (alternating sides), on the squares and on the pomerium.
 // -----------------------------------------------------------------------------------------
+const DOORS = []; // world [x, z] in front of the lots' doors (filled by lots())
 function lamps() {
-  const doors = []; // keep lamps off doorsteps
-  for (const l of LOTS) doors.push(P(l.u + Math.sin(l.rot) * (l.d / 2 + 0.6), l.v + Math.cos(l.rot) * (l.d / 2 + 0.6)));
+  // Keep lamps off doorsteps and entrances.
+  const doors = [...DOORS, ...Object.entries(W.npcSpots).filter(([k]) => /_(door|entrance|front)$/.test(k)).map(([, s]) => [s.pos.x, s.pos.z])];
   const clear = (x, z) => doors.every(([dx, dz]) => Math.hypot(dx - x, dz - z) > 2.6);
   let n = 0;
   const put = (u, v, rot) => {
@@ -747,9 +835,10 @@ function lamps() {
   for (const s of STREETS) {
     if (s.kind === 'lane') continue;
     const step = s.kind === 'main' ? 17 : 24;
+    const pts = streetLine(s);
     let acc = 6, side = 1;
-    for (let i = 0; i < s.pts.length - 1; i++) {
-      const [au, av] = s.pts[i], [bu, bv] = s.pts[i + 1];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const [au, av] = pts[i], [bu, bv] = pts[i + 1];
       const L = Math.hypot(bu - au, bv - av), tu = (bu - au) / L, tv = (bv - av) / L;
       for (; acc < L; acc += step) {
         const off = s.width / 2 - 0.45;
@@ -824,9 +913,8 @@ function groundMask() {
       }
     }
   };
-  for (const s of STREETS) line(s.pts.map(([u, v]) => P(u, v)), s.width / 2);
-  const ring = offsetPolygon(WALL.nodes.map((n) => [n.u, n.v]), -RING.inset);
-  line([...ring, ring[0]].map(([u, v]) => P(u, v)), RING.width / 2);
+  for (const s of STREETS) line(STREET_W[s.id], s.width / 2);
+  line(RING_W(), RING.width / 2);
   const inPoly = (pts, x, z) => {
     let c = false;
     for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {

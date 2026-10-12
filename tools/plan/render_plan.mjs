@@ -9,8 +9,11 @@
  * src/world/build/AxelLots.js (the game builds exactly those).
  *
  * Checks: roads cross water only at bridges, road grades, route lengths / walking times,
- * wall vs river, buildings vs streets / squares / wall / each other, ground flatness.
- * The frontage generator fills the blocks with plots to prove the building count fits.
+ * wall vs river, buildings vs streets / squares / wall / each other, ground flatness, level
+ * street cross-sections. Streets are the built centre lines (AxelPlan streetLine / ringLine,
+ * rounded bends). Buildings are compared by their real built outline (AxelPlan ENVELOPE: roof
+ * overhang, jetty, plinth, what stands at the door; key buildings' `annex` towers / steps), so
+ * no two roofs, walls or plinths meet. The frontage generator fills the blocks with plots.
  */
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -84,12 +87,22 @@ function inset(pts, d) {
 }
 /** Oriented rectangle of a building: face = where the front looks. */
 const FACE = { S: 0, E: Math.PI / 2, N: Math.PI, W: -Math.PI / 2 };
-function rect(b) {
+/** Rectangle x0..x1 × z0..z1 in the building frame (local x along the front, +z = front). */
+function rectLocal(b, x0, x1, z0, z1) {
   const rot = b.rot ?? FACE[b.face];
   const cs = Math.cos(rot), sn = Math.sin(rot);
-  // Frame: local x = width (along the front), local z = depth (front at +z) -> world rotated by rot.
-  const corners = [[-b.w / 2, -b.d / 2], [b.w / 2, -b.d / 2], [b.w / 2, b.d / 2], [-b.w / 2, b.d / 2]].map(([lx, lz]) => [b.u + lx * cs + lz * sn, b.v - lx * sn + lz * cs]);
-  return { corners, rot, u: b.u, v: b.v, hw: b.w / 2, hd: b.d / 2 };
+  const W2 = (lx, lz) => [b.u + lx * cs + lz * sn, b.v - lx * sn + lz * cs];
+  const corners = [[x0, z0], [x1, z0], [x1, z1], [x0, z1]].map(([lx, lz]) => W2(lx, lz));
+  const [u, v] = W2((x0 + x1) / 2, (z0 + z1) / 2);
+  return { corners, rot, u, v, hw: (x1 - x0) / 2, hd: (z1 - z0) / 2 };
+}
+const rect = (b) => rectLocal(b, -b.w / 2, b.w / 2, -b.d / 2, b.d / 2);
+/** Built outline: the walls + C.ENVELOPE, and the annexes (towers, turrets, steps) of key buildings. */
+const EN = C.ENVELOPE;
+function envelope(b) {
+  const out = [rectLocal(b, -b.w / 2 - EN.side, b.w / 2 + EN.side, -b.d / 2 - EN.back, b.d / 2 + (EN.front[b.kind] ?? 1))];
+  for (const a of b.annex || []) out.push(rectLocal(b, a.x - a.w / 2, a.x + a.w / 2, a.z - a.d / 2, a.z + a.d / 2));
+  return out;
 }
 function satOverlap(A, B, margin = 0) {
   for (const R of [A, B]) {
@@ -169,7 +182,7 @@ for (const R of P.REGIONS) {
 // City checks
 const wallPts = C.WALL.nodes.map((n) => [n.u, n.v]);
 const wallLoop = [...wallPts, wallPts[0]];
-const ring = inset(wallPts, C.RING.inset);
+const ring = C.ringLine();
 const buildLimit = inset(wallPts, C.RING.inset + C.RING.width / 2 + 0.6); // houses stay inside the pomerium
 report.city.wall = { perimeter: Math.round(len(wallLoop)), area: Math.round(area(wallPts)), towers: C.WALL.nodes.filter((n) => !n.gate).length, gates: C.WALL.nodes.filter((n) => n.gate).length, segments: Math.round(len(wallLoop) / 4) };
 let minRiver = Infinity;
@@ -177,15 +190,43 @@ for (const [u, v] of sampleLine(wallLoop, 1)) minRiver = Math.min(minRiver, T.ri
 report.city.wall.minDistanceToWater = +minRiver.toFixed(1);
 if (minRiver < 6) issue('wall', `only ${minRiver.toFixed(1)} m from the water`);
 function corridorsOf() { return corridors; }
+const LINE = Object.fromEntries(C.STREETS.map((s) => [s.id, C.streetLine(s)]));
 const corridors = [
-  ...C.STREETS.map((s) => ({ id: s.id, pts: s.pts, half: s.width / 2 })),
+  ...C.STREETS.map((s) => ({ id: s.id, pts: LINE[s.id], half: s.width / 2 })),
   { id: 'ring', pts: [...ring, ring[0]], half: C.RING.width / 2 },
 ];
 for (const s of C.STREETS) {
-  for (const [u, v] of sampleLine(s.pts, 2)) {
+  for (const [u, v] of sampleLine(LINE[s.id], 2)) {
     if (!inPoly(wallPts, u, v) && polyDist(wallPts, u, v) > 1.5) { issue('street ' + s.id, `leaves the wall at (${u.toFixed(0)}, ${v.toFixed(0)})`); break; }
   }
 }
+// The ground across every street (and the pomerium) is level (Terrain.js levels it): the draped
+// paving lies flush, no cross slope.
+let worstCross = { d: 0 };
+for (const c of corridors) {
+  const pts = sampleLine(c.pts, 2);
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [u, v] = pts[i], [u2, v2] = pts[i + 1];
+    const L = Math.hypot(u2 - u, v2 - v) || 1, nu = -(v2 - v) / L, nv = (u2 - u) / L;
+    for (const s of [-1, 1]) {
+      // Edge point vs the centre-line point it is across from (its nearest point on the line);
+      // junctions (the edge within another street) blend both streets and are skipped.
+      const eu = u + nu * s * c.half, ev = v + nv * s * c.half;
+      if (corridors.some((o) => o !== c && lineDist(o.pts, eu, ev) < o.half + 3)) continue;
+      let best = Infinity, cu = u, cv = v;
+      for (let k = 0; k < c.pts.length - 1; k++) {
+        const [au, av] = c.pts[k], [bu, bv] = c.pts[k + 1], du = bu - au, dv = bv - av;
+        const t = Math.max(0, Math.min(1, ((eu - au) * du + (ev - av) * dv) / (du * du + dv * dv || 1)));
+        const dd = Math.hypot(eu - au - du * t, ev - av - dv * t);
+        if (dd < best) { best = dd; cu = au + du * t; cv = av + dv * t; }
+      }
+      const d = Math.abs(H(...L2W(eu, ev)) - H(...L2W(cu, cv)));
+      if (d > worstCross.d) worstCross = { d, id: c.id, at: [Math.round(eu), Math.round(ev)] };
+    }
+  }
+}
+report.city.streetCrossSlope = { max: +worstCross.d.toFixed(3), at: worstCross.at, street: worstCross.id };
+if (worstCross.d > 0.1) issue('street ' + worstCross.id, `cross slope ${worstCross.d.toFixed(2)} m at (${worstCross.at})`);
 const obstacles = [...C.SQUARES, ...C.AREAS];
 // Open areas (cemetery, yards, gardens) must not reach into the streets or the pomerium.
 for (const A of C.AREAS) {
@@ -208,7 +249,8 @@ function check(b, R, strict) {
     if (rectLineDist(R, c.pts) < c.half + 0.4) why.push('street ' + c.id);
   }
   for (const o of obstacles) if (o.id !== b.inside && rectPolyOverlap(R, o.pts)) why.push(o.id);
-  for (const p of placed) if (satOverlap(R, p.R, p.key || b.key ? 0.8 : 0.3)) why.push('building ' + p.id);
+  const E = envelope(b);
+  for (const p of placed) if (E.some((A) => p.E.some((Q) => satOverlap(A, Q, EN.gap)))) why.push('building ' + p.id);
   if (groundRange(R) > (strict ? 0.6 : 0.8)) why.push(`slope ${groundRange(R).toFixed(1)} m`);
   return why;
 }
@@ -217,7 +259,7 @@ for (const b0 of C.BUILDINGS) {
   const R = rect(b);
   const why = check(b, R, true);
   if (why.length) issue('building ' + b.id, why.join(', '));
-  placed.push({ ...b, R, key: true });
+  placed.push({ ...b, R, E: envelope(b), key: true });
 }
 
 // Frontage generator: walk along every street (and square edge), both sides, and try plots.
@@ -227,7 +269,7 @@ const districtAt = (u, v) => C.DISTRICTS.find((d) => inPoly(d.pts, u, v))?.id ??
 const RANK = { main: 1, secondary: 2, lane: 3 };
 const fronts = [
   ...C.SQUARES.filter((s) => !s.id.endsWith('gate_place')).map((s) => ({ pts: [...s.pts, s.pts[0]], half: 0, sides: [1, -1] })),
-  ...[...C.STREETS].sort((a, b) => RANK[a.kind] - RANK[b.kind]).map((s) => ({ pts: s.pts, half: s.width / 2, sides: [-1, 1] })),
+  ...[...C.STREETS].sort((a, b) => RANK[a.kind] - RANK[b.kind]).map((s) => ({ pts: LINE[s.id], half: s.width / 2, sides: [-1, 1] })),
   { pts: [...ring, ring[0]], half: C.RING.width / 2, sides: [1, -1] },
 ];
 let tries = 0;
@@ -243,10 +285,11 @@ for (const f of fronts) {
         if (placed.length >= C.TARGET.max) break;
         const dist = districtAt(ax + tx * t + nx * 6, az + tz * t + nz * 6);
         const F = C.FILL[dist];
-        // Try a few sizes here (big first), then step on.
+        // Try a few sizes here (big first, last the smallest plot), then step on.
         let ok = null;
-        for (let k = 0; k < 3 && !ok; k++) {
-          const w = F.w[1] - (k + rng()) * (F.w[1] - F.w[0]) / 3, d = F.d[0] + rng() * (F.d[1] - F.d[0]);
+        for (let k = 0; k < 4 && !ok; k++) {
+          let w = F.w[1] - (k + rng()) * (F.w[1] - F.w[0]) / 3, d = F.d[0] + rng() * (F.d[1] - F.d[0]);
+          if (k === 3) { w = F.w[0]; d = F.d[0]; }
           if (t + w > L - 1) continue;
           const back = f.half + 0.8 + d / 2;
           const cu = ax + tx * (t + w / 2) + nx * back, cv = az + tz * (t + w / 2) + nz * back;
@@ -254,11 +297,11 @@ for (const f of fronts) {
           const b = { id: 'p' + placed.length, u: cu, v: cv, w, d, rot: Math.atan2(-nx, -nz), kind: F.kinds[Math.floor(rng() * F.kinds.length)], district: dist };
           const R = rect(b);
           tries++;
-          if (!check(b, R, false).length) ok = { ...b, R };
+          if (!check(b, R, false).length) ok = { ...b, R, E: envelope(b) };
         }
         if (ok) {
           placed.push(ok);
-          t += ok.w + 0.4 + (rng() < 0.15 ? 3.5 : 0); // row houses; now and then a passage to the yards
+          t += ok.w + EN.side * 2 + EN.gap + (rng() < 0.15 ? 3.5 : 0); // detached houses; now and then a passage to the yards
         } else t += 1;
       }
     }
@@ -394,7 +437,7 @@ const path = (pts, close = false) => 'M' + pts.map((p) => p.map((n) => n.toFixed
   for (const d of C.DISTRICTS) s += `<path d="${path(map(d.pts), true)}" fill="${d.color}" fill-opacity="0.16" stroke="${d.color}" stroke-opacity="0.5" stroke-dasharray="6 4"/>`;
   for (const a of C.AREAS) s += `<path d="${path(map(a.pts), true)}" fill="#8fae6a" fill-opacity="0.6" stroke="#5a7a40"/>`;
   s += `<path d="${path(map([...ring, ring[0]]))}" fill="none" stroke="#cbbfa8" stroke-width="${C.RING.width * S}" stroke-linejoin="round"/>`;
-  for (const st of C.STREETS) s += `<path d="${path(map(st.pts))}" fill="none" stroke="${st.kind === 'main' ? '#b9ad96' : st.kind === 'secondary' ? '#c6bba6' : '#d2c8b4'}" stroke-width="${st.width * S}" stroke-linecap="round" stroke-linejoin="round"/>`;
+  for (const st of C.STREETS) s += `<path d="${path(map(LINE[st.id]))}" fill="none" stroke="${st.kind === 'main' ? '#b9ad96' : st.kind === 'secondary' ? '#c6bba6' : '#d2c8b4'}" stroke-width="${st.width * S}" stroke-linecap="round" stroke-linejoin="round"/>`;
   for (const q of C.SQUARES) s += `<path d="${path(map(q.pts), true)}" fill="#ddd2bd" stroke="#a89c86"/>`;
   s += `<path d="${path(map(wallLoop))}" fill="none" stroke="#5a5048" stroke-width="${C.WALL.thickness * S}" stroke-linejoin="round"/>`;
   for (const n of C.WALL.nodes) {
@@ -402,6 +445,9 @@ const path = (pts, close = false) => 'M' + pts.map((p) => p.map((n) => n.toFixed
     else s += `<rect x="${X(n.u) - (n.big ? 4.5 : 3.2) * S}" y="${Z(n.v) - (n.big ? 4.5 : 3.2) * S}" width="${(n.big ? 9 : 6.4) * S}" height="${(n.big ? 9 : 6.4) * S}" fill="#4a4038"/>`;
   }
   for (const p of placed) {
+    // Built outline (roof overhang, door zone) dashed under the walls; annexes solid.
+    s += `<path d="${path(map(p.E[0].corners), true)}" fill="none" stroke="#3a3330" stroke-opacity="0.45" stroke-width="0.6" stroke-dasharray="2 2"/>`;
+    for (const A of p.E.slice(1)) s += `<path d="${path(map(A.corners), true)}" fill="${KC[p.kind] || '#efe3c8'}" stroke="#3a3330" stroke-width="0.8"/>`;
     s += `<path d="${path(map(p.R.corners), true)}" fill="${KC[p.kind] || '#efe3c8'}" stroke="#3a3330" stroke-width="${p.key ? 1.6 : 0.8}"/>`;
     // Front door tick.
     const fx = p.u + Math.sin(p.R.rot) * p.d / 2, fz = p.v + Math.cos(p.R.rot) * p.d / 2;
