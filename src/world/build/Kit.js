@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { ROOF_COLORS } from '../KitLibrary.js';
-import { roadInfo } from '../Terrain.js';
+import { roadInfo, GRID_STEP } from '../Terrain.js';
+import { HALF } from '../MapData.js';
 
 /**
  * Building kit: parametric pieces of the anime-fantasy town (timber-framed houses with steep
@@ -19,6 +20,8 @@ const _p = new THREE.Vector3();
 const _q = new THREE.Quaternion();
 const _s = new THREE.Vector3();
 const _e = new THREE.Euler();
+const _mS = new THREE.Matrix4();
+const _mR = new THREE.Matrix4();
 
 // Shared unit geometries (cloned + transformed by addSolid).
 const G = {
@@ -126,6 +129,25 @@ const WINDOW_KINDS = [
 ];
 const ROOFS = { 4: [4, 6, 8], 6: [6, 8, 10, 12, 14], 8: [8, 10, 12, 14] };
 const ROOF_TINTS = { red: null, brown: 0xc09474, green: 0xa4b48c, blue: 0x8c9ac4, slate: 0x9c9ea8, purple: 0xb08cb4, straw: 0xe6cc90 };
+/**
+ * Roof module profile (model units, measured on the kit, same for every length of a width):
+ * UNDER = underside height near the eaves [x, y] (piecewise linear, down to the tile lip),
+ * ICPT = the main slope's underside at the ridge (its gable front follows that line).
+ */
+const ROOF_UNDER = {
+  4: [[1.95, 0.121], [2.15, -0.144], [2.2, -0.296], [2.35, -0.476]],
+  6: [[2.9, 0.15], [3.75, -0.741]],
+  8: [[3.5, 0.629], [4.75, -0.736]],
+};
+const ROOF_ICPT = { 4: 2.701, 6: 3.747, 8: 5.052 };
+/** Overhang of the eaves / gable ends past the walls (m); the city plan spaces lots by it. */
+export const ROOF_OVERHANG = 0.45;
+const underAt = (across, x) => {
+  const t = ROOF_UNDER[across];
+  if (x <= t[0][0]) return t[0][1] + ((t[1][1] - t[0][1]) / (t[1][0] - t[0][0])) * (x - t[0][0]);
+  for (let i = 1; i < t.length; i++) if (x <= t[i][0]) return t[i - 1][1] + ((t[i][1] - t[i - 1][1]) * (x - t[i - 1][0])) / (t[i][0] - t[i - 1][0]);
+  return t[t.length - 1][1];
+};
 
 /** Nearest roof colour name for a tint. */
 function roofVariant(hex) {
@@ -143,7 +165,11 @@ function roofVariant(hex) {
 /**
  * Timber-framed house. Front faces local +z.
  * spec: { x, z, rot, w, d, floors, floorH, roofTint, chimney, jetty, door: offset|false,
- *         open: false|'shop'|'hall', doorWidth, style: 'plaster'|'brick'|'wood', dormer, lantern }
+ *         open: false|'shop'|'hall', doorWidth, arcade, style: 'plaster'|'brick'|'wood', dormer, lantern }
+ * The door snaps to a wall tile of the front (the step, the lantern and the returned `door` stand
+ * in front of the real doorway); a hall's open tiles merge into one wide arch unless `arcade`.
+ * The upper storeys jut out (jetty) at the front and the back only; the roof overhangs every wall
+ * by ROOF_OVERHANG (AxelPlan ENVELOPE keeps the city plan in step with these numbers).
  * Returns { frame, top (eaves height), door (world pos), base, w, d }
  */
 export function house(world, spec, rng) {
@@ -160,24 +186,36 @@ export function house(world, spec, rng) {
   const grid = spec.style === 'wood' || rng() < 0.4;
 
   // Stone plinth absorbs the slope.
-  F.box(w + 0.5, 0.9, d + 0.5, 0, -0.55, 0, 'stoneDark');
+  F.box(w + PLINTH * 2, 0.9, d + PLINTH * 2, 0, -0.55, 0, 'stoneDark');
   const base = 0.35;
-  world.addFootprint(spec.x, spec.z, w + 0.5, d + 0.5, spec.rot || 0, spec.kind || 'house');
+  world.addFootprint(spec.x, spec.z, w + PLINTH * 2, d + PLINTH * 2, spec.rot || 0, spec.kind || 'house');
   // Everything below is the near model; a proxy for the distance follows (World.lodDistance).
   const prevLod = world.lodMode;
   world.lodMode = 'near';
-  const doorX = typeof spec.door === 'number' ? spec.door : 0;
+  // Door tiles of the front wall (walls() lays the front out in the same tiles).
+  const n = Math.max(1, Math.round(w / 2)), tw = w / n;
+  const tileX = (i) => -w / 2 + (i + 0.5) * tw;
+  let doorX = typeof spec.door === 'number' ? spec.door : 0;
+  let doorTiles = null; // [first, last] tile index of the doorway
+  if (open === 'hall') {
+    const gap = spec.doorWidth ?? 2.6;
+    const hall = [...Array(n).keys()].filter((i) => Math.abs(tileX(i) - doorX) < gap / 2 + tw / 2 - 0.2);
+    if (hall.length) doorTiles = [hall[0], hall[hall.length - 1]];
+  } else if (!open && spec.door !== false) {
+    const k = Math.min(n - 1, Math.max(0, Math.round((doorX + w / 2) / tw - 0.5)));
+    doorTiles = [k, k];
+  }
+  if (doorTiles) doorX = (tileX(doorTiles[0]) + tileX(doorTiles[1])) / 2;
 
   let top = base;
   for (let f = 0; f < floors; f++) {
-    const fw = w + (f > 0 ? jetty * 2 : 0);
     const fd = d + (f > 0 ? jetty * 2 : 0);
     const y0 = base + f * floorH;
     // Tall halls get two rows of wall modules (the windows keep their proportions).
     const rows = Math.max(1, Math.round(floorH / 3.2));
     const rh = floorH / rows;
     for (let r = 0; r < rows; r++) {
-      walls(F, fw, fd, y0 + r * rh, rh, { spec, rng, mat: f === 0 && r === 0 ? groundMat : 'Plaster', grid: grid && (f > 0 || r > 0), ground: f === 0 && r === 0, open: f === 0 ? open : false, doorX });
+      walls(F, w, fd, y0 + r * rh, rh, { spec, rng, mat: f === 0 && r === 0 ? groundMat : 'Plaster', grid: grid && (f > 0 || r > 0), ground: f === 0 && r === 0, open: f === 0 ? open : false, doorTiles });
     }
     if (f === 0 && open) openGround(F, w, d, y0, floorH, spec);
     if (f === 0 && spec.interior && !open) {
@@ -196,9 +234,11 @@ export function house(world, spec, rng) {
   let door = null;
   if (spec.door !== false && open !== 'shop') {
     const dz = d / 2 + 0.04;
-    F.box(1.8, 0.57, 0.9, doorX, base - 0.55, dz + 0.4, 'stone', { castShadow: false }); // down to the plinth foot
+    // A hall's one wide arch gets a step as wide as the opening.
+    const sw = open === 'hall' && !spec.arcade && doorTiles ? Math.max(1.8, (doorTiles[1] - doorTiles[0] + 1) * tw - 0.4) : 1.8;
+    F.box(sw, 0.57, 0.9, doorX, base - 0.55, dz + 0.4, 'stone', { castShadow: false }); // down to the plinth foot
     door = F.at(doorX, base, dz + 1.2);
-    if (spec.lantern !== false && rng() < 0.7) lantern(world, F.sub(doorX + 1.3, base + 2.1, dz + 0.18));
+    if (spec.lantern !== false && rng() < 0.7) lantern(world, F.sub(doorX + (doorX > 0.01 ? -1.3 : 1.3), base + 2.1, dz + 0.18)); // on the side towards the middle
   }
   // Climbing vines on a side wall now and then.
   if (spec.vines && rng() < spec.vines) {
@@ -212,7 +252,7 @@ export function house(world, spec, rng) {
     F.kit(V('Balcony_Cross_Straight'), bx, by, d / 2 + (jetty || 0) - 0.9, { s: 1, collide: false, detail: false });
     F.box(2.0, 0.12, 1.1, bx, by - 0.12, d / 2 + (jetty || 0) + 0.45, 'plank', { collide: false, tint: 0x7a5c40 });
   }
-  const ridge = villageRoof(F, w + jetty * 2, d + jetty * 2, top, roofVar, spec);
+  const ridge = villageRoof(F, w, d + jetty * 2, top, roofVar, spec);
   // Chimney.
   if (spec.chimney ?? rng() < 0.75) {
     const cx = (rng() < 0.5 ? -1 : 1) * (w / 2 - 1.1);
@@ -221,25 +261,33 @@ export function house(world, spec, rng) {
     world.addChimney(F.at(cx, top + hgt + 0.2, -d * 0.18));
   }
   world.lodMode = 'far';
-  houseProxy(F, w + jetty * 2, d + jetty * 2, base, top, ridge, groundMat, roofVar, floors, floorH);
+  houseProxy(F, w, d, jetty, base, top, ridge, groundMat, roofVar, floors, floorH);
   world.lodMode = prevLod;
   return { frame: F, top, door, base: gy + base, w, d };
 }
 
+/** Plinth margin round the walls (m). */
+const PLINTH = 0.15;
+
 /** Far version of a house: a box (wall colour), a gable roof prism and lit window strips. */
 const PROXY_WALL = { Plaster: 0xe6dac2, UnevenBrick: 0x9a8e7c };
-function houseProxy(F, w, d, base, top, ridge, groundMat, roofVar, floors, floorH) {
+// Far roof colour = the near one: the village tile texture's mean albedo (linear 0.452, 0.095,
+// 0.030, measured in the game) × the near tint (ROOF_TINTS) ÷ the mean of the proxy 'roof'
+// material's noise map (0.69) — no colour pop at the LOD switch.
+const PROXY_ROOF = { red: 0xd4683b, brown: 0x9f3915, green: 0x87471c, blue: 0x733c2b, slate: 0x813d23, purple: 0x913527, straw: 0xbf511d };
+function houseProxy(F, w, d, jetty, base, top, ridge, groundMat, roofVar, floors, floorH) {
   const opts = { collide: false, castShadow: false };
-  F.box(w, top - base, d, 0, base, 0, 'plaster', { ...opts, tint: PROXY_WALL[groundMat] ?? 0xe6dac2 });
-  const roofTint = ROOF_COLORS[roofVar] ?? ROOF_COLORS.red;
-  F.put(gableGeometry(d + 0.7, ridge - top + 0.1, w + 0.5), 1, 1, 1, 0, top - 0.05, 0, 'roof', { ...opts, tint: roofTint, ry: Math.PI / 2 });
-  for (let f = 0; f < floors; f++) for (const s of [-1, 1]) F.box(w * 0.62, 0.9, 0.04, 0, base + f * floorH + 1.0, s * (d / 2 + 0.02), 'window', opts);
+  const dr = d + jetty * 2;
+  F.box(w, top - base, dr, 0, base, 0, 'plaster', { ...opts, tint: PROXY_WALL[groundMat] ?? 0xe6dac2 });
+  const roofTint = PROXY_ROOF[roofVar] ?? PROXY_ROOF.red;
+  // Eaves ROOF_OVERHANG out and ~0.5 m below the wall top, like the near roof.
+  F.put(gableGeometry(dr + ROOF_OVERHANG * 2, ridge - top + 0.5, w + ROOF_OVERHANG * 2), 1, 1, 1, 0, top - 0.5, 0, 'roof', { ...opts, tint: roofTint, ry: Math.PI / 2 });
+  for (let f = 0; f < floors; f++) for (const s of [-1, 1]) F.box(w * 0.62, 0.9, 0.04, 0, base + f * floorH + 1.0, s * ((f > 0 ? dr : d) / 2 + 0.02), 'window', opts);
 }
 
 /** One storey (or one row of a tall hall) of wall modules around a w × d box. */
 function walls(F, w, d, y0, h, o) {
-  const { spec, rng, mat, grid, ground, open, doorX } = o;
-  const gap = spec.doorWidth ?? 2.6;
+  const { spec, rng, mat, grid, ground, open, doorTiles } = o;
   const sy = h / 3.0;
   const sides = [
     { along: 'x', len: w, off: d / 2, ry: 0, front: true },
@@ -260,19 +308,29 @@ function walls(F, w, d, y0, h, o) {
       const T = F.sub(px, y0, pz, s.ry);
       // `detail`: small inserts go into the distance-culled batches (World.detailDistance).
       const put = (name, opts = {}) => T.kit(V(name), opts.x ?? 0, 0, 0, { sx, sy, sz: 1, collide: opts.collide ?? true, castShadow: opts.cast ?? true, detail: !!opts.detail });
+      const door = s.front && ground && doorTiles && i >= doorTiles[0] && i <= doorTiles[1];
+      if (door && open === 'hall') {
+        // Hall entrance: the open tiles make one wide arch (an arcade of single arches if `arcade`).
+        const m = doorTiles[1] - doorTiles[0] + 1;
+        if (spec.arcade || m === 1) put('Wall_Arch', { collide: false });
+        else if (i === doorTiles[0]) T.kit(V('Wall_Arch'), (m - 1) * tw / 2, 0, 0, { sx: sx * m, sy, sz: 1, collide: false });
+        continue;
+      }
       const openTile = s.front && ground && (
         (open === 'shop' && (n <= 2 || i < n - 1)) || // the left end stays open: the way behind the counter
-        (open === 'stable' || open === 'work') ||
-        (open === 'hall' && Math.abs(t - doorX) < gap / 2 + tw / 2 - 0.2));
+        (open === 'stable' || open === 'work'));
       if (openTile) {
         put('Wall_Arch', { collide: false });
         continue;
       }
-      if (s.front && ground && !open && spec.door !== false && Math.abs(t - doorX) < tw / 2) {
+      if (door) {
         if (spec.entrance === 'arch') {
-          // Walk-in building: an open archway (≈ 1.8 m) with the leaf swung in against the jamb.
+          // Walk-in building: an open archway (≈ 1.8 m) with the leaf swung in flat against the
+          // inner face of the side wall (the doorway is the corner tile next to it).
           put('Wall_Arch', { collide: false });
-          T.kit(V(spec.doorModel || 'Door_1_Round'), -0.86 * sx, 0, -0.32, { sx: sx * 0.9, sy, ry: Math.PI / 2, collide: false, detail: true });
+          const side = t < 0 ? -1 : 1;
+          const lx = side * (w / 2 - 0.47) - t; // inner wall face (w/2 − 0.40) + half the leaf
+          T.kit(V(spec.doorModel || 'Door_1_Round'), lx, 0, -0.36, { sx: sx * 0.9, sy, ry: Math.PI / 2, collide: false, detail: true });
           continue;
         }
         put(`Wall_${mat}_Door_Round`);
@@ -301,11 +359,6 @@ function walls(F, w, d, y0, h, o) {
   }
   // Timber corner posts.
   for (const cx of [-1, 1]) for (const cz of [-1, 1]) F.kit(V('Corner_Exterior_Wood'), cx * w / 2, y0, cz * d / 2, { sy, collide: false });
-  if (ground && open === 'hall') {
-    // Open door leaves in front of the hall entrance.
-    const g2 = gap;
-    for (const sx of [-1, 1]) F.box(0.08, 2.7, g2 / 2, doorX + sx * (g2 / 2 + 0.04), y0, d / 2 + g2 / 4, 'door', { ...deco, tint: 0x6a4428 });
-  }
 }
 
 /** Ground floor that opens to the street: a shop counter or a hall interior. */
@@ -344,22 +397,38 @@ function openGround(F, w, d, y0, h, spec) {
 }
 
 /**
- * Pre-built tiled roof (ridge along local x = the house's width) + brick gable fronts, scaled
- * from the nearest module footprint to the exact w × d. Returns the ridge height.
+ * Pre-built tiled roof (ridge along local x = the house's width) + brick gable fronts, fitted to
+ * the w × d walls with ROOF_OVERHANG at the eaves and the gable ends (the module's own overhang
+ * is ~1 m): the roof is scaled to the real kit bounds (asymmetric models re-centred) and lifted
+ * until its underside meets the wall tops again; the gable fronts keep the pitch and fill the
+ * triangle under the main slope down to the wall top. Returns the ridge height.
  */
 function villageRoof(F, w, d, top, variant, spec) {
   const across = [4, 6, 8].reduce((a, b) => (Math.abs(b - d) < Math.abs(a - d) ? b : a));
   const along = ROOFS[across].reduce((a, b) => (Math.abs(b - w) < Math.abs(a - w) ? b : a));
-  const k = d / across; // across scale (and height: keeps the pitch)
-  const ky = spec.pitch ? k * Math.tan(spec.pitch) / Math.tan(0.9) : k;
+  const name = V(`Roof_RoundTiles_${across}x${along}`);
+  const bb = F.w.kits.box(name);
+  const e = (bb.max.x - bb.min.x) / 2; // eave half-width of the model
+  // Eaves: the wall plane must stay on the straight part of the underside (before the tile lip).
+  const lip = ROOF_UNDER[across][ROOF_UNDER[across].length - 1][0];
+  const oh = Math.max(spec.roofOverhang ?? ROOF_OVERHANG, (d / 2) * (e / lip - 1) + 0.02);
+  const k = (d / 2 + oh) / e; // across scale
+  const pitch = spec.pitch ? Math.tan(spec.pitch) / Math.tan(0.9) : 1;
+  const ky = k * pitch;
+  const lift = -ky * underAt(across, d / 2 / k); // underside meets the wall top at the wall plane
+  const sz = (w + ROOF_OVERHANG * 2) / (bb.max.z - bb.min.z);
   const tint = ROOF_TINTS[variant] ?? null;
   // Roof model: across = local x, ridge = local z  ->  turn so the ridge runs along our x.
-  F.kit(V(`Roof_RoundTiles_${across}x${along}`), 0, top, 0, { ry: Math.PI / 2, sx: k, sy: ky, sz: w / along, collide: false, tint });
+  F.kit(name, -((bb.min.z + bb.max.z) / 2) * sz, top + lift, ((bb.min.x + bb.max.x) / 2) * k, { ry: Math.PI / 2, sx: k, sy: ky, sz, collide: false, tint });
+  // Gable fronts: the same main slope as the roof, standing on the wall top; thinned so their
+  // purlin ends (0.79 out) stay under the trimmed overhang.
+  const kg = k * (1 - underAt(across, d / 2 / k) / ROOF_ICPT[across]);
+  const gz = Math.min(1, (ROOF_OVERHANG - 0.05 + 0.09) / 0.79);
   for (const s of [1, -1]) {
-    F.kit(V(`Roof_Front_Brick${across}`), s * (w / 2 - 0.09), top, 0, { ry: s * Math.PI / 2, sx: k, sy: ky, collide: false });
+    F.kit(V(`Roof_Front_Brick${across}`), s * (w / 2 - 0.09), top, 0, { ry: s * Math.PI / 2, sx: kg, sy: kg * pitch, sz: gz, collide: false });
   }
   const ridge = { 4: 3.73, 6: 4.89, 8: 6.0 }[across];
-  return top + ridge * ky;
+  return top + lift + ridge * ky;
 }
 
 // -----------------------------------------------------------------------------------------
@@ -453,33 +522,45 @@ export function cityWall(world, nodes, opts = {}) {
   // Wall direction at a node (bisector of the two segments) and the outward normal.
   const dirAt = (i) => {
     const a = nodes[(i + n - 1) % n], b = nodes[i], c = nodes[(i + 1) % n];
-    let dx = (b.x - a.x) / Math.hypot(b.x - a.x, b.z - a.z) + (c.x - b.x) / Math.hypot(c.x - b.x, c.z - b.z);
-    let dz = (b.z - a.z) / Math.hypot(b.x - a.x, b.z - a.z) + (c.z - b.z) / Math.hypot(c.x - b.x, c.z - b.z);
+    const dx = (b.x - a.x) / Math.hypot(b.x - a.x, b.z - a.z) + (c.x - b.x) / Math.hypot(c.x - b.x, c.z - b.z);
+    const dz = (b.z - a.z) / Math.hypot(b.x - a.x, b.z - a.z) + (c.z - b.z) / Math.hypot(c.x - b.x, c.z - b.z);
     const L = Math.hypot(dx, dz);
     return [dx / L, dz / L];
   };
-  // Half-length of the curtain-free zone around a node (tower half-size / half a gatehouse).
+  // Half-length of the curtain-free zone around a node (tower half-size / half a gatehouse); at a
+  // bend the outer corner of the wall end reaches (T/2)·tan(bend/2) further, so the end steps back.
   const TW = (node) => (node.big ? 8 : 6);
-  const keep = (node) => (node.gate ? GW * 0.94 - 0.4 : TW(node) / 2 - 0.4);
+  const bendAt = (i) => {
+    const a = nodes[(i + n - 1) % n], b = nodes[i], c = nodes[(i + 1) % n];
+    const t = Math.atan2(c.z - b.z, c.x - b.x) - Math.atan2(b.z - a.z, b.x - a.x);
+    return Math.abs(Math.atan2(Math.sin(t), Math.cos(t)));
+  };
+  const keep = (i) => (nodes[i].gate ? GW * 0.94 - 0.4 : TW(nodes[i]) / 2 - 0.4 - (T / 2) * Math.tan(bendAt(i) / 2));
   const gates = [];
   const groupFor = opts.groupFor || (() => null);
   const inGroup = (id, pivot, fn, label) => (id ? world.group(id, pivot, fn, label) : fn());
-  // Curtain wall segments.
+  // Curtain wall segments: pieces overlap by OVER (the castle-kit 'wall' has open end columns
+  // ~0.16 m deep — less overlap leaves see-through slits at the joints); each piece is sheared to
+  // follow the ground between its ends (no steps between neighbours, no floating corner).
+  const OVER = 0.45;
   inGroup(opts.wallGroup, { x: cx, z: cz }, () => {
     for (let i = 0; i < n; i++) {
       const A = nodes[i], B = nodes[(i + 1) % n];
       const L = Math.hypot(B.x - A.x, B.z - A.z);
       const tx = (B.x - A.x) / L, tz = (B.z - A.z) / L;
-      const s0 = keep(A), s1 = L - keep(B);
+      const s0 = keep(i), s1 = L - keep((i + 1) % n);
       const m = Math.max(1, Math.round((s1 - s0) / 4.2));
       const len = (s1 - s0) / m;
       const rot = Math.atan2(tx, tz) - Math.PI / 2; // local x along the wall
+      const ground = (t) => Math.min(world.heightAt(A.x + tx * t - tz * T / 2, A.z + tz * t + tx * T / 2), world.heightAt(A.x + tx * t + tz * T / 2, A.z + tz * t - tx * T / 2));
       for (let k = 0; k < m; k++) {
-        const t = s0 + (k + 0.5) * len;
-        const x = A.x + tx * t, z = A.z + tz * t;
-        const y0 = Math.min(world.heightAt(A.x + tx * (t - len / 2), A.z + tz * (t - len / 2)), world.heightAt(A.x + tx * (t + len / 2), A.z + tz * (t + len / 2)));
-        const F = new Frame(world, x, y0 - 1.2, z, rot);
-        F.kit('castle/wall', 0, 0, 0, { sx: len + 0.06, sy: (H + 1.2) / 1.31, sz: T, collide: 'box', retex: STONE });
+        const t = s0 + (k + 0.5) * len, sx = len + OVER;
+        const y0 = ground(t - sx / 2), y1 = ground(t + sx / 2);
+        _m.makeScale(sx, (H + 1.2) / 1.31, T)
+          .premultiply(_mS.set(1, 0, 0, 0, (y1 - y0) / sx, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1))
+          .premultiply(_mR.makeRotationY(rot))
+          .setPosition(A.x + tx * t, (y0 + y1) / 2 - 1.2, A.z + tz * t);
+        world.addKit('castle/wall', _m, { collide: 'box', retex: STONE });
       }
     }
   });
@@ -523,7 +604,7 @@ function kitTower(world, F, S, height) {
 
 /**
  * Gatehouse: the castle kit's 'tower-square-arch' stretched into a gate tower with a carriage
- * passage (≈ gw wide, 5.6 m high at the crown), a floor and a tiled roof above; open gate leaves.
+ * passage (≈ gw wide, 5.6 m high at the crown, open: no leaves), a floor and a tiled roof above.
  */
 function gatehouse2(world, F, gw, H, node) {
   const SX = gw * 2, SZ = 7, SY = (H + 1.2) / 1.01;
@@ -532,8 +613,12 @@ function gatehouse2(world, F, gw, H, node) {
   F.kit('castle/tower-square-mid-windows', 0, y + SY * 1.01, 0, { sx: SX * 0.9, sy: 3.4, sz: SZ * 0.9, collide: 'box', retex: STONE });
   F.kit('castle/tower-square-top', 0, y + SY * 1.01 + 3.4, 0, { sx: SX * 0.94, sy: 3, sz: SZ * 0.94, collide: false, retex: STONE });
   F.kit('village/Roof_Tower_RoundTiles', 0, y + SY * 1.01 + 3.4 + 0.9, 0, { sx: (SX * 0.95) / 5.66, sy: 1.1, sz: (SZ * 0.95) / 5.42, collide: false });
-  // Opened gate leaves against the passage walls.
-  for (const sx of [-1, 1]) F.kit('castle/gate', sx * (gw / 2 - 0.2), 0, -0.4, { sx: 1.2, sy: 4.2, sz: 4.4, collide: false });
+  // The arch model is open on all four faces: its side arches (±0.274·SZ, wider than the curtain
+  // wall) are walled up from the passage wall to the side face, up into the vault.
+  const clear = SX * 0.274; // passage half-width
+  const p0 = clear - 0.03, p1 = SX * 0.47 - 0.02; // a hair off the arch faces (no z-fight)
+  for (const sx of [-1, 1]) F.kit('castle/tower-square-base', (sx * (p0 + p1)) / 2, y, 0, { sx: p1 - p0, sy: (SY * 0.86) / 1.01, sz: SZ * 0.274 * 2 + 0.3, collide: 'box', retex: STONE });
+  // No gate leaves: folded against the passage walls they read as doors in the city wall.
   // Banners on the outer face, lanterns at night.
   const tint = { north: 0x2f5a8a, east: 0xa82a2a, south: 0xc89a30, west: 0x3a7a4a }[node.gate] ?? 0xa82a2a;
   const face = (SZ * 0.94) / 2 + 0.05;
@@ -550,40 +635,197 @@ function gatehouse2(world, F, gw, H, node) {
 // Paving
 // -----------------------------------------------------------------------------------------
 /**
- * Cobbled street along a polyline that follows the ground (slabs ≤ 6 m, discs at the bends).
- * opts: { tint, kerb }
+ * Paving is draped on the terrain: every vertex sits `lift` m above the ground (heightAt), so no
+ * slab floats over a slope or sinks into it. Overlapping paving uses distinct lifts (Town.js
+ * PAVE_LIFT: squares over streets over lanes over the pomerium) — no coplanar faces to z-fight.
+ * A skirt along the edges reaches into the ground. Geometry goes to the static batches.
  */
-export function paveLine(world, pts, width, opts = {}) {
-  const tint = opts.tint ?? 0xb0a898;
-  for (let i = 0; i < pts.length - 1; i++) {
-    const [ax, az] = pts[i], [bx, bz] = pts[i + 1];
-    const L = Math.hypot(bx - ax, bz - az);
-    const m = Math.max(1, Math.ceil(L / 6));
-    const rot = Math.atan2(bx - ax, bz - az);
-    for (let k = 0; k < m; k++) {
-      const t0 = k / m, t1 = (k + 1) / m;
-      const x0 = ax + (bx - ax) * t0, z0 = az + (bz - az) * t0, x1 = ax + (bx - ax) * t1, z1 = az + (bz - az) * t1;
-      const h0 = world.heightAt(x0, z0), h1 = world.heightAt(x1, z1);
-      const l = L / m;
-      const F = new Frame(world, (x0 + x1) / 2, (h0 + h1) / 2 - 0.06, (z0 + z1) / 2, rot);
-      F.box(width, 0.14, l + 0.04, 0, 0, 0, 'cobble', { castShadow: false, tint, rx: -Math.atan2(h1 - h0, l) });
-      if (opts.kerb) for (const s of [-1, 1]) F.box(0.25, 0.2, l + 0.04, s * (width / 2 + 0.1), -0.02, 0, 'stoneDark', { castShadow: false, collide: false, rx: -Math.atan2(h1 - h0, l), detail: true });
+const SKIRT = 0.14;
+const _tri = (pos, a, b, c, up) => {
+  // Keep the winding so the face looks along `up` ([x, y, z]).
+  const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+  const n = [uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx];
+  if (n[0] * up[0] + n[1] * up[1] + n[2] * up[2] < 0) [b, c] = [c, b];
+  pos.push(...a, ...b, ...c);
+};
+function pavingSolid(world, pos, mat, opts) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  world.addSolid(g, _m.identity(), mat, opts);
+}
+
+/** Sutherland–Hodgman: polygon [[x, z]…] clipped to a counter-clockwise triangle. */
+function clipToTri(subject, tri) {
+  let out = subject;
+  for (let i = 0; i < 3 && out.length; i++) {
+    const A = tri[i], B = tri[(i + 1) % 3], inp = out;
+    out = [];
+    const side = (P) => (B[0] - A[0]) * (P[1] - A[1]) - (B[1] - A[1]) * (P[0] - A[0]);
+    for (let k = 0; k < inp.length; k++) {
+      const P = inp[k], Q = inp[(k + 1) % inp.length], sp = side(P), sq = side(Q);
+      if (sp >= 0) out.push(P);
+      if ((sp >= 0) !== (sq >= 0)) { const t = sp / (sp - sq); out.push([P[0] + (Q[0] - P[0]) * t, P[1] + (Q[1] - P[1]) * t]); }
     }
-    if (i > 0) {
-      const h = world.heightAt(ax, az);
-      new Frame(world, ax, h - 0.06, az, 0).cyl(width / 2, 0.14, 0, 0, 0, 'cobble', { seg: 12, castShadow: false, tint });
+  }
+  return out;
+}
+const ccwTri = (t) => ((t[1][0] - t[0][0]) * (t[2][1] - t[0][1]) - (t[1][1] - t[0][1]) * (t[2][0] - t[0][0]) >= 0 ? t : [t[0], t[2], t[1]]);
+/**
+ * A triangle [[x, z] ×3] laid exactly on the terrain mesh: cut by the height grid's own triangles
+ * (Terrain.Heightfield: a-c-b / c-e-b per cell), every piece `lift` above them. Where the ground
+ * under it is one plane anyway the triangle stays whole.
+ */
+function drapeTri(world, tri, lift, pos) {
+  const H = (x, z) => world.heightAt(x, z);
+  const T = ccwTri(tri);
+  const v3 = ([x, z]) => [x, H(x, z) + lift, z];
+  // Planar enough? Compare the flat triangle with the ground inside it.
+  const [p0, p1, p2] = T.map(v3);
+  let flat = true;
+  for (const [u, v] of [[1 / 3, 1 / 3], [0.5, 0], [0, 0.5], [0.5, 0.5], [0.25, 0.25], [0.6, 0.2], [0.2, 0.6]]) {
+    const x = p0[0] + (p1[0] - p0[0]) * u + (p2[0] - p0[0]) * v, z = p0[2] + (p1[2] - p0[2]) * u + (p2[2] - p0[2]) * v;
+    const y = p0[1] + (p1[1] - p0[1]) * u + (p2[1] - p0[1]) * v;
+    if (Math.abs(y - H(x, z) - lift) > 0.01) { flat = false; break; }
+  }
+  if (flat) { _tri(pos, p0, p1, p2, [0, 1, 0]); return; }
+  const xs = T.map((q) => q[0]), zs = T.map((q) => q[1]);
+  const i0 = Math.floor((Math.min(...xs) + HALF) / GRID_STEP), i1 = Math.ceil((Math.max(...xs) + HALF) / GRID_STEP);
+  const j0 = Math.floor((Math.min(...zs) + HALF) / GRID_STEP), j1 = Math.ceil((Math.max(...zs) + HALF) / GRID_STEP);
+  for (let j = j0; j < j1; j++) for (let i = i0; i < i1; i++) {
+    const x0 = -HALF + i * GRID_STEP, z0 = -HALF + j * GRID_STEP, x1 = x0 + GRID_STEP, z1 = z0 + GRID_STEP;
+    for (const cell of [[[x0, z0], [x0, z1], [x1, z0]], [[x0, z1], [x1, z1], [x1, z0]]]) {
+      const piece = clipToTri(ccwTri(cell), T);
+      for (let k = 1; k + 1 < piece.length; k++) _tri(pos, v3(piece[0]), v3(piece[k]), v3(piece[k + 1]), [0, 1, 0]);
     }
   }
 }
 
-/** Flat cobbled polygon (a square) at the ground level of its centroid. */
-export function pavePoly(world, pts, tint = 0xbab2a2) {
-  const cx = pts.reduce((s, p) => s + p[0], 0) / pts.length, cz = pts.reduce((s, p) => s + p[1], 0) / pts.length;
-  const y = world.heightAt(cx, cz);
-  const shape = new THREE.Shape(pts.map(([x, z]) => new THREE.Vector2(x - cx, -(z - cz))));
-  const g = new THREE.ExtrudeGeometry(shape, { depth: 0.14, bevelEnabled: false });
-  g.rotateX(-Math.PI / 2); // shape (x, -z) -> world (x, z), extrusion up
-  new Frame(world, cx, y - 0.06, cz, 0).geo(g, 0, 0, 0, 'cobble', { castShadow: false, tint });
+/** Polyline resampled to points ≤ `step` apart (closed: back to the first point). */
+function resample(pts, step, closed) {
+  const src = closed ? [...pts, pts[0]] : pts, out = [];
+  for (let i = 0; i < src.length - 1; i++) {
+    const [ax, az] = src[i], [bx, bz] = src[i + 1];
+    const L = Math.hypot(bx - ax, bz - az);
+    if (L < 1e-6) continue;
+    const n = Math.max(1, Math.ceil(L / step));
+    for (let k = 0; k < n; k++) out.push([ax + ((bx - ax) * k) / n, az + ((bz - az) * k) / n]);
+  }
+  if (!closed) out.push(src[src.length - 1]);
+  return out;
+}
+
+/** Mitred side vector (left normal / cos of the half bend) at every point of a polyline. */
+function sideVectors(p, closed) {
+  const n = p.length, out = [];
+  const dir = (i, j) => { const dx = p[j][0] - p[i][0], dz = p[j][1] - p[i][1], L = Math.hypot(dx, dz) || 1; return [dx / L, dz / L]; };
+  for (let i = 0; i < n; i++) {
+    const prev = i > 0 ? dir(i - 1, i) : closed ? dir(n - 1, 0) : null;
+    const next = i < n - 1 ? dir(i, i + 1) : closed ? dir(n - 1, 0) : null;
+    const t = prev && next ? [prev[0] + next[0], prev[1] + next[1]] : prev || next;
+    const L = Math.hypot(t[0], t[1]) || 1;
+    const nx = -t[1] / L, nz = t[0] / L;
+    const ref = next || prev;
+    const k = Math.min(2, 1 / Math.max(0.5, nx * -ref[1] + nz * ref[0]));
+    out.push([nx * k, nz * k]);
+  }
+  return out;
+}
+
+/**
+ * Street paving along a centre line (world [x, z]): a ribbon `width` wide, `lift` above the
+ * ground, mitred at the bends. opts: { tint, lift, closed, kerb, covered(x, z), kerbSkip(x, z) } —
+ * `covered`: points under higher paving (a square): runs inside it are left out; `kerbSkip`:
+ * no kerb there (squares, crossing streets). Returns the resampled centre line.
+ */
+export function paveRibbon(world, pts, width, opts = {}) {
+  const lift = opts.lift ?? 0.08, closed = !!opts.closed;
+  const p = resample(pts, 2, closed), side = sideVectors(p, closed);
+  const n = p.length, segs = closed ? n : n - 1;
+  const cols = Math.max(2, Math.ceil(width / 2.2) + 1);
+  const H = (x, z) => world.heightAt(x, z);
+  const at = (i, o, dy) => { const [x, z] = p[i % n], [sx, sz] = side[i % n]; const X = x + sx * o, Z = z + sz * o; return [X, H(X, Z) + dy, Z]; };
+  const cov = p.map(([x, z]) => !!opts.covered?.(x, z));
+  const keep = (i) => !(cov[i % n] && cov[(i + 1) % n] && (closed || i > 0 ? cov[(i + n - 1) % n] : true) && (closed || i + 2 < n ? cov[(i + 2) % n] : true));
+  const pos = [], up = [0, 1, 0];
+  for (let i = 0; i < segs; i++) {
+    if (!keep(i)) continue;
+    for (let j = 0; j < cols - 1; j++) {
+      const o0 = -width / 2 + (j * width) / (cols - 1), o1 = -width / 2 + ((j + 1) * width) / (cols - 1);
+      const a = at(i, o0, lift), b = at(i + 1, o0, lift), c = at(i, o1, lift), d = at(i + 1, o1, lift);
+      const xz = (q) => [q[0], q[2]];
+      drapeTri(world, [xz(a), xz(c), xz(b)], lift, pos);
+      drapeTri(world, [xz(b), xz(c), xz(d)], lift, pos);
+    }
+    // Skirts along both edges, end caps where the run starts / stops.
+    for (const o of [-width / 2, width / 2]) {
+      const [sx, sz] = side[i % n], out = [Math.sign(o) * sx, 0, Math.sign(o) * sz];
+      const a = at(i, o, lift), b = at(i + 1, o, lift), a2 = at(i, o, -SKIRT), b2 = at(i + 1, o, -SKIRT);
+      _tri(pos, a, a2, b, out);
+      _tri(pos, b, a2, b2, out);
+    }
+    for (const [k, prevOk] of [[i, closed || i > 0 ? keep((i + segs - 1) % segs) : false], [i + 1, closed || i + 1 < segs ? keep((i + 1) % segs) : false]]) {
+      if (prevOk) continue;
+      const t = [p[(i + 1) % n][0] - p[i][0], 0, p[(i + 1) % n][1] - p[i][1]];
+      const out = k === i ? [-t[0], 0, -t[2]] : t;
+      const a = at(k, -width / 2, lift), b = at(k, width / 2, lift), a2 = at(k, -width / 2, -SKIRT), b2 = at(k, width / 2, -SKIRT);
+      _tri(pos, a, a2, b, out);
+      _tri(pos, b, a2, b2, out);
+    }
+  }
+  if (pos.length) pavingSolid(world, pos, 'cobble', { castShadow: false, tint: opts.tint ?? 0xb0a898 });
+  if (opts.kerb) {
+    // Kerb stones along both edges (mitred like the street), cut where squares / streets meet.
+    const kp = [];
+    for (const s of [-1, 1]) {
+      for (let i = 0; i < segs; i++) {
+        const mid = at(i, s * (width / 2 + 0.13), 0), mid2 = at(i + 1, s * (width / 2 + 0.13), 0);
+        if (opts.kerbSkip?.(mid[0], mid[2]) || opts.kerbSkip?.(mid2[0], mid2[2]) || !keep(i)) continue;
+        const [sx, sz] = side[i % n];
+        const inner = s * (width / 2), outer = s * (width / 2 + 0.26);
+        const a = at(i, inner, lift + 0.07), b = at(i + 1, inner, lift + 0.07), c = at(i, outer, lift + 0.07), d = at(i + 1, outer, lift + 0.07);
+        _tri(kp, a, c, b, up);
+        _tri(kp, b, c, d, up);
+        const out = [s * sx, 0, s * sz];
+        const c2 = at(i, outer, -0.05), d2 = at(i + 1, outer, -0.05);
+        _tri(kp, c, c2, d, out);
+        _tri(kp, d, c2, d2, out);
+        const a2 = at(i, inner, lift - 0.02), b2 = at(i + 1, inner, lift - 0.02), inn = [-s * sx, 0, -s * sz];
+        _tri(kp, a, a2, b, inn);
+        _tri(kp, b, a2, b2, inn);
+      }
+    }
+    if (kp.length) pavingSolid(world, kp, 'stoneDark', { castShadow: false, collide: false, detail: true });
+  }
+  return p;
+}
+
+/**
+ * Paved polygon (a square, world [x, z]) draped on the ground: its triangles cut by the terrain's
+ * grid triangles, `lift` above them, with a skirt round the edge. opts: { tint, lift }
+ */
+export function pavePoly(world, pts, opts = {}) {
+  const lift = opts.lift ?? 0.1;
+  const H = (x, z) => world.heightAt(x, z);
+  // Counter-clockwise copy (x, z) for the clipping, then fan triangles of the polygon itself.
+  let poly = pts.map(([x, z]) => [x, z]);
+  const area = poly.reduce((s, q, i) => { const r = poly[(i + 1) % poly.length]; return s + q[0] * r[1] - r[0] * q[1]; }, 0);
+  if (area < 0) poly = poly.reverse();
+  const tris = THREE.ShapeUtils.triangulateShape(poly.map(([x, z]) => new THREE.Vector2(x, z)), []).map((t) => t.map((k) => poly[k]));
+  const xs = poly.map((q) => q[0]), zs = poly.map((q) => q[1]);
+  const pos = [];
+  for (const T of tris) drapeTri(world, T, lift, pos);
+  // Skirt round the edge (outward).
+  const ring = resample(poly, 2, true);
+  const cx = xs.reduce((s, v) => s + v, 0) / xs.length, cz = zs.reduce((s, v) => s + v, 0) / zs.length;
+  for (let k = 0; k < ring.length; k++) {
+    const [ax, az] = ring[k], [bx, bz] = ring[(k + 1) % ring.length];
+    const out = [(ax + bx) / 2 - cx, 0, (az + bz) / 2 - cz];
+    const a = [ax, H(ax, az) + lift, az], b = [bx, H(bx, bz) + lift, bz], a2 = [ax, H(ax, az) - SKIRT, az], b2 = [bx, H(bx, bz) - SKIRT, bz];
+    _tri(pos, a, a2, b, out);
+    _tri(pos, b, a2, b2, out);
+  }
+  pavingSolid(world, pos, 'cobble', { castShadow: false, tint: opts.tint ?? 0xbab2a2 });
 }
 
 // -----------------------------------------------------------------------------------------

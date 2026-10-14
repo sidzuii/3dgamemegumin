@@ -85,7 +85,7 @@
   {
    "id": "east_road",
    "length": 998,
-   "maxGrade": 0.31
+   "maxGrade": 0.3
   },
   {
    "id": "east_pass_road",
@@ -115,7 +115,7 @@
   {
    "id": "west_road",
    "length": 289,
-   "maxGrade": 0.29
+   "maxGrade": 0.28
   },
   {
    "id": "glade_trail",
@@ -162,65 +162,73 @@
    "segments": 182,
    "minDistanceToWater": 19.1
   },
+  "streetCrossSlope": {
+   "max": 0.007,
+   "at": [
+    10,
+    107
+   ],
+   "street": "caravan_street"
+  },
   "buildings": {
    "key": 22,
-   "generated": 92,
-   "total": 114,
+   "generated": 79,
+   "total": 101,
    "byDistrict": {
-    "center": 9,
-    "trade": 13,
-    "res_w": 17,
-    "res_ne": 21,
-    "caravan": 9,
-    "temple": 8,
+    "center": 8,
+    "trade": 12,
+    "res_w": 12,
+    "res_ne": 19,
+    "caravan": 8,
+    "temple": 7,
     "craft": 16,
-    "res_s": 21
+    "res_s": 19
    },
    "byKind": {
     "guild": 1,
     "tavern": 1,
     "public": 7,
     "military": 1,
-    "shop": 14,
+    "shop": 12,
     "inn": 2,
-    "stable": 3,
+    "stable": 2,
     "temple": 2,
     "workshop": 8,
-    "house": 70,
-    "warehouse": 5
+    "house": 59,
+    "warehouse": 6
    },
-   "footprint_m2": 8153
+   "footprint_m2": 6743
   },
   "streets": {
    "main": 365,
    "secondary": 354,
    "lane": 235,
-   "ring": 676
+   "ring": 674
   },
   "districts": [
    {
     "id": "center",
     "name": "Центр",
     "area": 5842,
-    "buildings": 9
+    "buildings": 8
    },
    {
     "id": "temple",
     "name": "Храмовый холм",
     "area": 6416,
-    "buildings": 8
+    "buildings": 7
    },
    {
     "id": "trade",
     "name": "Торговый район",
     "area": 5450,
-    "buildings": 13
+    "buildings": 12
    },
    {
     "id": "caravan",
     "name": "Караванный район",
     "area": 5470,
-    "buildings": 9
+    "buildings": 8
    },
    {
     "id": "craft",
@@ -232,19 +240,19 @@
     "id": "res_ne",
     "name": "Речной квартал",
     "area": 9400,
-    "buildings": 21
+    "buildings": 19
    },
    {
     "id": "res_w",
     "name": "Западная слобода",
     "area": 3510,
-    "buildings": 17
+    "buildings": 12
    },
    {
     "id": "res_s",
     "name": "Южный квартал",
     "area": 3344,
-    "buildings": 21
+    "buildings": 19
    }
   ],
   "squares": [
@@ -364,8 +372,8 @@
      -20
     ],
     "size": [
-     22,
-     15
+     18,
+     13
     ],
     "face": "S",
     "floors": 2
@@ -383,7 +391,7 @@
     ],
     "size": [
      16,
-     13
+     12
     ],
     "face": "W",
     "floors": 2
@@ -400,8 +408,8 @@
      14
     ],
     "size": [
-     18,
-     14
+     16,
+     12
     ],
     "face": "E",
     "floors": 2
@@ -652,8 +660,8 @@
      -54
     ],
     "size": [
-     14,
-     26
+     12,
+     22
     ],
     "face": "S",
     "floors": 1

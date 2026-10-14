@@ -110,7 +110,7 @@ export const ROADS = [
  */
 export const FLATS = [
   // Axel: the wall polygon pushed out 8 m (wall foot + the strip outside), then the temple terrace.
-  { poly: offsetPolygon(WALL.nodes.map((n) => toWorld(n.u, n.v)), 8), feather: 26, level: AXEL.level },
+  { poly: offsetPolygon(WALL.nodes.map((n) => toWorld(n.u, n.v)), 8), feather: 26, level: AXEL.level, city: true },
   { x: -388, z: -42, r: 34, feather: 16, level: 3.4 }, // temple hill (the temple square sits on it)
   { x: -320, z: 158, r: 22, feather: 14, level: 1.2 }, // caravan camp outside the south gate
   { x: -292, z: -142, r: 30, feather: 16, level: 'auto' }, // guild field

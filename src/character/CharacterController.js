@@ -21,8 +21,9 @@ const MAX_SLOPE = THREE.MathUtils.degToRad(48);
 const MIN_GROUND_NY = Math.cos(MAX_SLOPE);
 
 export const MOVE = {
-  walkSpeed: 3.4,
-  runSpeed: 6.4,
+  walkSpeed: 3.4, // default (W): an easy jog
+  runSpeed: 6.4, // Shift
+  strollSpeed: 1.5, // walk mode (CapsLock): a real walking pace, e.g. in towns
   groundAccel: 34,
   groundDecel: 26,
   airAccel: 9,
@@ -107,7 +108,7 @@ export class CharacterController {
 
   /**
    * @param {number} dt
-   * @param {object} cmd { moveDir: Vector3 (world, xz, length<=1), run: bool,
+   * @param {object} cmd { moveDir: Vector3 (world, xz, length<=1), run: bool, stroll?: bool,
    *                       jumpPressed: bool, jumpHeld: bool, canMove: bool, faceYaw?: number }
    */
   update(dt, cmd) {
@@ -118,7 +119,7 @@ export class CharacterController {
     // ----- Horizontal velocity: smooth acceleration / deceleration -----
     const wantDir = cmd.canMove ? cmd.moveDir : _dir.set(0, 0, 0);
     const inputMag = Math.min(1, wantDir.length());
-    const maxSpeed = (cmd.run ? this.move.runSpeed : this.move.walkSpeed) * this.speedMul * (cmd.speedMul ?? 1);
+    const maxSpeed = (cmd.run ? this.move.runSpeed : cmd.stroll ? this.move.strollSpeed : this.move.walkSpeed) * this.speedMul * (cmd.speedMul ?? 1);
     const targetVX = wantDir.x * maxSpeed;
     const targetVZ = wantDir.z * maxSpeed;
     let accel;

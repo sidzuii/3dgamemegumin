@@ -61,6 +61,7 @@ export class Player {
     this.respawnPending = false;
     this.invuln = 0;
     this.envSpeedMul = 1; // water / terrain slowdown set by the world each frame
+    this.strolling = false; // walk mode (CapsLock): walking pace instead of the default jog
   }
 
   /** Called after the model is loaded and the world is built. */
@@ -285,6 +286,10 @@ export class Player {
 
     const wantsRun = (input.isDown('ShiftLeft') || input.isDown('ShiftRight')) && moving;
     const run = wantsRun && !this.staminaDepleted && this.stamina > 0 && !attacking;
+    if (input.wasPressed('CapsLock')) {
+      this.strolling = !this.strolling;
+      this.game.hud.toast(this.strolling ? 'Режим шага: вкл.' : 'Режим шага: выкл.', 1.6);
+    }
 
     let jumpPressed = input.wasPressed('Space') && canMove && !attacking;
     const canJump = this.stamina >= STAMINA.jumpCost * 0.5 || this.controller.grounded;
@@ -292,6 +297,7 @@ export class Player {
     const cmd = {
       moveDir: _move,
       run,
+      stroll: this.strolling,
       jumpPressed,
       jumpHeld: input.isDown('Space'),
       canMove,
@@ -397,13 +403,17 @@ export class Player {
     root.rotation.y = yaw;
     // Retargeted idle/locomotion clips can lower a toe a few centimetres below
     // the controller's ground plane. Lift the rendered rig slightly while grounded.
+    // `toeMargin`: height of the toe joint above the sole (Megumin's rest retarget stands on
+    // her bind soles, so she needs only a few millimetres). The ground probe starts just above
+    // her feet: from the sky it hit ceilings, roofs and bridge decks (a 12 cm float indoors).
     if (c.grounded && this.model.feet?.length) {
       root.updateMatrixWorld(true);
       let lift = 0;
       const toe = new THREE.Vector3();
+      const margin = this.model.toeMargin ?? 0.015;
       for (const foot of this.model.feet) {
         foot.getWorldPosition(toe);
-        lift = Math.max(lift, this.game.world.groundAt(toe.x, toe.z) - toe.y + 0.015);
+        lift = Math.max(lift, this.game.world.groundAt(toe.x, toe.z, c.position.y + 0.6) - toe.y + margin);
       }
       root.position.y += clamp(lift, 0, 0.12);
     }
