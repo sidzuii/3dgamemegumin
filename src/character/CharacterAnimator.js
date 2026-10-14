@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { splitClip, strikeTime, loopSpeed, MAPS } from './Retarget.js';
+import { splitClip, strikeTime, loopSpeed, gaitProfile, MAPS } from './Retarget.js';
 import { damp, clamp } from '../core/math.js';
 import { solveTwoBone } from './rigUtils.js';
 
@@ -15,11 +15,15 @@ import { solveTwoBone } from './rigUtils.js';
  * feet don't slide when the speed changes. Cross-fades are explicit weight ramps.
  */
 
+// 'rest' rigs only (see CharacterAnimator): `damp` softens the library's upper-body hunch
+// (15-50° at the upper chest), `flight` flattens the leaps of its jog/sprint (bake options).
+const SOFT = { chest: 0.55, neck: 0.55, lShoulder: 0.5, rShoulder: 0.5 };
+
 export const CLIPSET = {
-  Idle: { src: 'Idle_Loop', loop: true },
-  Walk: { src: 'Walk_Loop', loop: true },
-  Jog: { src: 'Jog_Fwd_Loop', loop: true },
-  Sprint: { src: 'Sprint_Loop', loop: true },
+  Idle: { src: 'Idle_Loop', loop: true, damp: SOFT },
+  Walk: { src: 'Walk_Loop', loop: true, damp: { chest: 0.7, neck: 0.7, lShoulder: 0.6, rShoulder: 0.6 } },
+  Jog: { src: 'Jog_Fwd_Loop', loop: true, damp: SOFT, flight: 0.5 },
+  Sprint: { src: 'Sprint_Loop', loop: true, damp: SOFT, flight: 0.7 },
   JumpStart: { src: 'Jump_Start', hipsY: 'down' },
   Fall: { src: 'Jump_Loop', loop: true, hipsY: 'none' },
   Land: { src: 'Jump_Land', hipsY: 'down' },
@@ -57,12 +61,20 @@ function rotateBoneWorld(b, q) {
   b.updateMatrixWorld(true);
 }
 
+/**
+ * Locomotion blend by ground speed (m/s): pure walk below `walk` (the CapsLock stroll,
+ * ~1.5), walk -> jog up to `jog`, pure jog up to `jogTop` (the default W speed 3.4),
+ * jog -> sprint up to `sprint` (Shift runs at 6.4).
+ */
+const GAIT = { walk: 1.8, jog: 2.8, jogTop: 4.4, sprint: 5.6 };
+
 /** Lower-layer states (full-body unless an upper action overrides). */
 const BASE_FADE = { Loco: 0.22, JumpStart: 0.08, Fall: 0.25, Land: 0.08, CastEnter: 0.2, CastLoop: 0.15, CastShoot: 0.06, Death: 0.15, Crouch: 0.6, Roll: 0.08 };
 
 export class CharacterAnimator {
   /**
-   * @param {object} model   { mixerRoot, rigRoot, anim(Group), uniforms, setWind?, setCapeWind? }
+   * @param {object} model   { mixerRoot, rigRoot, anim(Group), uniforms, setWind?, setCapeWind?, retarget? }
+   *   retarget: 'rest' keeps the model's own bind posture as the neutral (see prepareTarget).
    * @param {AnimationLibrary} lib
    * @param {string} mapName 'mixamo' | 'cc'
    */
@@ -70,12 +82,16 @@ export class CharacterAnimator {
     this.model = model;
     this.map = MAPS[mapName];
     this.mixer = new THREE.AnimationMixer(model.mixerRoot);
-    const ctx = lib.prepareTarget(model.rigRoot, mapName);
+    const rest = model.retarget === 'rest';
+    const ctx = lib.prepareTarget(model.rigRoot, mapName, { match: rest ? 'rest' : 'dir' });
     this.lower = {};
     this.upper = {};
     this.info = {};
     for (const [name, def] of Object.entries(CLIPSET)) {
-      const clip = lib.bake(ctx, def.src, { name, hipsY: def.hipsY, reverse: def.reverse });
+      const clip = lib.bake(ctx, def.src, {
+        name, hipsY: def.hipsY, reverse: def.reverse,
+        damp: rest ? def.damp : undefined, flight: rest ? def.flight : undefined,
+      });
       const { lower, upper } = splitClip(clip, this.map);
       const speed = def.speed || 1;
       for (const [layer, c] of [[this.lower, lower], [this.upper, upper]]) {
@@ -108,6 +124,14 @@ export class CharacterAnimator {
       }));
     this.hips = b.hips;
     this.stance = 0;
+    // Standing reference (rig space): straight-leg hip height, ankle height and the bind leg
+    // line (ankle behind the hip joint). 'rest' rigs stand up straight in idle.
+    this.stand = rest && b.lFoot && b.rFoot ? {
+      hipsY: ctx.refP.hips.y,
+      footY: (ctx.refP.lFoot.y + ctx.refP.rFoot.y) / 2,
+      footDZ: ((ctx.refP.lFoot.z - ctx.refP.lThigh.z) + (ctx.refP.rFoot.z - ctx.refP.rThigh.z)) / 2,
+      hipDrop: 0.004, // knees ≈ 168° (the library idle sinks 4-5 cm into a ready stance -> 143°)
+    } : null;
     // Hit frames of attacks (fastest hand motion), in scaled seconds.
     for (const n of ['Attack1', 'Attack2', 'Attack3']) {
       const def = CLIPSET[n];
@@ -116,12 +140,25 @@ export class CharacterAnimator {
     }
     // Reference speeds (m/s) of locomotion loops for foot-locking playback rates.
     // Foot travel underestimates fast gaits (flight phase), so jog/sprint get a stride factor.
+    // The walk's planted foot moves at ≈ its foot travel; 1.15 keeps the 1.5 m/s stroll at
+    // ~135 steps/min with little slip (1.35 gave ~0.4 m/s of skating).
     const k = ctx.scale;
     this.refSpeed = {
-      Walk: loopSpeed(lib, 'Walk_Loop') * k * 1.35,
+      Walk: loopSpeed(lib, 'Walk_Loop') * k * 1.15,
       Jog: loopSpeed(lib, 'Jog_Fwd_Loop') * k * 1.45,
       Sprint: loopSpeed(lib, 'Sprint_Loop') * k * 2.0,
     };
+    // 'rest' rigs: the library jog and sprint are fast runs (a planted foot sweeps back at
+    // ~5.1 / 7.6 m/s on Megumin) played at 3.4 / 6.4 m/s, so the feet skated backwards. Their
+    // ground contacts are slowed down and the swings sped up (same cadence), see _warpPhase.
+    this.warp = {};
+    if (rest) {
+      for (const n of ['Jog', 'Sprint']) {
+        const g = gaitProfile(lib, CLIPSET[n].src);
+        g.footSpeed *= k;
+        if (g.contact > 0.05 && g.contact < 0.95 && g.footSpeed > 0.1) this.warp[n] = g;
+      }
+    }
 
     this.base = 'Loco';
     this.baseTime = 0;
@@ -229,27 +266,31 @@ export class CharacterAnimator {
       const wIdle = 1 - clamp(s / 0.6, 0, 1);
       let wWalk = 0, wJog = 0, wSprint = 0;
       const mov = 1 - wIdle;
-      if (s < 2.2) wWalk = mov;
-      else if (s < 3.6) { const k = (s - 2.2) / 1.4; wWalk = mov * (1 - k); wJog = mov * k; }
-      else if (s < 5.6) { const k = (s - 3.6) / 2.0; wJog = mov * (1 - k); wSprint = mov * k; }
+      if (s < GAIT.walk) wWalk = mov;
+      else if (s < GAIT.jog) { const k = (s - GAIT.walk) / (GAIT.jog - GAIT.walk); wWalk = mov * (1 - k); wJog = mov * k; }
+      else if (s < GAIT.jogTop) wJog = mov;
+      else if (s < GAIT.sprint) { const k = (s - GAIT.jogTop) / (GAIT.sprint - GAIT.jogTop); wJog = mov * (1 - k); wSprint = mov * k; }
       else wSprint = mov;
       tl.Idle = wIdle; tl.Walk = wWalk; tl.Jog = wJog; tl.Sprint = wSprint;
       // Shared phase: cycle duration = weighted (clip duration * refSpeed / speed).
+      let cyc = 0;
       if (mov > 0.01) {
-        let cyc = 0, ws = 0;
+        let ws = 0;
         for (const [n, w] of [['Walk', wWalk], ['Jog', wJog], ['Sprint', wSprint]]) {
           if (w <= 0) continue;
           const d = this.lower[n].getClip().duration;
           cyc += w * d * (this.refSpeed[n] / Math.max(speed, 0.3));
           ws += w;
         }
-        cyc /= ws;
-        this.phase = (this.phase + dt / Math.max(cyc, 0.2)) % 1;
+        cyc = Math.max(cyc / ws, 0.2);
+        this.phase = (this.phase + dt / cyc) % 1;
       }
       for (const n of ['Walk', 'Jog', 'Sprint']) {
         const d = this.lower[n].getClip().duration;
-        this.lower[n].time = this.phase * d;
-        this.upper[n].time = this.phase * d;
+        const W = this.warp[n];
+        const u = W && cyc > 0 ? this._warpPhase(W, this.phase, speed, cyc, d) : this.phase;
+        this.lower[n].time = u * d;
+        this.upper[n].time = u * d;
         this.lower[n].timeScale = 0;
         this.upper[n].timeScale = 0;
       }
@@ -302,7 +343,8 @@ export class CharacterAnimator {
     if (this.model.holdStaff) {
       let w;
       if (this.action) w = this.action.name === 'Hit' ? 0.6 : 0;
-      else if (this.base === 'Loco') w = 1 - 0.3 * clamp((this.speed - 2.5) / 3, 0, 1);
+      // A little of the clip's arm swing shows through while walking and running.
+      else if (this.base === 'Loco') w = 1 - 0.2 * (tl.Walk || 0) - 0.3 * clamp((this.speed - 2.5) / 3, 0, 1);
       else if (this.base === 'JumpStart' || this.base === 'Fall' || this.base === 'Land') w = 0.85;
       else w = 0;
       this.model.holdStaff(w, dt);
@@ -321,18 +363,20 @@ export class CharacterAnimator {
     const a = this.model.anim;
     a.rotation.set(lean.pitch, 0, lean.roll, 'YXZ');
 
-    // Cloak / hair wind (blend shapes + shader flutter).
+    // Cloak / hair wind (blend shapes + shader flutter). At walking pace (the CapsLock stroll)
+    // the cloak hangs closer to the body: half the speed-driven wind, full again from a jog.
     const lv = m.localVel;
-    const capeAmt = speed > 4 ? 1 : speed > 0.5 ? 0.4 : 0.1;
-    this.capeWind.x = damp(this.capeWind.x, -lv.x * 0.03, 6, dt);
+    const calm = speed < 0.5 ? 1 : 0.5 + 0.5 * clamp((speed - GAIT.walk) / (GAIT.jog - GAIT.walk), 0, 1);
+    const capeAmt = (speed > 4 ? 1 : speed > 0.5 ? 0.4 : 0.1) * calm;
+    this.capeWind.x = damp(this.capeWind.x, -lv.x * 0.03 * calm, 6, dt);
     this.capeWind.y = damp(this.capeWind.y, clamp(-lv.y * 0.012 + capeAmt * 0.05, -0.15, 0.25), 6, dt);
-    this.capeWind.z = damp(this.capeWind.z, clamp(-lv.z * 0.045 - capeAmt * 0.08, -0.4, 0.12), 6, dt);
+    this.capeWind.z = damp(this.capeWind.z, clamp(-lv.z * 0.045 * calm - capeAmt * 0.08, -0.4, 0.12), 6, dt);
     // Keep the long braids moving gently even while standing. Roxy has no hair
     // bones in her source rig, so her hair material uses this as vertex sway.
     const idleSway = this.base === 'Loco' && speed < 0.35 ? Math.sin(this.time * 1.35) * 0.045 : 0;
     this.hairWind.set(-lv.x * 0.006 + idleSway, -lv.y * 0.004, -lv.z * 0.009 + idleSway * 0.45);
     const st = this.base;
-    let tb = 0.05 + Math.sin(this.time * 1.3) * 0.03 + clamp(speed / 7, 0, 1) * 0.62;
+    let tb = 0.05 + Math.sin(this.time * 1.3) * 0.03 + clamp(speed / 7, 0, 1) * 0.62 * calm;
     if (st === 'JumpStart' || st === 'Fall') tb = Math.max(tb, 0.45 + clamp(-lv.y * 0.04, 0, 0.4));
     if (st === 'CastEnter' || st === 'CastLoop') tb = 0.2 + this.ctx.castCharge * 0.7 + Math.sin(this.time * 9) * 0.05 * this.ctx.castCharge;
     if (st === 'CastShoot') tb = 1;
@@ -380,6 +424,25 @@ export class CharacterAnimator {
     rotateBoneWorld(head, _cq.identity().slerp(_corr, 1 - neckShare));
   }
 
+  /**
+   * Clip position (0..1) of a time-warped loop at the shared phase `p`: the planted intervals
+   * (gaitProfile) get the share of the cycle in which a planted foot moves back at the ground
+   * speed, the swing gets the rest. Monotonic, 0 -> 0 and 1 -> 1, so the loop stays seamless.
+   */
+  _warpPhase(W, p, speed, cyc, dur) {
+    const C = W.contact;
+    const rate = Math.max(speed, 0.3) / W.footSpeed; // clip rate that locks a planted foot
+    const a = clamp((C * dur) / rate / cyc, C * 0.75, 0.6);
+    const kc = a / C, kf = (1 - a) / (1 - C);
+    let acc = 0;
+    for (let i = 0; i < W.n; i++) {
+      const l = (W.m[i] * kc + (1 - W.m[i]) * kf) / W.n;
+      if (acc + l >= p) return (i + (p - acc) / l) / W.n;
+      acc += l;
+    }
+    return p;
+  }
+
   /** Feet side by side under the hips, toes forward (weight w over the animated pose). */
   _fixStance(w) {
     if (w < 0.01 || this.legs.length !== 2) return;
@@ -388,16 +451,28 @@ export class CharacterAnimator {
     const rootQ = root.getWorldQuaternion(_rq);
     const inv = _m4.copy(root.matrixWorld).invert();
     const local = (o, v) => o.getWorldPosition(v).applyMatrix4(inv);
+    const st = this.stand;
+    if (st) {
+      // Stand up: hips back to (almost) the straight-leg height.
+      const hp = local(this.hips, _p0);
+      const want = st.hipsY - st.hipDrop;
+      if (hp.y < want) {
+        _p1.copy(hp).setY(hp.y + (want - hp.y) * w).applyMatrix4(root.matrixWorld);
+        this.hips.position.copy(this.hips.parent.worldToLocal(_p1));
+        this.hips.updateMatrixWorld(true);
+      }
+    }
     const hips = local(this.hips, _p0);
     const [L, R] = this.legs;
     const tl = local(L.thigh, _p1), tr = local(R.thigh, _p2);
     const fl = local(L.foot, _p3), fr = local(R.foot, _p4);
-    const half = Math.abs(tl.x - tr.x) * 0.5 * 1.2;
+    const half = Math.abs(tl.x - tr.x) * 0.5 * (st ? 1.1 : 1.2);
     const side = Math.sign(tl.x - tr.x) || 1;
-    const y = Math.min(fl.y, fr.y);
+    const y = st ? st.footY : Math.min(fl.y, fr.y);
     const pole = _ax.set(0, 0, 1).applyQuaternion(rootQ);
-    for (const [leg, s] of [[L, side], [R, -side]]) {
-      const target = _p5.set(hips.x + s * half, y, hips.z + 0.02).applyMatrix4(root.matrixWorld);
+    for (const [leg, s, th] of [[L, side, tl], [R, -side, tr]]) {
+      const z = st ? th.z + st.footDZ : hips.z + 0.02;
+      const target = _p5.set(hips.x + s * half, y, z).applyMatrix4(root.matrixWorld);
       solveTwoBone(leg.thigh, leg.shin, leg.foot, target, pole, w);
       // Toes forward with a slight outward splay, sole flat.
       const cur = _f.copy(leg.fwd).applyQuaternion(leg.foot.getWorldQuaternion(_hq));

@@ -77,12 +77,27 @@ const DIRS = [
   ['lThigh', 'lShin'], ['lShin', 'lFoot'], ['lFoot', 'lToe'],
   ['rThigh', 'rShin'], ['rShin', 'rFoot'], ['rFoot', 'rToe'],
 ];
+/**
+ * 'rest' matching: only the limbs are re-aimed (an A-pose's arms -> the library's T-pose);
+ * pelvis, spine, neck, clavicles and feet keep the target's bind rotations. The library is
+ * a Rigify rig whose joint lines differ from Mixamo/CC conventions (pelvis->spine001 is
+ * tilted 14.5° forward, the clavicle runs from the sternum 38° backwards, foot->toe is 10°
+ * flatter), so matching those directions bends the target's mesh: anterior pelvic tilt
+ * ("butt out"), a lumbar kink, retracted/narrowed shoulders and toes-up feet.
+ */
+const REST_DIRS = [
+  ['lArm', 'lFore'], ['lFore', 'lHand'], ['lHand', 'lHandTip'],
+  ['rArm', 'rFore'], ['rFore', 'rHand'], ['rHand', 'rHandTip'],
+  ['lThigh', 'lShin'], ['lShin', 'lFoot'],
+  ['rThigh', 'rShin'], ['rShin', 'rFoot'],
+];
 
 const _q = new THREE.Quaternion();
 const _q2 = new THREE.Quaternion();
 const _m = new THREE.Matrix4();
 const _v = new THREE.Vector3();
 const _up = new THREE.Vector3(0, 1, 0);
+const _I = new THREE.Quaternion();
 
 /** Orthonormal basis (as a quaternion) from a primary direction and a rough lateral axis. */
 function basisQ(dir, lateral) {
@@ -103,11 +118,16 @@ function frameDelta(dirA, latA, dirB, latB) {
  * differ: Megumin's is the source scene's action stance with the torso and head turned,
  * while her bind pose is straight. Only parent-relative bind transforms are used, so it
  * works whatever space the bind matrices live in.
+ * `skeletonRoot`: also move the skeleton's root bone (the hips) to its bind transform —
+ * Megumin's node rest pose has the hips 8.2 cm lower (wide action stance) than the bind pose.
+ * Only a bone whose parent is not a bone counts: partial skins (a hand, a boot) start at an
+ * inner bone whose parent is outside that skin, and those keep their node transforms.
  */
-export function applyBindPose(root) {
+export function applyBindPose(root, { skeletonRoot = false } = {}) {
   const done = new Set();
   const m = new THREE.Matrix4();
   const pos = new THREE.Vector3(), scl = new THREE.Vector3();
+  if (skeletonRoot) root.updateMatrixWorld(true);
   root.traverse((o) => {
     if (!o.isSkinnedMesh || done.has(o.skeleton)) return;
     done.add(o.skeleton);
@@ -115,7 +135,14 @@ export function applyBindPose(root) {
     const index = new Map(bones.map((b, i) => [b, i]));
     bones.forEach((b, i) => {
       const pi = index.get(b.parent);
-      if (pi === undefined) return;
+      if (pi === undefined) {
+        if (!skeletonRoot || !b.parent || b.parent.isBone) return;
+        // world bind = bindMatrix * boneInverse⁻¹, expressed in the parent's space
+        b.parent.updateWorldMatrix(true, false);
+        m.copy(boneInverses[i]).invert().premultiply(o.bindMatrix).premultiply(_m.copy(b.parent.matrixWorld).invert());
+        m.decompose(b.position, b.quaternion, scl);
+        return;
+      }
       // local = parentBind⁻¹ * bind = parentInverse * inverse(boneInverse)
       m.copy(boneInverses[i]).invert().premultiply(boneInverses[pi]);
       m.decompose(pos, b.quaternion, scl);
@@ -180,10 +207,14 @@ export class AnimationLibrary {
    * Prepare a target skeleton: pose it into the library's reference pose and remember
    * the reference rotations. Returns a retarget context used by `bake`.
    * `root` must be the model root (feet at origin, facing +Z, identity rotation).
+   * opts.match: 'dir' (default: every chain re-aimed at the library's joint directions) or
+   * 'rest' (the target's bind pose is the neutral; only arms/legs are re-aimed, see REST_DIRS;
+   * the hips also go to their bind height).
    */
-  prepareTarget(root, mapName) {
+  prepareTarget(root, mapName, opts = {}) {
+    const rest = opts.match === 'rest';
     const bones = findBones(root, MAPS[mapName]);
-    applyBindPose(root);
+    applyBindPose(root, { skeletonRoot: rest });
     root.updateMatrixWorld(true);
     // Remember bind locals so they can be restored for unmapped use.
     const bind = new Map();
@@ -197,7 +228,7 @@ export class AnimationLibrary {
     };
     const pos = (b) => relPos(b, root, new THREE.Vector3());
     // Full frame (direction + twist) for the pelvis: legs and torso hang off it.
-    if (bones.hips && bones.spine && bones.lThigh && bones.rThigh) {
+    if (!rest && bones.hips && bones.spine && bones.lThigh && bones.rThigh) {
       const dq = frameDelta(
         pos(bones.spine).sub(pos(bones.hips)), pos(bones.rThigh).sub(pos(bones.lThigh)),
         this.refP.spine.clone().sub(this.refP.hips), this.refP.rThigh.clone().sub(this.refP.lThigh),
@@ -208,7 +239,7 @@ export class AnimationLibrary {
     // the source's forward-leaning neck must not tilt the face down.
     const headBindQ = bones.head ? relQ(bones.head, root, new THREE.Quaternion()) : null;
     // Align each chain direction to the source reference (parents first).
-    for (const [role, child] of DIRS) {
+    for (const [role, child] of rest ? REST_DIRS : DIRS) {
       const b = bones[role], c = bones[child], sb = this.bones[role], sc = this.bones[child];
       if (!b || !c || !sb || !sc) continue;
       const want = _v.subVectors(this.refP[child], this.refP[role]).normalize().clone();
@@ -245,12 +276,27 @@ export class AnimationLibrary {
     ctx.root.updateMatrixWorld(true);
   }
 
+  /** Height of the lowest foot above the ground in the current library pose (library scale). */
+  footClearance() {
+    let c = Infinity;
+    for (const s of ['l', 'r']) {
+      c = Math.min(c, relPos(this.bones[s + 'Foot'], this.root, _v).y - this.refP[s + 'Foot'].y);
+      c = Math.min(c, relPos(this.bones[s + 'Toe'], this.root, _v).y - this.refP[s + 'Toe'].y);
+    }
+    return Math.max(0, c);
+  }
+
   /**
    * Bake one library clip for a prepared target.
    * opts: { name, fps=30, hipsY: 'keep'|'down'|'none', reverse=false, levelHead=0 }
    * `reverse` samples the clip backwards (a forehand swing becomes a backhand).
    * `levelHead` (0..1) lifts the clips' downward gaze towards the horizon, baked in
    * (the townsfolk; the heroines level their heads at runtime).
+   * `damp` ({ role: k }) scales a role's model-space rotation away from the reference pose
+   * (e.g. { chest: 0.55, neck: 0.55 } halves the library jog's 40° upper-back hunch).
+   * `flight` (0..1) scales the airborne height: the body is lowered by (1 - k) of the lowest
+   * foot's clearance, so ground contacts are unchanged and the leaps get flatter (the
+   * library jog bounds 26 cm off the ground with both feet up two thirds of the cycle).
    */
   bake(ctx, clipName, opts = {}) {
     const src = this.clips[clipName];
@@ -281,6 +327,7 @@ export class AnimationLibrary {
       for (const r of roles) {
         const sQ = relQ(this.bones[r], this.root, tmp);
         D.copy(sQ).multiply(_q.copy(this.refQ[r]).invert());
+        if (opts.damp?.[r] !== undefined) D.slerp(_I, 1 - opts.damp[r]);
         const w = (W[r] = W[r] || new THREE.Quaternion()).copy(D).multiply(ctx.refQ[r]);
         if (r === 'head' && opts.levelHead) levelHead(w, ctx, opts.levelHead);
         // Parent world: nearest mapped ancestor's new world * the unmapped links in between.
@@ -304,6 +351,7 @@ export class AnimationLibrary {
       sp.sub(this.refP.hips).multiplyScalar(ctx.scale);
       if (opts.hipsY === 'down') sp.y = Math.min(sp.y, 0);
       if (opts.hipsY === 'none') sp.y = 0;
+      if (opts.flight !== undefined) sp.y -= (1 - opts.flight) * this.footClearance() * ctx.scale;
       if (opts.inPlace !== false) { sp.x *= 0.15; sp.z *= 0.15; }
       sp.add(ctx.refP.hips);
       inv.copy(ctx.root.matrixWorld).invert().multiply(hipsParent.matrixWorld).invert();
@@ -401,4 +449,45 @@ export function loopSpeed(lib, clipName) {
   }
   a.stop();
   return ((maxZ - minZ) * 2) / src.duration;
+}
+
+/**
+ * Ground contact of a locomotion loop, for time-warped playback: per interval (n over the
+ * clip) how planted the feet are (0..1, from the lowest foot's clearance) and the median
+ * backward speed of a planted toe (m/s, library scale) — the ground speed at which the
+ * planted foot would not slide when the clip plays at its natural rate.
+ */
+export function gaitProfile(lib, clipName, n = 48) {
+  const src = lib.clips[clipName];
+  const mix = lib.mixer;
+  mix.stopAllAction();
+  const a = mix.clipAction(src);
+  a.reset().play();
+  const S = [];
+  for (let i = 0; i <= n; i++) {
+    mix.setTime((i / n) * src.duration);
+    lib.root.updateMatrixWorld(true);
+    S.push(['l', 'r'].map((s) => {
+      const f = relPos(lib.bones[s + 'Foot'], lib.root, new THREE.Vector3());
+      const t = relPos(lib.bones[s + 'Toe'], lib.root, new THREE.Vector3());
+      return { c: Math.min(f.y - lib.refP[s + 'Foot'].y, t.y - lib.refP[s + 'Toe'].y), z: t.z };
+    }));
+  }
+  a.stop();
+  const raw = new Float32Array(n);
+  const speeds = [];
+  const dt = src.duration / n;
+  for (let i = 0; i < n; i++) {
+    let planted = 0;
+    for (let s = 0; s < 2; s++) {
+      const c = (S[i][s].c + S[i + 1][s].c) / 2;
+      planted = Math.max(planted, 1 - THREE.MathUtils.smoothstep(c, 0.015, 0.04));
+      if (c < 0.015) speeds.push((S[i][s].z - S[i + 1][s].z) / dt);
+    }
+    raw[i] = planted;
+  }
+  // Soften the edges (the playback rate changes over a few frames, not in one step).
+  const m = raw.map((v, i) => 0.25 * raw[(i + n - 1) % n] + 0.5 * v + 0.25 * raw[(i + 1) % n]);
+  speeds.sort((x, y) => x - y);
+  return { n, m, contact: m.reduce((x, y) => x + y, 0) / n, footSpeed: speeds.length ? speeds[speeds.length >> 1] : 0 };
 }

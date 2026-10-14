@@ -9,8 +9,8 @@ import { CharacterAnimator } from './CharacterAnimator.js';
  * The FBX was converted to GLB with FBX2glTF (three's FBXLoader mis-handles this file's
  * transforms) and its 4K textures were downscaled to 2K. At load time we:
  *  - hide the baked "Effect*" meshes (wind swirls from the source scene);
- *  - pose the bind pose (a wide action stance with the arm out) into a neutral stance and
- *    use that as the rest pose for all procedural animation;
+ *  - retarget the mocap with her bind pose (straight A-pose; the node rest pose is a wide
+ *    action stance with the hips 8 cm lower) as the neutral: retarget: 'rest';
  *  - re-grip the staff upright in her right fist and parent it to the hand bone;
  *  - parent the cloak to the upper spine and give it shader-driven sway;
  *  - face/hair receive a softened sun shadow (hat brim shade, still a readable face).
@@ -135,6 +135,7 @@ export class MeguminModel {
     this.staffTip = new THREE.Object3D();
     this.meshes = [];
     this.gemMaterial = null;
+    this.toeMargin = 0.004; // toe joints above the boot soles (Player's ground lift)
   }
 
   async load(onProgress) {
@@ -210,7 +211,7 @@ export class MeguminModel {
    */
   setupAnimation(lib) {
     const scene = this.model;
-    this.animator = new CharacterAnimator({ mixerRoot: scene, rigRoot: scene, anim: this.anim, uniforms: this.uniforms, setWind: (a) => this.setWind(a), setCapeWind: (w) => this.setCapeWind(w), holdStaff: (w, dt) => this.holdStaff(w, dt) }, lib, 'mixamo');
+    this.animator = new CharacterAnimator({ mixerRoot: scene, rigRoot: scene, anim: this.anim, retarget: 'rest', uniforms: this.uniforms, setWind: (a) => this.setWind(a), setCapeWind: (w) => this.setCapeWind(w), holdStaff: (w, dt) => this.holdStaff(w, dt) }, lib, 'mixamo');
     // Idle pose at t=0 as the reference for props.
     this.animator.update(1 / 60, { speed: 0, localVel: new THREE.Vector3(), localAccel: new THREE.Vector3(), turnRate: 0, grounded: true });
     scene.updateMatrixWorld(true);
