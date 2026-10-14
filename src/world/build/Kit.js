@@ -1093,49 +1093,94 @@ function kitToHeight(world, F, name, height, opts = {}) {
   return s;
 }
 
-/** Instanced vegetation (or merged into the editor group being built). */
+/** Instanced vegetation (or merged into the editor group being built). Returns the TreeField item. */
 function plant(world, name, x, y, z, rot, height, opts) {
   const b = world.kits.box(name);
   const s = height / Math.max(0.05, b.max.y - b.min.y);
   if (world.editorMode && world._group) {
     new Frame(world, x, y, z, rot).kit(name, 0, -b.min.y * s, 0, { s, collide: false, castShadow: !opts.nearOnly });
-    return s;
+    return null;
   }
   const p = world.xf(new THREE.Vector3(x, y - b.min.y * s, z));
   const g = world._group;
-  world.trees.add(name, p.x, p.y, p.z, rot + (g?.dyaw || 0), s * (g?.ds || 1), { radius: Math.max(b.max.x - b.min.x, b.max.z - b.min.z) / 2, ...opts });
-  return s;
+  return world.trees.add(name, p.x, p.y, p.z, rot + (g?.dyaw || 0), s * (g?.ds || 1), { radius: Math.max(b.max.x - b.min.x, b.max.z - b.min.z) / 2, ...opts });
 }
+
+/**
+ * Wild vegetation outside editable groups (trees, bushes, rocks, stumps, logs, flowers) is
+ * RECORDED first and realised after the whole scatter is done (World._realizeVegetation): every
+ * record has a stable id, so the map editor can move / turn / scale / delete single plants
+ * (layout.vegetation) or erase an area (layout.erase) without shifting the random stream.
+ * A record: { kind, label, model, x, z, rot, s (=1), h (height, for picking), emit(T) } where
+ * T = { x, z, rot, s, dy } is the final placement; emit() builds it and returns the TreeField item
+ * (editor mode) so the editor can move it live.
+ */
+const recordVeg = (world, rec) => {
+  if (world._group) return false; // inside an editable group: part of the group
+  world.vegAdd(rec);
+  return true;
+};
 
 /** Tree: 'oak' | 'pine' | 'birch' | 'dark' (deep forest). Only the trunk collides. */
 export function tree(world, x, z, s, rng, kind = 'oak') {
-  const y = world.heightAt(x, z) - 0.15;
   const name = 'wilds/' + pick(TREES[kind] || TREES.oak, rng);
   const rot = rng() * 6.28;
   const tint = (kind === 'dark' ? 0.72 : 0.9) + rng() * 0.18;
-  plant(world, name, x, y, z, rot, (TREE_H[kind] ?? 8) * s * (0.85 + rng() * 0.3), { tint });
-  new Frame(world, x, y, z, 0).cyl(0.32 * s, 3.4 * s, 0, 0, 0, 'bark', { seg: 6, collideOnly: true });
+  const h = (TREE_H[kind] ?? 8) * s * (0.85 + rng() * 0.3);
+  const emit = (T) => {
+    const y = world.heightAt(T.x, T.z) - 0.15 + T.dy;
+    const item = plant(world, name, T.x, y, T.z, T.rot, h * T.s, { tint });
+    new Frame(world, T.x, y, T.z, 0).cyl(0.32 * s * T.s, 3.4 * s * T.s, 0, 0, 0, 'bark', { seg: 6, collideOnly: true });
+    return item;
+  };
+  const rec = { kind: 'tree', label: { oak: 'Дуб', birch: 'Берёза', pine: 'Сосна', dark: 'Тёмная ель' }[kind] || 'Дерево', model: name, x, z, rot, s: 1, h, emit };
+  if (!recordVeg(world, rec)) emit({ x, z, rot, s: 1, dy: 0 });
 }
 
 export function bush(world, x, z, s, rng) {
-  const y = world.heightAt(x, z) - 0.08;
-  plant(world, 'wilds/' + pick(BUSHES, rng), x, y, z, rng() * 6.28, 1.2 * s, { nearOnly: true, near: 120, tint: 0.85 + rng() * 0.2 });
+  const name = 'wilds/' + pick(BUSHES, rng);
+  const rot = rng() * 6.28, tint = 0.85 + rng() * 0.2, h = 1.2 * s;
+  const emit = (T) => plant(world, name, T.x, world.heightAt(T.x, T.z) - 0.08 + T.dy, T.z, T.rot, h * T.s, { nearOnly: true, near: 120, tint });
+  const rec = { kind: 'bush', label: 'Куст', model: name, x, z, rot, s: 1, h, emit };
+  if (!recordVeg(world, rec)) emit({ x, z, rot, s: 1, dy: 0 });
 }
 
 export function rock(world, x, z, s, rng, mat = 'rock') {
-  const y = world.heightAt(x, z);
-  const F = new Frame(world, x, y - s * 0.15, z, rng() * 6);
-  // Sized by the largest dimension.
+  const rot = rng() * 6;
   const name = 'wilds/' + pick(ROCKS, rng);
   const b = world.kits.box(name);
   const k = (1.8 * s) / Math.max(b.max.x - b.min.x, b.max.y - b.min.y, b.max.z - b.min.z);
-  F.kit(name, 0, -b.min.y * k, 0, { s: k, collide: true, tint: mat === 'rockDark' ? 0x8a8078 : null });
+  const emit = (T) => {
+    const y = world.heightAt(T.x, T.z);
+    const kk = k * T.s;
+    if (world.editorMode && !world._group) {
+      // Editor: an instance (movable live); the game bakes rocks into the static batches.
+      return world.trees.add(name, T.x, y - s * 0.15 * T.s + T.dy - b.min.y * kk, T.z, T.rot, kk, { nearOnly: true, near: 150, radius: 1.8 * s / 2 });
+    }
+    new Frame(world, T.x, y - s * 0.15 * T.s + T.dy, T.z, T.rot).kit(name, 0, -b.min.y * kk, 0, { s: kk, collide: true, tint: mat === 'rockDark' ? 0x8a8078 : null });
+    return null;
+  };
+  const rec = { kind: 'rock', label: 'Камень', model: name, x, z, rot, s: 1, h: 1.8 * s * 0.6, emit };
+  if (!recordVeg(world, rec)) emit({ x, z, rot, s: 1, dy: 0 });
 }
 /** Small ground decoration (flowers, mushrooms, stumps, logs) — no collision, no shadow. */
 export function decor(world, x, z, name, height, rng, opts = {}) {
-  const y = world.heightAt(x, z);
-  const F = new Frame(world, x, y - 0.03, z, rng() * 6.28);
-  kitToHeight(world, F, 'nature/' + name, height, { collide: false, castShadow: false, ...opts });
+  const rot = rng() * 6.28;
+  const mname = 'nature/' + name;
+  const b = world.kits.box(mname);
+  const k = height / Math.max(0.05, b.max.y - b.min.y);
+  const emit = (T) => {
+    const y = world.heightAt(T.x, T.z) - 0.03 + T.dy;
+    const kk = k * T.s;
+    if (world.editorMode && !world._group) {
+      return world.trees.add(mname, T.x, y - b.min.y * kk, T.z, T.rot, kk, { nearOnly: true, near: 60, radius: Math.max(b.max.x - b.min.x, b.max.z - b.min.z) / 2 });
+    }
+    new Frame(world, T.x, y, T.z, T.rot).kit(mname, 0, -b.min.y * kk, 0, { collide: false, castShadow: false, ...opts, s: kk });
+    return null;
+  };
+  const stump = /stump|log/.test(name), flower = /^flower/.test(name);
+  const rec = { kind: stump ? 'stump' : flower ? 'flower' : 'mushroom', label: stump ? (/log/.test(name) ? 'Бревно' : 'Пень') : flower ? 'Цветок' : 'Гриб', model: mname, x, z, rot, s: 1, h: Math.max(0.3, height), emit };
+  if (!recordVeg(world, rec)) emit({ x, z, rot, s: 1, dy: 0 });
 }
 
 export { G as GEOMETRY, gableGeometry, pick };

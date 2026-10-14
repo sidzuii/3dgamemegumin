@@ -69,6 +69,8 @@ export class World {
     this._D = null; // layout delta of the group being built
     this._group = null;
     this.trees = new TreeField(this); // instanced trees / bushes with LOD
+    this.veg = []; // recorded wild vegetation (see Kit.js recordVeg)
+    this._vegIds = new Map();
     this.collider = null;
     this.dynamicColliders = [];
     this.interactables = [];
@@ -274,6 +276,7 @@ export class World {
     for (const [x, z, rot, lines] of SIGNS) this.addSign(new THREE.Vector3(x, 0, z), rot, lines);
     for (const c of CAMPS) this.camp(c.type, c.x, c.z, c.camp);
     this._buildVegetation();
+    this._realizeVegetation();
     this._flushVisualBatches();
     this.trees.build(this.scene);
     this._buildCollider();
@@ -752,6 +755,32 @@ export class World {
       }
     }
     return this._fpGrid.get(Math.floor(x / S) * 10007 + Math.floor(z / S)) || EMPTY;
+  }
+
+  /** Record one wild plant (Kit.js); the id is stable: kind + model + rounded position. */
+  vegAdd(rec) {
+    const base = `${rec.kind}:${rec.model.split('/').pop()}@${Math.round(rec.x)},${Math.round(rec.z)}`;
+    const n = (this._vegIds.get(base) || 0) + 1;
+    this._vegIds.set(base, n);
+    rec.id = n > 1 ? base + '#' + n : base;
+    this.veg.push(rec);
+  }
+
+  /** Build the recorded vegetation: layout.vegetation overrides (move / turn / scale / delete) and
+   * layout.erase circles apply here. In the editor deleted plants are kept hidden so they can come back. */
+  _realizeVegetation() {
+    const L = this.layout;
+    const over = L.vegetation || {}, erase = L.erase || [];
+    for (const r of this.veg) {
+      const o = over[r.id];
+      const erased = erase.some((c) => Math.hypot(r.x - c.x, r.z - c.z) < c.r);
+      const gone = !!o?.deleted || (erased && !o);
+      if (gone && !this.editorMode) continue;
+      const T = { x: o?.x ?? r.x, z: o?.z ?? r.z, rot: o?.rot ?? r.rot, s: o?.s ?? 1, dy: o?.dy ?? 0 };
+      r.item = r.emit(T);
+      if (r.item) { r.item.rec = r; if (gone) r.item.hidden = true; }
+      r.gone = gone;
+    }
   }
 
   _buildVegetation() {
