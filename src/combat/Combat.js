@@ -41,8 +41,17 @@ export class Combat {
     return this.current ? this.current.yaw : undefined;
   }
 
+  /** An attack can be cancelled into a dodge once its hit has landed. */
+  canCancel() {
+    return !this.current || this.current.t >= this.current.spec.hitTime + 0.05;
+  }
+
   request() {
     const p = this.game.player;
+    if (p.action === 'dodge') {
+      this.buffer = 0.3; // starts as soon as the roll ends
+      return true;
+    }
     if (!p.canAttack()) return false;
     if (!this.current) {
       if (this.cooldown > 0) return false;
@@ -79,6 +88,13 @@ export class Combat {
     let yaw = Math.atan2(_v.x, _v.z);
     const target = g.enemies.aimTarget(p.position, yaw, 4.5) || g.enemies.aimTarget(p.position, p.controller.yaw, 3.2) || g.enemies.nearest(p.position, 2.6);
     if (target) yaw = Math.atan2(target.position.x - p.position.x, target.position.z - p.position.z);
+    // After a perfect dodge the next swing is a counter; from a sprint it hits harder.
+    const counter = this.counterReady > 0;
+    const sprint = p.controller.horizontalSpeed > 4.2;
+    if (counter || sprint) a.damage = Math.round(a.damage * (counter ? 1.6 : 1.25));
+    if (counter) { a.heavy = true; a.knock *= 1.4; this.counterReady = 0; g.worldUI?.text?.(p.position, 'Контратака!'); }
+    if (sprint) a.lunge *= 1.6;
+    g.audio?.play('swing');
     this.current = { index, t: 0, yaw, hit: false, target, spec: a };
     this.queued = false;
     // Standing still: the whole body swings (the clip's own step carries her forward).
@@ -92,6 +108,14 @@ export class Combat {
 
   update(dt) {
     this.cooldown = Math.max(0, this.cooldown - dt);
+    this.counterReady = Math.max(0, (this.counterReady || 0) - dt);
+    if (this.buffer > 0) {
+      this.buffer -= dt;
+      if (!this.current && this.game.player.canAttack()) {
+        this.buffer = 0;
+        this.request();
+      }
+    }
     const c = this.current;
     const g = this.game;
     const p = g.player;
@@ -174,6 +198,9 @@ export class Combat {
     if (any) {
       g.hitStop(a.stop);
       g.cameraRig.addTrauma(a.trauma);
+      g.audio?.play(a.heavy ? 'hitHeavy' : 'hit');
+      // Fighting up close builds mana towards the next Explosion.
+      if (hits.length) p.restoreMana(hits.length * (a.heavy ? 5 : 2.5));
     }
   }
 

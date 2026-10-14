@@ -33,6 +33,11 @@ Full description, file map and how-to guides: see `README.md` (Russian). The use
   applies the group delta, so builders must add live scene objects via `world.addObject()` and transform
   stored positions with `world.xf()`. Give new builder content a group id so it stays editable.
   Placeable types for the editor palette: `world/build/Placements.js`. Save endpoint: `vite.config.js`.
+  Parts: a `world.group()` inside another group (or `world.part(name, x, z, rot, fn)`) is a part with id
+  'parent/child'; its override lives in the parent's builder space and composes with the parent's move. Streets,
+  squares, wall sides, door leaves, steps, barrels, crates, benches and `prop()` furniture are parts. A deleted
+  part still runs its builder with all sinks muted (`world._mute`) so the parent's rng stays stable. Editor:
+  Alt+click picks a part, Shift+click multi-select, gizmo (TransformControls) 1/2/3, [ ] fine rotation.
 - Raw user models go to `model/` (never loaded by the game); optimised copies go to `public/models/`.
   Convert FBX with FBX2glTF (not three's FBXLoader), optimise with gltf-transform. Blender is NOT
   installed any more (the old 4.5 path is gone) — prefer FBX/glTF sources. Scripts: `tools/`

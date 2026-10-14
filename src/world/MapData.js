@@ -31,8 +31,8 @@ export const REGIONS = [
   { id: 'river', name: 'Река Лунная', sub: 'Лунный мост', center: v(-178, 10), r: 20, icon: '≈', tier: 0, spawn: v(-176, 10), spawnYaw: Math.PI / 2 },
   { id: 'east_fields', name: 'Заречные хутора', sub: 'Мельничный холм', center: v(-60, 20), r: 70, icon: '❀', tier: 0, spawn: v(-90, -10), spawnYaw: Math.PI / 2 },
   { id: 'crossroads', name: 'Развилка трёх дорог', sub: 'Придорожная корчма «Подкова»', center: v(112, -26), r: 26, icon: '✚', safe: true, tier: 0, spawn: v(96, -24), spawnYaw: Math.PI / 2 },
-  { id: 'alder_wood', name: 'Ольховая роща', sub: 'Ольховый ручей', center: v(320, -140), r: 75, icon: '♣', tier: 0, spawn: v(236, -82), spawnYaw: Math.PI / 2 },
-  { id: 'olkhovka', name: 'Деревня Ольховка', sub: 'Последний привал перед перевалом', center: v(730, -140), r: 52, icon: '⌂', safe: true, tier: 0, spawn: v(686, -134), spawnYaw: Math.PI / 2 },
+  { id: 'alder_wood', name: 'Ольховая роща', sub: 'Ольховый ручей', center: v(320, -140), r: 75, icon: '♣', tier: 0, spawn: v(226, -128), spawnYaw: Math.PI / 2 },
+  { id: 'olkhovka', name: 'Деревня Ольховка', sub: 'Последний привал перед перевалом', center: v(730, -140), r: 52, icon: '⌂', safe: true, tier: 0, spawn: v(690, -148), spawnYaw: Math.PI / 2 },
   { id: 'forest', name: 'Шепчущий лес', sub: 'Охотничьи тропы', center: v(-575, 60), r: 125, icon: '♣', tier: 0, spawn: v(-488, 34), spawnYaw: -Math.PI / 2 },
   { id: 'hunters', name: 'Лагерь охотников', sub: 'Шепчущий лес', center: v(-560, 92), r: 16, icon: '⛺', safe: true, tier: 0, spawn: v(-548, 82), spawnYaw: 0 },
   { id: 'glade', name: 'Скрытая поляна', sub: 'Здесь давно никто не бывал', center: v(-640, -120), r: 15, icon: '✿', tier: 0, secret: true },
@@ -65,6 +65,8 @@ export const RIVERS = [{ ...RIVER, valley: 48 }, CREEK];
 
 export const LAKES = [
   { id: 'mist_lake', center: v(60, 405), radius: 36, level: -0.6, bottom: -2.2, island: { x: 66, z: 410, r: 7.5 } },
+  // Reed pond south of the Olkhovka road (landmark, fisher's hut). LAKES[0] must stay mist_lake.
+  { id: 'reed_pond', center: v(612, -125), radius: 20, level: -5.3, bottom: -6.8 },
 ];
 
 export const LAVA = {
@@ -77,12 +79,20 @@ export const BRIDGES = [
   { id: 'moon_bridge', name: 'Лунный мост', a: [-214, 12], b: [-186, 10], width: 7, kind: 'stone' },
   { id: 'south_bridge', name: 'Южный мост', a: [78, 288], b: [80, 316], width: 5.5, kind: 'stone' },
   { id: 'alder_bridge', name: 'Ольховый мостик', a: [320, -159], b: [344, -165], width: 4, kind: 'plank' },
-  ];
+  // The cart road fords the Alder creek; the plank bridge stays on the footpath past the woodcutter.
+  { id: 'alder_ford', name: 'Тележный брод', a: [330, -204], b: [352, -207], width: 5, kind: 'ford' },
+];
 
 /** Roads: same ids as now where the role is the same. */
 export const ROADS = [
   // Axel east gate -> Moon bridge -> east fields -> crossroads -> Alder wood -> Olkhovka (~1 km).
-  { id: 'east_road', kind: 'road', width: 5, points: [[-224, 12], [-186, 10], [-150, 4], [-104, -12], [-72, -36], [-32, -60], [14, -64], [56, -50], [86, -34], [112, -26], [160, -30], [200, -50], [236, -82], [268, -112], [296, -140], [322, -158], [352, -168], [390, -166], [430, -150], [470, -128], [512, -112], [560, -104], [610, -110], [650, -124], [684, -136]] },
+  { id: 'east_road', kind: 'road', width: 5, points: [[-224, 12], [-186, 10], [-160, 7], [-134, 1], [-104, -12], [-72, -36], [-32, -60], [14, -64], [56, -50], [86, -34], [112, -26], [146, -40], [170, -62], [188, -88], [204, -108], [226, -128], [246, -146], [270, -160], [294, -170], [312, -182], [322, -196], [330, -204], [352, -207], [376, -206], [404, -214], [436, -226], [466, -236], [498, -240], [528, -232], [552, -214], [580, -198], [606, -182], [630, -168], [652, -158], [676, -151], [700, -146], [714, -142]] },
+  // Footpath: woodcutter's hut and the plank bridge over the Alder creek (a shortcut for walkers).
+  { id: 'alder_path', kind: 'trail', width: 2.2, points: [[226, -128], [250, -120], [274, -128], [296, -140], [306, -152], [312, -157], [320, -159], [344, -165], [352, -167], [366, -176], [384, -194], [404, -214]] },
+  // Boundary-stone fork -> north through the pines to the lava road (Crimson gorge).
+  { id: 'gorge_trail', kind: 'trail', width: 2.4, points: [[498, -240], [502, -290], [510, -340], [520, -380]] },
+  { id: 'farm_lane', kind: 'trail', width: 2.6, points: [[-72, -36], [-58, -16], [-44, 2], [-30, 10]] },
+  { id: 'meadow_path', kind: 'trail', width: 2, points: [[-150, 4], [-152, 30], [-150, 54]] },
   { id: 'east_pass_road', kind: 'road', width: 4.5, points: [[774, -150], [784, -164], [796, -176], [810, -186], [822, -192]] },
   // Axel south gate -> caravan camp -> Boris' farm -> along the river's south bank -> Mist lake.
   { id: 'south_road', kind: 'road', width: 5, points: [[-324, 128], [-326, 160], [-312, 190], [-299, 209], [-293, 238], [-272, 262], [-245, 272], [-210, 292], [-150, 318], [-80, 340], [-20, 362], [20, 380]] },
@@ -161,7 +171,7 @@ export const RIDGES = [
 export const FORESTS = [
   { id: 'whispering', name: 'Шепчущий лес', kind: 'mixed', pts: [[-474, -140], [-560, -215], [-690, -200], [-730, -60], [-728, 120], [-700, 270], [-640, 300], [-560, 290], [-505, 230], [-484, 140], [-478, 60], [-488, -40]] },
   { id: 'thicket', name: 'Чаща', kind: 'dark', pts: [[-650, 300], [-560, 300], [-520, 360], [-548, 430], [-650, 440], [-710, 380]] },
-  { id: 'alder', name: 'Ольховая роща', kind: 'alder', pts: [[232, -96], [262, -196], [330, -236], [400, -212], [420, -130], [384, -86], [300, -70]] },
+  { id: 'alder', name: 'Ольховая роща', kind: 'alder', pts: [[232, -96], [262, -196], [330, -236], [400, -212], [446, -196], [452, -170], [420, -130], [384, -86], [300, -70]] },
   { id: 'north_pines', name: 'Северный бор', kind: 'pine', pts: [[190, -300], [300, -385], [420, -372], [560, -300], [610, -230], [500, -200], [380, -255], [240, -250]] },
   { id: 'east_groves', name: 'Восточные рощи', kind: 'mixed', pts: [[380, 60], [480, 0], [590, 40], [610, 170], [510, 250], [400, 210]] },
   { id: 'foothills', name: 'Предгорный бор', kind: 'pine', pts: [[-120, -500], [0, -480], [150, -520], [210, -640], [60, -710], [-110, -660]] },
@@ -178,9 +188,15 @@ export const POIS = [
   { id: 'crossroads_inn', x: 126, z: -40, note: 'корчма «Подкова», колодец, придорожная часовенка Эрис' },
   { id: 'caravan_trader', x: 98, z: -10, note: 'стоянка купца Сайруса (чётные дни)' },
   { id: 'woodcutter', x: 250, z: -112, note: 'хижина дровосека на опушке' },
-  { id: 'ambush_point', x: 300, z: -136, note: 'засада в роще (эскорт)' },
-  { id: 'boundary_stone', x: 514, z: -100, note: 'старый межевой камень, развилка тропы к ущелью' },
-  { id: 'apiary', x: 640, z: -150, note: 'пасека и сады Ольховки' },
+  { id: 'ambush_point', x: 300, z: -176, note: 'засада в роще (эскорт)' },
+  { id: 'boundary_stone', x: 494, z: -246, note: 'межевой камень на развилке к ущелью' },
+  { id: 'apiary', x: 652, z: -170, note: 'пасека и сады Ольховки' },
+  { id: 'hill_oak', x: 204, z: -112, note: 'одинокий дуб на гребне, скамья и камень с надписью' },
+  { id: 'alder_ford', x: 341, z: -205, note: 'тележный брод через Ольховый ручей' },
+  { id: 'reed_pond', x: 612, z: -125, note: 'камышовый пруд, мостки' },
+  { id: 'fisher_hut', x: 590, z: -110, note: 'хижина рыбака у пруда' },
+  { id: 'village_gate', x: 700, z: -146, note: 'ворота Ольховки' },
+  { id: 'tar_camp', x: 506, z: -300, note: 'поляна смолокуров в бору' },
   { id: 'injured_traveler', x: -500, z: 42, note: 'раненый путник (запад)' },
   { id: 'herb_meadow', x: -470, z: 8, note: 'луга у Западных ворот' },
   { id: 'forest_scouts', x: -560, z: -14, note: 'аванпост гоблинов на тропе к поляне' },
@@ -234,7 +250,9 @@ export const SIGNS = [
   [-327, -108, 0, ['Север: Поле гильдии · Старая шахта · Руины Астрариума', 'Юг: Аксель (Северные ворота)']],
   [-353, -220, 0.3, ['Запад: Пещера Старой шахты', 'Север: вдоль реки — Руины Астрариума', 'Юг: Аксель']],
   [102, -38, Math.PI / 2, ['Восток: Ольховая роща · Деревня Ольховка', 'Север: Старая сторожевая башня', 'Юг: Южный мост · Озеро Туманов', 'Запад: Аксель']],
-  [514, -92, -Math.PI / 2, ['Восток: Деревня Ольховка', 'Запад: Развилка · Аксель']],
+  [492, -232, -Math.PI / 2, ['Восток: Деревня Ольховка', 'Север: тропа к Багровому ущелью — ОПАСНО', 'Запад: Развилка · Аксель']],
+  [230, -136, -Math.PI / 2, ['Дорога: брод · Ольховка', 'Тропа: хижина дровосека · мостик']],
+  [-70, -30, 0, ['Юг: мельница · Заречный хутор']],
   [718, -178, 0, ['Север: Багровое ущелье — ОПАСНО', 'Восток: Восточный перевал', 'Запад: Аксель']],
   [-516, 56, 0.5, ['Охотничий лагерь — прямо', 'Тропа на запад заросла…']],
 ];

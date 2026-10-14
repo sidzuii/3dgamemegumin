@@ -388,6 +388,16 @@ export class ModelChest extends Interactable {
     const p = this.root.localToWorld(_tmp.set(0, 0.7, 0));
     game.vfx.burst('gold', p, 70);
     if (!this.looted) {
+      // A full bag keeps the chest shut: one-time loot is never thrown away.
+      const loot = CHEST_LOOT[this.id] || [];
+      const inv = game.inventory;
+      const need = loot.filter(([id]) => id !== 'eris' && !inv.items.some((s) => s.id === id)).length;
+      if (need > inv.free) {
+        game.hud.toast(`Сумка полна: нужно свободных ячеек — ${need}. Сундук подождёт.`, 3);
+        this.open = false;
+        this.prompt = 'Открыть';
+        return;
+      }
       this.looted = true;
       game.rpg.onChestOpened(this.id, CHEST_LOOT[this.id] || []);
     } else {

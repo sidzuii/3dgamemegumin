@@ -79,6 +79,7 @@ export class RPG {
     this._applyStateToWorld();
     this.gathering.syncFromState();
     this.npcs?.refresh();
+    this._resumeEscort();
     this.loaded = { migrated, corrupted, fresh: newGame || !this.state.player };
     if (migrated) this.notify('info', 'Сохранение со старой карты перенесено: эрисы и предметы на месте, история начинается заново.');
     if (corrupted) this.notify('info', 'Сохранение повреждено — начата новая игра.');
@@ -91,6 +92,8 @@ export class RPG {
     // Saved on an older map (Axel was rebuilt): the old position means nothing here. The fog of
     // war only before rev 2 (the new terrain); later revisions moved houses inside Axel.
     if (S.mapRev !== MAP_REV) {
+      // Keep the pre-migration save (the player may want it back).
+      if (S.player) try { localStorage.setItem(`megumin-save-v2.mapRev${S.mapRev ?? 1}.bak`, JSON.stringify(S)); } catch { /* storage full */ }
       if (!(S.mapRev >= 2)) S.explored = '';
       this._relocate = !!S.player;
       S.mapRev = MAP_REV;
@@ -132,6 +135,11 @@ export class RPG {
       pl.hp = Math.min(pl.maxHp, P.hp ?? pl.maxHp);
       pl.mana = Math.min(pl.maxMana, P.mana ?? pl.maxMana);
       const pos = new THREE.Vector3(P.x, P.y, P.z);
+      // Saved where there is water now (the reed pond on the Olkhovka road): onto the road.
+      if (g.world.surfaceAt(pos) === 'water' || g.world.surfaceAt(pos.clone().setY(g.world.heightAt(pos.x, pos.z) + 0.3)) === 'water') {
+        const q = nearestRoadPoint(pos);
+        pos.set(q[0], g.world.heightAt(q[0], q[1]) + 0.05, q[1]);
+      }
       pl.controller.teleport(pos, P.yaw || 0);
       pl.setCheckpoint(pos, P.yaw || 0);
       g.cameraRig.snapBehind((P.yaw || 0) + Math.PI);
@@ -249,6 +257,14 @@ export class RPG {
   apply(effects, npc) {
     if (!effects) return;
     const list = Array.isArray(effects) ? effects : [effects];
+    // A turn-in is all or nothing: if the items to hand over are no longer in the bag (sold,
+    // used), none of the effects happen.
+    const inv = this.inventory;
+    const short = list.flatMap((e) => (e && e.take ? e.take : [])).filter(([id, n]) => inv.count(id) < n);
+    if (short.length) {
+      this.game.hud.toast('Не хватает: ' + short.map(([id, n]) => `${ITEMS[id]?.name || id} ×${n}`).join(', '), 3);
+      return false;
+    }
     for (const e of list) {
       if (typeof e === 'function') { e(this, npc); continue; }
       for (const [k, v] of Object.entries(e)) this._effect(k, v, npc);
@@ -260,7 +276,7 @@ export class RPG {
     switch (k) {
       case 'setFlag': for (const f of [].concat(v)) this.setFlag(f); break;
       case 'clearFlag': for (const f of [].concat(v)) this.setFlag(f, false); break;
-      case 'give': for (const [id, n] of v) inv.add(id, n); break;
+      case 'give': for (const [id, n] of v) inv.add(id, n, false, true); break;
       case 'take': for (const [id, n] of v) inv.remove(id, n); break;
       case 'eris': if (v > 0) inv.add('eris', v); else inv.spend(-v); break;
       case 'xp': this.gainXp(v); break;
@@ -416,24 +432,57 @@ export class RPG {
     return first;
   }
 
-  startEscort(v) {
+  startEscort(v, ambushed = false) {
     const n = this.npcs.get(v.npc);
     if (!n) return;
-    this.escort = { npc: n, to: this.spotPos(v.to), quest: v.quest, ambush: v.ambush, ambushed: false };
+    this.escort = { npc: n, to: this.spotPos(v.to), quest: v.quest, ambush: v.ambush, ambushed, def: v, cowering: false, barkT: 0 };
     n.setFollow(null);
     n._goTo(this.escort.to, v.road ? roadRoute(v.road, n.position) : v.route);
     n.escorting = true;
+    n.escortSpeed = 3.0;
   }
 
-  _updateEscort() {
+  /** After a load: an escort that was under way goes on from where it was saved. */
+  _resumeEscort() {
+    if (this.escort || this.quests.stageId('c_escort_tobias') !== 'escort') return;
+    const E = this.state.escort;
+    const v = E?.def || { npc: 'tobias', to: 'olkhovka_tobias', road: 'east_road', ambush: { spot: 'ambush_point', type: 'mushroom', n: 3 } };
+    const n = this.npcs?.get(v.npc);
+    if (!n) return;
+    if (E && Number.isFinite(E.x)) {
+      n.pos.set(E.x, 0, E.z);
+      n.pos.y = n._ground(E.x, E.z);
+    }
+    n._setVisible(true);
+    this.startEscort(v, !!E?.ambushed);
+  }
+
+  _updateEscort(dt = 1 / 60) {
     const e = this.escort;
     if (!e) return;
     const n = e.npc;
     const pp = this.game.player.position;
-    // Wait for the player if she falls behind.
-    const far = n.position.distanceTo(pp) > 14;
-    n.paused = far;
-    if (far && !n.path?.length) return;
+    e.barkT -= dt;
+    // Tobias walks at the player's pace: waits when she falls behind (> 14 m), keeps up when she
+    // is ahead, and complains if she runs off.
+    const gap = n.position.distanceTo(pp);
+    const nxt = n.path?.[0];
+    let ahead = false;
+    if (nxt) {
+      const hx = nxt.x - n.position.x, hz = nxt.z - n.position.z, L = Math.hypot(hx, hz) || 1;
+      ahead = ((pp.x - n.position.x) * hx + (pp.z - n.position.z) * hz) / L > 1;
+    }
+    n.paused = gap > 14;
+    n.escortSpeed = ahead ? 3.4 : gap > 6 ? 2.2 : 3.0;
+    if (ahead && gap > 12 && e.barkT <= 0) { this._bark(n, ['Не так быстро! Мул за тобой не успевает!']); e.barkT = 12; }
+    // Ambush: he hides while the mushrooms are alive.
+    const foes = this.game.enemies.list?.filter?.((x) => x.camp === 'ambush' && x.hp > 0 && x.position.distanceTo(n.position) < 25) || [];
+    const cower = foes.length > 0;
+    if (cower !== e.cowering) {
+      e.cowering = cower;
+      this._bark(n, cower ? ['Помогите! Грибы!'] : ['Фух… Идём дальше.']);
+    }
+    n.cower = cower;
     if (e.ambush && !e.ambushed) {
       const a = this.spotPos(e.ambush.spot) || new THREE.Vector3(...e.ambush.pos);
       if (n.position.distanceTo(a) < 14) {
@@ -443,11 +492,14 @@ export class RPG {
           en.noRespawn = true;
         }
         this.notify('event', 'Засада! Защити Тобиаса!');
+        this.markDirty(true);
       }
     }
     if (e.to && n.position.distanceTo(e.to) < 2.5) {
       this.escort = null;
       n.escorting = false;
+      n.cower = false;
+      this.state.escort = null;
       this.events.emit('escort', { npc: n.id });
     }
   }
@@ -513,7 +565,7 @@ export class RPG {
       }
     }
     this.worldEvents.update(dt);
-    this._updateEscort();
+    this._updateEscort(dt);
     // Saving.
     this.autosave -= dt;
     if (this.dirty) this.saveTimer -= dt;
@@ -543,10 +595,35 @@ export class RPG {
       bin += String.fromCharCode(b);
     }
     S.explored = btoa(bin);
-    writeSave(S);
+    const e = this.escort;
+    S.escort = e ? { def: e.def, ambushed: e.ambushed, x: e.npc.position.x, z: e.npc.position.z } : null;
+    if (!writeSave(S)) {
+      // Storage full / blocked: keep the progress dirty and retry soon; tell the player once.
+      this.saveTimer = 10;
+      if (!this._saveWarned) this.notify('info', 'Не удалось сохранить игру (хранилище браузера переполнено?). Повторю попытку.');
+      this._saveWarned = true;
+      return;
+    }
+    this._saveWarned = false;
     this.dirty = false;
     this.autosave = 30;
   }
+}
+
+/** Nearest point on any road (MapData ROADS): [x, z]. */
+function nearestRoadPoint(p) {
+  let best = [p.x, p.z], bd = Infinity;
+  for (const r of ROADS) {
+    const pts = r.points;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const [ax, az] = pts[i], [bx, bz] = pts[i + 1];
+      const dx = bx - ax, dz = bz - az;
+      const t = Math.max(0, Math.min(1, ((p.x - ax) * dx + (p.z - az) * dz) / (dx * dx + dz * dz)));
+      const x = ax + dx * t, z = az + dz * t, d = Math.hypot(p.x - x, p.z - z);
+      if (d < bd) { bd = d; best = [x, z]; }
+    }
+  }
+  return best;
 }
 
 /** Waypoints along a road (MapData ROADS) from the point nearest to `from` to the road's end. */

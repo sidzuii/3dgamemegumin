@@ -75,10 +75,10 @@ const push = (self, name, box, m, opts) => {
   const h = hull(c.map((p) => [p[0], p[2]]));
   let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
   for (const [x, z] of h) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }
-  pieces.push({ gid: self._group?.id ?? null, name, lod: self.lodMode, detail: !!opts.detail, collide: opts.collide, hull: h, bb: [x0, x1, z0, z1], y0, y1, c, box, e: Array.from(m.elements) });
+  pieces.push({ gid: root(self._group), name, lod: self.lodMode, detail: !!opts.detail, collide: opts.collide, hull: h, bb: [x0, x1, z0, z1], y0, y1, c, box, e: Array.from(m.elements) });
 };
 rec.addSolid = function (geo, m, mat, opts = {}) {
-  const gid = this._group?.id ?? null;
+  const gid = root(this._group);
   // Paving (draped ribbons / squares, kerbs): keep the triangles themselves.
   if ((mat === 'cobble' || (mat === 'stoneDark' && gid === 'axel_streets')) && !geo.index && geo.attributes.position.count > 6) {
     const p = geo.attributes.position.array.slice();
@@ -93,14 +93,16 @@ rec.addSolid = function (geo, m, mat, opts = {}) {
 };
 rec.addKit = function (name, m, opts = {}) { push(this, name, this.kits.box(name), m, opts); };
 rec.footprints = [];
-rec.addFootprint = function (x, z, w, d, rot, kind) { this.footprints.push({ x, z, w, d, rot, kind, gid: this._group?.id }); };
-rec.spot = function (name, pos, yaw = 0) { spots[name] = { x: pos.x, y: pos.y, z: pos.z, yaw, gid: this._group?.id }; this.npcSpots[name] = { pos: pos.clone(), yaw }; };
+rec.addFootprint = function (x, z, w, d, rot, kind) { this.footprints.push({ x, z, w, d, rot, kind, gid: root(this._group) }); };
+rec.spot = function (name, pos, yaw = 0) { spots[name] = { x: pos.x, y: pos.y, z: pos.z, yaw, gid: root(this._group) }; this.npcSpots[name] = { pos: pos.clone(), yaw }; };
 for (const k of ['addInteractable', 'addLightSource', 'addChimney', 'addChest', 'addObject']) rec[k] = () => null;
 rec.npcSpots = {};
 rec.trees = { add() {} };
 rec.dummies = []; rec.dynamicColliders = []; rec.updatables = [];
 rec.scene = { add() {} };
 rec.groups = new Map();
+// Parts ("tavern/step", "axel_wall/side_3") count as their top-level group.
+const root = (g) => { while (g?.parent) g = g.parent; return g?.id ?? null; };
 rec._group = null; rec._D = null; rec.lodMode = null;
 const out = { summary: {}, details: {} };
 try { Town.buildTown(rec); } catch (e) { out.buildError = String(e) + ' ' + (e.stack || '').split('\n').slice(0, 4).join(' | '); return out; }
@@ -222,7 +224,7 @@ for (let i = 0; i < wp.length - 1; i++) {
   joints.push({ at: loc(jx, jz), overlap: r2(overlap), slit: r2(slit), open, topStep: r2(topAt(B, jx, jz) - topAt(A, jx, jz)) });
 }
 // Curtain ends inside their tower / gatehouse (the end's outer corners, 0.16 m in, incl. the end slit).
-const towerHulls = pieces.filter((p) => /tower-square-(base|arch)$/.test(p.name) && (p.gid === null || /^(tower_|gate_)/.test(p.gid)) && Math.hypot(p.e[0], p.e[2]) > 3);
+const towerHulls = pieces.filter((p) => /tower-square-(base|arch)$/.test(p.name) && (p.gid === null || /^(tower_|wall_tower_|gate_)/.test(p.gid)) && Math.hypot(p.e[0], p.e[2]) > 3);
 const wallEnds = [];
 let towerEnds = 0;
 for (const w of wp) for (const s of [-1, 1]) {

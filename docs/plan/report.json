@@ -3,18 +3,18 @@
   {
    "id": "axel_olkhovka",
    "name": "Аксель (Восточные ворота) → въезд в Ольховку",
-   "metres": 998,
-   "walk_min": 4.9,
-   "run_min": 2.6,
-   "npc_walk_min": 12.3
+   "metres": 1062,
+   "walk_min": 5.2,
+   "run_min": 2.8,
+   "npc_walk_min": 13.1
   },
   {
    "id": "axel_olkhovka_green",
    "name": "Аксель (Восточные ворота) → площадь Ольховки",
-   "metres": 1045,
-   "walk_min": 5.1,
-   "run_min": 2.7,
-   "npc_walk_min": 12.9
+   "metres": 1078,
+   "walk_min": 5.3,
+   "run_min": 2.8,
+   "npc_walk_min": 13.3
   },
   {
    "id": "axel_mist",
@@ -84,8 +84,28 @@
  "roads": [
   {
    "id": "east_road",
-   "length": 998,
+   "length": 1062,
    "maxGrade": 0.3
+  },
+  {
+   "id": "alder_path",
+   "length": 211,
+   "maxGrade": 0.25
+  },
+  {
+   "id": "gorge_trail",
+   "length": 142,
+   "maxGrade": 0.16
+  },
+  {
+   "id": "farm_lane",
+   "length": 63,
+   "maxGrade": 0.11
+  },
+  {
+   "id": "meadow_path",
+   "length": 50,
+   "maxGrade": 0.12
   },
   {
    "id": "east_pass_road",
@@ -778,7 +798,7 @@
   {
    "id": "alder",
    "name": "Ольховая роща",
-   "area_ha": 2.2
+   "area_ha": 2.4
   },
   {
    "id": "north_pines",

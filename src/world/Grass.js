@@ -130,11 +130,38 @@ export function createGrass(world, patches, opts = {}) {
     }
   }
   mesh.count = k;
-  mesh.instanceMatrix.needsUpdate = true;
-  if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  // Split into 48 m cells so the camera frustum (and distance) culls them: one map-wide mesh
+  // drew all ~0.46 M grass triangles every frame, even inside buildings.
+  const CELL = 48, cells = new Map(), e = mesh.instanceMatrix.array;
+  for (let i = 0; i < k; i++) {
+    const key = Math.floor(e[i * 16 + 12] / CELL) + ',' + Math.floor(e[i * 16 + 14] / CELL);
+    if (!cells.has(key)) cells.set(key, []);
+    cells.get(key).push(i);
+  }
+  const group = new THREE.Group();
+  group.name = 'Grass';
+  const chunks = [];
+  for (const list of cells.values()) {
+    const cm = new THREE.InstancedMesh(geo, mat, list.length);
+    list.forEach((src, j) => {
+      mesh.getMatrixAt(src, m);
+      cm.setMatrixAt(j, m);
+      mesh.getColorAt(src, col);
+      cm.setColorAt(j, col);
+    });
+    cm.receiveShadow = true;
+    cm.castShadow = false;
+    cm.computeBoundingSphere();
+    cm.boundingSphere.radius += 1; // wind / push bend
+    chunks.push(cm);
+    group.add(cm);
+  }
+  mesh.dispose();
+  const FAR = 110;
 
   return {
-    mesh,
+    mesh: group,
+    chunks,
     uniforms,
     blast: null,
     /** Trigger an outward flattening wave from (x,z). */
@@ -143,7 +170,12 @@ export function createGrass(world, patches, opts = {}) {
     },
     update(dt, ctx) {
       uniforms.uTime.value += dt;
-      if (ctx?.playerPos) uniforms.uPlayer.value.copy(ctx.playerPos);
+      if (ctx?.playerPos) {
+        uniforms.uPlayer.value.copy(ctx.playerPos);
+        // Blades are ~0.4 m tall: past FAR they are sub-pixel, skip the cell.
+        const P = ctx.playerPos;
+        for (const c of chunks) c.visible = Math.hypot(c.boundingSphere.center.x - P.x, c.boundingSphere.center.z - P.z) < FAR + c.boundingSphere.radius;
+      }
       if (this.blast) {
         const b = this.blast;
         b.t += dt;

@@ -27,6 +27,9 @@ const _right = new THREE.Vector3();
 const _localVel = new THREE.Vector3();
 const _localAcc = new THREE.Vector3();
 const _v = new THREE.Vector3();
+const _dash = new THREE.Vector3();
+/** Dodge roll: duration, i-frame window, speed curve (v0 held, then easing out), perfect window. */
+export const DODGE = { stamina: 18, time: 0.55, iFrom: 0.03, iTo: 0.32, v0: 14, hold: 0.22, perfect: 0.18 };
 
 export class Player {
   constructor(game) {
@@ -82,7 +85,7 @@ export class Player {
     const list = this.game.enemies?.list;
     if (!list) return false;
     for (const e of list) {
-      if (e.alive && e.aggroed && (e.state === 'chase' || e.state === 'windup' || e.state === 'strike') && e.position.distanceTo(this.position) < 14) return true;
+      if (e.alive && e.aggroed && (e.state === 'chase' || e.state === 'windup' || e.state === 'strike' || e.state === 'circle') && e.position.distanceTo(this.position) < 14) return true;
     }
     return false;
   }
@@ -176,9 +179,53 @@ export class Player {
     }
   }
 
+  /** Dodge roll (RMB / V): ~4 m, i-frames, costs stamina; dodging a hit at the last moment = perfect. */
+  tryDodge() {
+    const g = this.game;
+    if (this.hp <= 0 || this.action !== 'none' || !this.controller.grounded) return false;
+    if (g.combat?.attacking && !g.combat.canCancel()) return false;
+    if (this.stamina < DODGE.stamina * 0.5 || this.staminaDepleted) {
+      g.hud.denyStamina();
+      return false;
+    }
+    g.combat?.cancel();
+    this.stamina = Math.max(0, this.stamina - DODGE.stamina);
+    this.staminaDelay = STAMINA.regenDelay;
+    // Direction: movement input, else straight back from the camera.
+    const dir = _move.lengthSq() > 0.01 ? _move.clone().setY(0).normalize() : g.cameraRig.getForward(new THREE.Vector3()).setY(0).normalize().negate();
+    this.dodgeDir = dir;
+    this.dodgePerfect = false;
+    this.action = 'dodge';
+    this.actionTime = 0;
+    this.controller.yaw = Math.atan2(dir.x, dir.z);
+    this.anim.set('Roll', true);
+    g.audio?.play('dodge');
+    return true;
+  }
+
+  get iframes() {
+    return this.action === 'dodge' && this.actionTime >= DODGE.iFrom && this.actionTime <= DODGE.iTo;
+  }
+
+  _perfectDodge() {
+    const g = this.game;
+    this.dodgePerfect = true;
+    g.slowMo?.(0.35, 0.3);
+    this.restoreMana(8);
+    g.worldUI?.text?.(this.position, 'Уклон!');
+    g.vfx.burst('magicPop', _v.set(this.position.x, this.position.y + 1, this.position.z), 12);
+    g.cameraRig.addTrauma(0.1);
+    g.audio?.play('perfect');
+    if (g.combat) g.combat.counterReady = 1.2;
+  }
+
   /** Hit by an enemy: damage, knockback, flinch, brief invulnerability. */
   takeHit(dmg, from, knock = 5, heavy = false) {
-    if (this.invuln > 0 || this.hp <= 0 || this.action === 'exhausted') return false;
+    if (this.iframes) {
+      if (this.actionTime < DODGE.iFrom + DODGE.perfect && !this.dodgePerfect) this._perfectDodge();
+      return false;
+    }
+    if (this.invuln > 0 || this.hp <= 0 || (this.action === 'exhausted' && this.actionTime < 1.2)) return false;
     this.invuln = 0.5;
     dmg = Math.max(1, Math.round(dmg * (this.game.inventory?.passives().defenseMul ?? 1)));
     this.damage(dmg);
@@ -188,6 +235,7 @@ export class Player {
     _v.y = heavy ? 5 : 0;
     this.controller.addImpulse(_v);
     this.game.cameraRig.addTrauma(heavy ? 0.4 : 0.22);
+    this.game.audio?.play('hurt');
     if (this.hp > 0 && this.action === 'none') {
       this.game.combat?.cancel();
       this.anim.playAction('Hit');
@@ -264,6 +312,10 @@ export class Player {
         this.game.enemies?.resetAggro();
       }
     }
+    if (this.action === 'dodge' && this.actionTime >= DODGE.time) {
+      this.action = 'none';
+      this.anim.set('Idle');
+    }
     if (this.action === 'cast' && this.anim.state === 'Release' && this.actionTime > 6) {
       this.action = 'none'; // safety (collapse normally happens first)
     }
@@ -304,6 +356,13 @@ export class Player {
       canJump,
       speedMul: (attacking ? 0.3 : 1) * this.envSpeedMul,
     };
+    if (this.action === 'dodge') {
+      const t = this.actionTime;
+      const v = t < DODGE.hold ? DODGE.v0 : DODGE.v0 * Math.max(0, 1 - (t - DODGE.hold) / (DODGE.time - DODGE.hold));
+      cmd.dashVel = _dash.copy(this.dodgeDir).multiplyScalar(v);
+      cmd.faceYaw = Math.atan2(this.dodgeDir.x, this.dodgeDir.z);
+      cmd.faceRate = 30;
+    }
     if (attacking) {
       cmd.faceYaw = combat.faceYaw;
       cmd.faceRate = 22;

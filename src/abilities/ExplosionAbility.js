@@ -88,6 +88,7 @@ export class ExplosionAbility {
     this.collapsed = false;
     this.cooldownLeft = EXPLOSION.cooldown;
     player.beginCast(this.target);
+    this.game.audio?.play('charge');
 
     const vfx = this.game.vfx;
     // Feet circle.
@@ -257,6 +258,7 @@ export class ExplosionAbility {
     const vfx = g.vfx;
     const T = this.target;
     this.exploded = true;
+    g.audio?.play('explosion', { dist: g.player.position.distanceTo(T) * 0.5 });
     vfx.add(new CoreFlash(_v.copy(T).add(_v2.set(0, 1.5, 0)), 7));
     vfx.add(new Fireball(T.clone(), 7.5));
     this.shock = vfx.add(new Shockwave(T, 34, 1.2));

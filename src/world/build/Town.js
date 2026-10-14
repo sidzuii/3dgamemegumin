@@ -92,7 +92,7 @@ function walls() {
   const gates = cityWall(W, nodes, {
     height: WALL.height, thickness: WALL.thickness, gateWidth: WALL.gateWidth,
     wallGroup: 'axel_wall',
-    groupFor: (n) => (n.gate ? 'gate_' + n.gate : n.big ? 'tower_' + ++t : null),
+    groupFor: (n, i) => (n.gate ? 'gate_' + n.gate : n.big ? 'tower_' + ++t : 'wall_tower_' + i),
   });
   // Guard posts just inside each gate, facing out; paving through the passage.
   for (const { node, frame } of gates) {
@@ -144,12 +144,14 @@ const LIFT_STEP = Object.fromEntries((() => {
   return Object.entries(col);
 })());
 
+const mid = (pts) => pts[Math.floor(pts.length / 2)];
 function streets() {
   // One editable part; inside it every street / square has its own builder (by id).
   W.group('axel_streets', { x: AXEL.x, z: AXEL.z }, () => {
-    for (const s of STREETS) paveStreet(s);
-    paveRing();
-    for (const q of SQUARES) paveSquare(q);
+    // Every street / square is a part of its own (Alt+click in the editor).
+    for (const s of STREETS) { const [x, z] = mid(STREET_W[s.id]); W.group(s.id, { x, z }, () => paveStreet(s), s.name || s.id); }
+    { const [x, z] = RING_W()[0]; W.group('pomerium', { x, z }, () => paveRing(), 'Пристенная улица'); }
+    for (const q of SQUARES) { const [x, z] = P(...q.pts[0]); W.group('pave_' + q.id, { x, z }, () => paveSquare(q), 'Мостовая: ' + (q.name || q.id)); }
   }, 'Улицы и площади');
 }
 

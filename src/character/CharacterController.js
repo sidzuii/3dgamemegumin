@@ -130,7 +130,11 @@ export class CharacterController {
     const dvz = targetVZ - this.velocity.z;
     const dvLen = Math.hypot(dvx, dvz);
     const maxDv = accel * dt;
-    if (dvLen > maxDv) {
+    if (cmd.dashVel) {
+      // Dodge roll: the player drives the horizontal velocity directly.
+      this.velocity.x = cmd.dashVel.x;
+      this.velocity.z = cmd.dashVel.z;
+    } else if (dvLen > maxDv) {
       this.velocity.x += (dvx / dvLen) * maxDv;
       this.velocity.z += (dvz / dvLen) * maxDv;
     } else {

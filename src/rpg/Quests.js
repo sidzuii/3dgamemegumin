@@ -127,7 +127,7 @@ export class QuestManager {
     const r = d.rewards || {};
     const parts = [];
     if (r.eris) { this.rpg.inventory.add('eris', r.eris); parts.push(`${r.eris} эрис`); }
-    for (const [item, n] of r.items || []) this.rpg.inventory.add(item, n);
+    for (const [item, n] of r.items || []) this.rpg.inventory.add(item, n, false, true); // rewards are never lost to a full bag
     if (r.xp) { this.rpg.gainXp(r.xp); parts.push(`${r.xp} опыта`); }
     if (r.rankPoints) this.rpg.guild.addPoints(r.rankPoints);
     for (const [npc, delta] of r.rel || []) this.rpg.changeRel(npc, delta);

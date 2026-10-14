@@ -47,14 +47,15 @@ export class Inventory {
   }
 
   /** Add items; returns false if the bag is full. */
-  add(id, n = 1, silent = false) {
+  /** `force`: quest rewards and gifts go in even over the 30 stacks (never lost). */
+  add(id, n = 1, silent = false, force = false) {
     if (!ITEMS[id] || n <= 0) return false;
     if (id === 'eris') {
       this.eris += n;
     } else {
       const slot = this.items.find((s) => s.id === id);
       if (slot) slot.count += n;
-      else if (this.items.length < SLOTS) this.items.push({ id, count: n });
+      else if (this.items.length < SLOTS || force) this.items.push({ id, count: n });
       else {
         this.game.hud.toast('Сумка полна! Продай или выброси что-нибудь.');
         return false;

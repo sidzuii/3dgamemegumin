@@ -53,6 +53,16 @@ export class WorldUI {
     n.el.className = 'dmg' + (big ? ' big' : '');
   }
 
+  /** Short floating word over a point ('Уклон!', 'Контратака!'). */
+  text(pos, label) {
+    const n = this.numbers.find((x) => x.t >= 1) || this.numbers[0];
+    n.t = 0;
+    n.pos.copy(pos).setY(pos.y + 1.9);
+    n.dx = 0;
+    n.el.textContent = label;
+    n.el.className = 'dmg word';
+  }
+
   alert(enemy) {
     const a = this.alerts.find((x) => x.t >= 1) || this.alerts[0];
     a.t = 0;

@@ -1,5 +1,5 @@
 import { fbm, smoothstep, clamp } from '../core/math.js';
-import { HALF, RIVER, RIVERS, LAKES, LAVA, ROADS, FLATS, HILLS, RIDGES, REGION } from './MapData.js';
+import { HALF, RIVER, RIVERS, LAKES, LAVA, ROADS, FLATS, HILLS, RIDGES, REGION, BRIDGES } from './MapData.js';
 import { STREETS, RING, streetLine, ringLine, toWorld } from './AxelPlan.js';
 
 /**
@@ -207,6 +207,14 @@ function baseHeight(x, z) {
   // River channel.
   const ch = 1 - smoothstep(-R.width * 0.15, R.width * 0.25, rd);
   if (ch > 0) h = h * (1 - ch) + R.bed * ch;
+  // Fords: a shallow gravel bed (0.3 m of water) where a road wades the creek.
+  for (const F of FORDS) {
+    const df = polylineDistance([F.a, F.b], x, z);
+    if (df < F.width / 2 + 3) {
+      const w = 1 - smoothstep(F.width / 2, F.width / 2 + 3, df);
+      h = Math.max(h, h * (1 - w) + (R.level - 0.3) * w);
+    }
+  }
   // Lakes.
   for (const L of LAKES) {
     const d = Math.hypot(x - L.center.x, z - L.center.z);
@@ -232,6 +240,8 @@ function baseHeight(x, z) {
   }
   return h;
 }
+
+const FORDS = BRIDGES.filter((b) => b.kind === 'ford');
 
 /** Cheap low-pass of the ground under a road (removes the high-frequency detail). */
 function naturalHeightSmooth(x, z, h) {
@@ -269,7 +279,8 @@ export class Heightfield {
 
 /** 'water' | 'lava' | null at a world position. */
 export function surfaceAt(x, y, z) {
-  if (y < RIVER.level - 0.05 && riverDistance(x, z) < 1.5) return 'water';
+  const ri = riverInfo(x, z);
+  if (y < ri.river.level - 0.05 && ri.d < 1.5) return 'water';
   for (const L of LAKES) if (y < L.level - 0.05 && Math.hypot(x - L.center.x, z - L.center.z) < L.radius * 1.1) return 'water';
   if (y < LAVA.level + 0.15) for (const [px, pz, r] of LAVA.pools) if (Math.hypot(x - px, z - pz) < r * 1.05) return 'lava';
   return null;

@@ -124,6 +124,7 @@ export class EnemyManager {
 
   /** Remove an enemy for good (temporary event / ambush spawns). */
   remove(e) {
+    this.releaseSlot(e);
     const i = this.list.indexOf(e);
     if (i < 0) return;
     this.list.splice(i, 1);
@@ -153,6 +154,29 @@ export class EnemyManager {
   }
 
   /** Player died: everyone forgets about her. */
+  /** Attack slots: at most two enemies wind up / strike at once (bosses always may). */
+  takeSlot(e) {
+    this.attackers = this.attackers || new Set();
+    if (e.isBoss || this.attackers.has(e)) return true;
+    for (const o of this.attackers) if (!o.alive || !this.list.includes(o)) this.attackers.delete(o);
+    let used = 0;
+    for (const o of this.attackers) used += o.type.style === 'brute' ? 2 : 1;
+    if (used + (e.type.style === 'brute' ? 2 : 1) > 2) return false;
+    this.attackers.add(e);
+    return true;
+  }
+
+  slotFree(e) {
+    if (!this.attackers) return true;
+    let used = 0;
+    for (const o of this.attackers) if (o.alive) used += o.type.style === 'brute' ? 2 : 1;
+    return used + (e.type.style === 'brute' ? 2 : 1) <= 2;
+  }
+
+  releaseSlot(e) {
+    this.attackers?.delete(e);
+  }
+
   resetAggro() {
     for (const e of this.list) e.reset();
     this.game.projectiles.clear();

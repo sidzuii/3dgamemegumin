@@ -101,6 +101,7 @@ export class World {
   }
 
   camp(type, x, z, camp, y) {
+    if (this._mute) return;
     if (this._D) {
       const p = this.xf(new THREE.Vector3(x, y ?? this.heightAt(x, z), z));
       x = p.x; z = p.z; y = y === undefined ? undefined : p.y;
@@ -121,6 +122,7 @@ export class World {
   }
 
   addInteractable(obj) {
+    if (this._mute) return obj;
     if (this._D) {
       obj.root.updateMatrix();
       obj.root.applyMatrix4(this._D);
@@ -130,12 +132,13 @@ export class World {
     this.scene.add(obj.root);
     if (obj.collision) for (const g of obj.collision) this._staticCollision.push(g);
     if (obj.update) this.updatables.push(obj);
-    if (this._group) this._group.hasLogic = true;
+    this._markLogic();
     return obj;
   }
 
   /** A live scene object built by a builder (windmill sails, ritual circles…): follows its group. */
   addObject(obj) {
+    if (this._mute) return obj;
     if (this._D) {
       obj.updateMatrix();
       obj.applyMatrix4(this._D);
@@ -145,6 +148,7 @@ export class World {
   }
 
   addFootprint(x, z, w, d, rot, kind) {
+    if (this._mute) return;
     if (this._D) {
       const p = this.xf(new THREE.Vector3(x, 0, z));
       x = p.x; z = p.z; rot += this._group.dyaw;
@@ -154,17 +158,20 @@ export class World {
   }
 
   addLightSource(pos, opts) {
+    if (this._mute) return;
     this.lightSources.push({ pos: this.xf(pos.clone()), color: new THREE.Color(opts.color ?? 0xffb060), intensity: opts.intensity ?? 4, distance: opts.distance ?? 10, night: !!opts.night, flicker: !!opts.flicker, always: !!opts.always });
   }
 
   addChimney(pos) {
+    if (this._mute) return;
     this.chimneys.push(this.xf(pos.clone()));
   }
 
   /** Named spot for NPC schedules / quest markers. */
   spot(name, pos, yaw = 0) {
+    if (this._mute) return;
     this.npcSpots[name] = { pos: this.xf(pos.clone()), yaw: yaw + (this._D ? this._group.dyaw : 0) };
-    if (this._group) this._group.hasLogic = true;
+    this._markLogic();
   }
 
   // ---------------------------------------------------------------------------
@@ -177,27 +184,59 @@ export class World {
    * `fn(rng)` gets its own random stream, so editing one group never reshuffles the others.
    */
   group(id, pivot, fn, label = id, opts = {}) {
+    // Inside another group this is a part of it ('parent/child'); the part's override is kept in
+    // the parent's builder space, so it composes with whatever moves the parent.
+    const parent = opts.added ? null : this._group;
+    if (parent && !parent.added) id = parent.id + '/' + id;
     const o = opts.added ? null : this.layout.overrides?.[id] || null;
     const p = { x: pivot.x, z: pivot.z, rot: pivot.rot || 0 };
     p.y = this.heightAt(p.x, p.z);
-    const rec = { id, label, pivot: p, added: !!opts.added, data: opts.data || null, hasLogic: false, batches: null, object: null };
+    const rec = { id, label, pivot: p, added: !!opts.added, data: opts.data || null, hasLogic: false, batches: null, object: null, parent: parent && !parent.added ? parent : null, children: [] };
+    rec.parent?.children.push(rec);
     this.groups.set(id, rec);
-    if (o?.deleted) { rec.deleted = true; return rec; }
     const T = layoutTransform(this, p, o || opts.data || {});
-    rec.dyaw = T.rot - p.rot;
-    rec.ds = T.s;
+    const PD = rec.parent ? this._D : null;
+    rec.dyaw = (rec.parent?.dyaw || 0) + T.rot - p.rot;
+    rec.ds = (rec.parent?.ds ?? 1) * T.s;
     rec.place = T;
-    const D = o ? groupDelta(p, T) : null;
-    const prev = [this._D, this._group];
+    const Dl = o ? groupDelta(p, T) : null;
+    const D = PD && Dl ? new THREE.Matrix4().multiplyMatrices(PD, Dl) : PD || Dl;
+    const prev = [this._D, this._group, this._mute];
+    // A deleted part still runs its builder (so the parent's random stream stays the same) but
+    // every sink ignores it.
+    if (o?.deleted) {
+      rec.deleted = true;
+      if (!rec.parent) return rec;
+      this._mute = true;
+    }
     this._D = D;
     this._group = rec;
-    if (this.editorMode) rec.batches = new Map();
+    if (this.editorMode && !this._mute) rec.batches = new Map();
     try {
-      fn(mulberry32(hashId(id)));
+      fn(rec.parent ? null : mulberry32(hashId(id)));
     } finally {
-      [this._D, this._group] = prev;
+      [this._D, this._group, this._mute] = prev;
     }
     return rec;
+  }
+
+  /**
+   * An editable piece inside the current group (a street, a tower, a door leaf, a barrel…):
+   * selectable on its own in the map editor (Alt+click). Outside groups it just runs `fn`.
+   * Names are numbered per parent in build order: 'barrel', 'barrel_2', …
+   */
+  part(name, x, z, rot, fn, label) {
+    const g = this._group;
+    if (!g || g.added || g.id === '__ghost') return fn();
+    g.partN = g.partN || {};
+    const n = (g.partN[name] = (g.partN[name] || 0) + 1);
+    let r;
+    this.group(n > 1 ? name + '_' + n : name, { x, z, rot }, () => { r = fn(); }, label || name);
+    return r;
+  }
+
+  _markLogic() {
+    for (let g = this._group; g; g = g.parent) g.hasLogic = true;
   }
 
   /** Apply the current group's layout delta to a world-space point (in place). */
@@ -499,6 +538,7 @@ export class World {
    */
   addSolid(geometry, matrix, materialKey, { collide = true, castShadow = true, tint = null, collideOnly = false, detail = false } = {}) {
     const g = geometry.index ? geometry.toNonIndexed() : geometry.clone();
+    if (this._mute) return g;
     g.applyMatrix4(this._D ? _dm.multiplyMatrices(this._D, matrix) : matrix);
     if (collideOnly) {
       const cg = new THREE.BufferGeometry();
@@ -529,6 +569,7 @@ export class World {
    * swaps the material for a tiling one (e.g. the village stone) with world-space planar UVs.
    */
   addKit(name, matrix, { collide = true, castShadow = true, tint = null, variant = null, detail = false, retex = null } = {}) {
+    if (this._mute) return;
     const parts = this.kits.get(name);
     if (this._D) matrix = _dm.multiplyMatrices(this._D, matrix);
     if (tint !== null) _tint.set(tint);
@@ -561,7 +602,8 @@ export class World {
   _pushBatch(g, materialKey, castShadow, detail = false) {
     if (this._group?.batches) {
       // Map editor: each editable group keeps its own meshes so it can move live.
-      const key = `${materialKey}|${castShadow ? 1 : 0}`;
+      const tier = detail ? 'd' : this.lodMode === 'near' ? 'n' : this.lodMode === 'far' ? 'f' : '';
+      const key = `${materialKey}|${castShadow ? 1 : 0}|${tier}`;
       if (!this._group.batches.has(key)) this._group.batches.set(key, []);
       this._group.batches.get(key).push(g);
       return;
@@ -576,6 +618,7 @@ export class World {
   }
 
   addCollisionOnly(geometry, matrix) {
+    if (this._mute) return;
     const g = geometry.index ? geometry.toNonIndexed() : geometry.clone();
     g.applyMatrix4(this._D ? _dm.multiplyMatrices(this._D, matrix) : matrix);
     this._staticCollision.push(g);
@@ -597,16 +640,21 @@ export class World {
    */
   buildGroupObject(rec) {
     if (!rec.batches) return null;
-    const T = rec.place;
     const obj = new THREE.Group();
     obj.name = 'group:' + rec.id;
-    obj.position.set(T.x, T.y, T.z);
-    obj.rotation.y = T.rot;
-    obj.scale.setScalar(T.s);
+    obj.rotation.order = 'YXZ';
+    // A part hangs under its parent's object: local = parent pivot^-1 · M(its placement), both in
+    // the parent's builder space, so moving the parent carries it along.
+    const parentObj = rec.parent?.object;
+    groupMatrix(rec.place, obj.matrix);
+    if (parentObj) obj.matrix.premultiply(pivotMatrix(rec.parent.pivot).invert());
+    obj.matrix.decompose(obj.position, obj.quaternion, obj.scale);
+    obj.rotation.setFromQuaternion(obj.quaternion, 'YXZ');
+    (parentObj || this.scene).add(obj);
     obj.updateMatrixWorld(true);
     const inv = obj.matrixWorld.clone().invert();
     for (const [key, list] of rec.batches) {
-      const [matKey, shadow] = key.split('|');
+      const [matKey, shadow, tier] = key.split('|');
       const merged = mergeGeometries(list, false);
       if (!merged) continue;
       merged.applyMatrix4(inv);
@@ -615,12 +663,13 @@ export class World {
       mesh.castShadow = shadow === '1';
       mesh.receiveShadow = true;
       mesh.userData.groupId = rec.id;
+      mesh.userData.tier = tier;
+      if (tier === 'f') mesh.visible = false; // far proxies: the editor always shows the near model
       obj.add(mesh);
     }
     obj.userData.groupId = rec.id;
     rec.batches = null;
     rec.object = obj;
-    this.scene.add(obj);
     return obj;
   }
 
@@ -911,6 +960,17 @@ function layoutTransform(world, p, o) {
   const x = o.x ?? p.x, z = o.z ?? p.z;
   return { x, z, y: world.heightAt(x, z) + (o.dy ?? 0), rot: o.rot ?? p.rot, s: o.s ?? 1 };
 }
+
+/** M(T): translation to the placement (y = ground + dy) · yaw · uniform scale. */
+function groupMatrix(T, target = new THREE.Matrix4()) {
+  return target.makeRotationY(T.rot).scale(_sv.set(T.s, T.s, T.s)).setPosition(T.x, T.y, T.z);
+}
+/** M(pivot) of a group as the builder placed it. */
+function pivotMatrix(p) {
+  return new THREE.Matrix4().makeRotationY(p.rot).setPosition(p.x, p.y, p.z);
+}
+const _sv = new THREE.Vector3();
+export { groupMatrix, pivotMatrix };
 
 /** Matrix taking a group from its builder pivot to its layout placement. */
 function groupDelta(p, T) {

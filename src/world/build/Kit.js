@@ -236,7 +236,7 @@ export function house(world, spec, rng) {
     const dz = d / 2 + 0.04;
     // A hall's one wide arch gets a step as wide as the opening.
     const sw = open === 'hall' && !spec.arcade && doorTiles ? Math.max(1.8, (doorTiles[1] - doorTiles[0] + 1) * tw - 0.4) : 1.8;
-    F.box(sw, 0.57, 0.9, doorX, base - 0.55, dz + 0.4, 'stone', { castShadow: false }); // down to the plinth foot
+    partAt(world, F, doorX, dz + 0.4, 'step', () => F.box(sw, 0.57, 0.9, doorX, base - 0.55, dz + 0.4, 'stone', { castShadow: false }), 'Крыльцо'); // down to the plinth foot
     door = F.at(doorX, base, dz + 1.2);
     if (spec.lantern !== false && rng() < 0.7) lantern(world, F.sub(doorX + (doorX > 0.01 ? -1.3 : 1.3), base + 2.1, dz + 0.18)); // on the side towards the middle
   }
@@ -330,13 +330,13 @@ function walls(F, w, d, y0, h, o) {
           put('Wall_Arch', { collide: false });
           const side = t < 0 ? -1 : 1;
           const lx = side * (w / 2 - 0.47) - t; // inner wall face (w/2 − 0.40) + half the leaf
-          T.kit(V(spec.doorModel || 'Door_1_Round'), lx, 0, -0.36, { sx: sx * 0.9, sy, ry: Math.PI / 2, collide: false, detail: true });
+          partAt(T.w, T, lx, -0.36, 'door', () => T.kit(V(spec.doorModel || 'Door_1_Round'), lx, 0, -0.36, { sx: sx * 0.9, sy, ry: Math.PI / 2, collide: false, detail: true }), 'Дверь');
           continue;
         }
         put(`Wall_${mat}_Door_Round`);
         put('DoorFrame_Round_WoodDark', { collide: false, detail: true });
         // A closed house: the shut leaf blocks the doorway (no walking into an empty shell).
-        T.kit(V(spec.doorModel || 'Door_1_Round'), -0.5 * sx, 0, 0, { sx, sy, collide: 'box', detail: true });
+        partAt(T.w, T, -0.5 * sx, 0, 'door', () => T.kit(V(spec.doorModel || 'Door_1_Round'), -0.5 * sx, 0, 0, { sx, sy, collide: 'box', detail: true }), 'Дверь');
         continue;
       }
       if (rng() < (ground ? 0.55 : 0.7)) {
@@ -552,6 +552,7 @@ export function cityWall(world, nodes, opts = {}) {
       const m = Math.max(1, Math.round((s1 - s0) / 4.2));
       const len = (s1 - s0) / m;
       const rot = Math.atan2(tx, tz) - Math.PI / 2; // local x along the wall
+      world.group('side_' + i, { x: (A.x + B.x) / 2, z: (A.z + B.z) / 2, rot }, () => {
       const ground = (t) => Math.min(world.heightAt(A.x + tx * t - tz * T / 2, A.z + tz * t + tx * T / 2), world.heightAt(A.x + tx * t + tz * T / 2, A.z + tz * t - tx * T / 2));
       for (let k = 0; k < m; k++) {
         const t = s0 + (k + 0.5) * len, sx = len + OVER;
@@ -562,6 +563,7 @@ export function cityWall(world, nodes, opts = {}) {
           .setPosition(A.x + tx * t, (y0 + y1) / 2 - 1.2, A.z + tz * t);
         world.addKit('castle/wall', _m, { collide: 'box', retex: STONE });
       }
+      }, 'Участок стены ' + (i + 1));
     }
   });
   // Towers and gatehouses.
@@ -881,8 +883,18 @@ export function plankBridge(world, ax, az, bx, bz, width, deckY) {
     for (let z = -len / 2; z <= len / 2; z += 2) F.box(0.14, 0.95, 0.14, sx * (width / 2), -0.1, z, 'log', deco);
     for (let z = -len / 2; z <= len / 2; z += 4) F.box(0.25, 2.5, 0.25, sx * (width / 2), -2.4, z, 'log', deco);
   }
-  // Invisible rails so nobody walks off by accident.
-  for (const sx of [-1, 1]) F.box(0.1, 1, len, sx * (width / 2 + 0.05), 0, 0, 'plank', { collideOnly: true });
+  // Invisible rails so nobody walks off by accident; they reach down to the creek bed so
+  // nobody can walk in under the deck either.
+  for (const sx of [-1, 1]) F.box(0.1, 3.5, len, sx * (width / 2 + 0.05), -2.5, 0, 'plank', { collideOnly: true });
+  // Ramps at both ends when the bank is lower than the deck (the step stays under 0.3 m).
+  for (const s of [-1, 1]) {
+    const p = F.at(0, 0, s * (len / 2 + 1.5));
+    const drop = deckY - world.heightAt(p.x, p.z);
+    if (drop < 0.2) continue;
+    const L = Math.min(5, Math.max(1.5, drop * 4));
+    const th = Math.atan2(drop, L);
+    F.box(width, 0.12, Math.hypot(L, drop) + 0.2, 0, -drop / 2 - 0.12, s * (len / 2 + L / 2), 'plank', { tint: 0x7a5a3a, rx: s * th });
+  }
   world.addFootprint(mx, mz, width, len, rot, 'bridge');
 }
 
@@ -905,6 +917,7 @@ export function fence(world, points, opts = {}) {
 }
 
 /** Street lamp: Kenney lantern post + a glass that glows at night. */
+const partAt = (world, F, lx, lz, name, fn, label) => { const p = F.at(lx, 0, lz); return world.part(name, p.x, p.z, F.rot, fn, label); };
 export function lamp(world, pos, rot = 0) {
   const F = new Frame(world, pos.x, pos.y, pos.z, rot);
   F.kit('town/lantern', 0, 0, 0, { s: 1.75, collide: 'box', tint: 0x4a4642 }); // wrought iron
@@ -920,11 +933,11 @@ export function lantern(world, F) {
 }
 
 export function barrel(world, F, lx, lz) {
-  F.kit('food/barrel', lx, 0, lz, { s: 1.45, ry: lx * 7.1 + lz * 3.3, collide: 'box' });
+  partAt(world, F, lx, lz, 'barrel', () => F.kit('food/barrel', lx, 0, lz, { s: 1.45, ry: lx * 7.1 + lz * 3.3, collide: 'box' }), 'Бочка');
 }
 
 export function crate(world, F, lx, lz, s = 0.8, ry = 0) {
-  F.kit('village/Prop_Crate', lx, 0, lz, { s: s / 1.06, ry, collide: 'box' });
+  partAt(world, F, lx, lz, 'crate', () => F.kit('village/Prop_Crate', lx, 0, lz, { s: s / 1.06, ry, collide: 'box' }), 'Ящик');
 }
 
 /** Food kit model at real size (the kit is modelled ~2.5× too large). */
@@ -940,7 +953,8 @@ export function prop(F, name, lx, ly, lz, opts = {}) {
   const s = opts.s ?? 2.3;
   const b = F.w.kits.box(name);
   const S = F.sub(lx, ly, lz, opts.ry ?? 0);
-  S.kit(name, -(b.min.x + b.max.x) / 2 * s, -b.min.y * s, -(b.min.z + b.max.z) / 2 * s, { s, collide: opts.collide ?? 'box', castShadow: opts.castShadow ?? true, tint: opts.tint ?? null });
+  const short = name.split('/').pop();
+  F.w.part(short, S.origin.x, S.origin.z, S.rot, () => S.kit(name, -(b.min.x + b.max.x) / 2 * s, -b.min.y * s, -(b.min.z + b.max.z) / 2 * s, { s, collide: opts.collide ?? 'box', castShadow: opts.castShadow ?? true, tint: opts.tint ?? null }), short);
 }
 
 /** A laid table top: a few food-kit dishes around (lx, y, lz). */
@@ -995,7 +1009,7 @@ export function well(world, x, z) {
 }
 
 export function bench(world, F, lx, lz, ry = 0) {
-  F.kit('town/stall-bench', lx, 0, lz, { s: 2, ry: ry + Math.PI / 2, collide: false });
+  partAt(world, F, lx, lz, 'bench', () => F.kit('town/stall-bench', lx, 0, lz, { s: 2, ry: ry + Math.PI / 2, collide: false }), 'Скамья');
 }
 
 /** Covered merchant wagon (caravans). */
