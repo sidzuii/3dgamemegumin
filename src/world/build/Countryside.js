@@ -24,6 +24,7 @@ export function buildCountryside(world) {
   W.group('crossroads', { x: REGION.crossroads.center.x, z: REGION.crossroads.center.z }, (r) => crossroads(W, r), 'Развилка трёх дорог');
   W.group('woodcutter', { x: POI.woodcutter.x, z: POI.woodcutter.z, rot: 1.2 }, (r) => woodcutter(W, r), 'Хижина дровосека');
   olkhovka(W, rng);
+  eastRoad(W);
   // Editable groups (map editor): whole places that move as one.
   const R = (id) => REGION[id].center;
   W.group('hunters_camp', R('hunters'), (r) => huntersCamp(W, r), 'Лагерь охотников');
@@ -210,6 +211,148 @@ function olkhovka(W, rng) {
   }, 'Часовня и кладбище');
   fence(W, [[c.x - 30, c.z - 26], [c.x - 30, c.z + 26]], { tint: 0x8a6a48 });
   [[-8, -4], [9, -6], [-6, 26], [20, 18]].forEach(([dx, dz], i) => W.group('olk_lamp_' + i, { x: c.x + dx, z: c.z + dz }, () => lamp(W, new THREE.Vector3(c.x + dx, H(W, c.x + dx, c.z + dz), c.z + dz), 0), 'Фонарь'));
+}
+
+// -----------------------------------------------------------------------------------------
+/**
+ * Things to see along the Axel -> Olkhovka road (stage 6): fields and a shrine after the Moon
+ * bridge, the lone oak on the ridge, the ford, the boundary stone at the gorge fork, the tar
+ * burners' clearing, the reed pond with the fisher's hut, the apiary, the orchard and the
+ * village gate. No enemies: the road's only fight is the escort ambush.
+ */
+function eastRoad(W) {
+  const sp = (x, z) => new THREE.Vector3(x, H(W, x, z), z);
+  // Fields on both sides of the road between the Moon bridge and the Crossroads.
+  W.group('east_fields', { x: -40, z: -60 }, (r) => {
+    const fields = [
+      { x: -118, z: -40, w: 26, d: 14, crop: 'wheat' },
+      { x: -60, z: -82, w: 18, d: 12, crop: 'cabbage' },
+      { x: 30, z: -90, w: 30, d: 16, crop: 'wheat' },
+      { x: 40, z: -30, w: 18, d: 10, crop: 'pumpkin' },
+    ];
+    W.fields = W.fields || [];
+    for (const f of fields) {
+      const pts = [[f.x - f.w / 2, f.z - f.d / 2], [f.x + f.w / 2, f.z - f.d / 2], [f.x + f.w / 2, f.z + f.d / 2], [f.x - f.w / 2, f.z + f.d / 2], [f.x - f.w / 2, f.z - f.d / 2 + 3]];
+      fence(W, pts, { tint: 0x9a7a50 });
+      if (f.crop === 'wheat') W.fields.push({ rect: { x: f.x, z: f.z, w: f.w - 1, d: f.d - 1 }, count: Math.round(f.w * f.d * 9), hue: 0.12, scale: 2.1, sat: 0.55, light: 0.55, crop: true });
+      else {
+        for (let rz = f.z - f.d / 2 + 1.2; rz < f.z + f.d / 2 - 0.8; rz += 1.6) {
+          for (let rx = f.x - f.w / 2 + 1.2; rx < f.x + f.w / 2 - 0.8; rx += 1.4) {
+            const F = new Frame(W, rx + (r() - 0.5) * 0.3, H(W, rx, rz) - 0.04, rz, r() * 6);
+            if (f.crop === 'cabbage') F.kit('food/cabbage', 0, 0, 0, { s: 1.5 + r() * 0.4, collide: false, castShadow: false, detail: true });
+            else F.kit(r() < 0.55 ? 'food/pumpkin' : 'nature/crops_leafsStageB', 0, 0, 0, { s: 1.8, collide: false, detail: true });
+          }
+        }
+      }
+      W.addFootprint(f.x, f.z, f.w, f.d, 0, 'field');
+    }
+    haystack(W, 4, -76, 0.9);
+    haystack(W, 9, -78, 0.7);
+    wagon(W, 0, -72, 0.6, 0xd8c8a0);
+    const S = new Frame(W, 36, H(W, 36, -104), -104, 0.4);
+    S.box(0.12, 2.2, 0.12, 0, 0, 0, 'log', { collide: false });
+    S.box(1.6, 0.1, 0.1, 0, 1.6, 0, 'log', { collide: false });
+    S.box(0.7, 0.8, 0.35, 0, 1.2, 0, 'cloth', { collide: false, tint: 0xa05a3a });
+    S.sphere(0.25, 0, 2.25, 0, 'hay', { collide: false });
+  }, 'Поля у дороги');
+  // Roadside shrine of Eris at the farm-lane fork.
+  W.group('road_shrine', { x: -30, z: -48, rot: 2.2 }, () => {
+    const S = new Frame(W, -30, H(W, -30, -48), -48, 2.2);
+    S.box(1.2, 2.0, 0.8, 0, 0, 0, 'stone', { tint: 0xc8c0b0 });
+    S.box(1.6, 0.25, 1.1, 0, 2.0, 0, 'roof', { tint: 0x3a6a8a });
+    S.sphere(0.13, 0, 1.45, 0.35, 'stone', { tint: 0xf0ece4, collide: false });
+    prop(S, 'graveyard/candle-multiple', 0, 0, 0.7, { s: 0.9, collide: false });
+    W.addLightSource(S.at(0, 1.0, 0.8), { color: 0xffd090, intensity: 2.5, distance: 6, night: true });
+  }, 'Придорожный алтарь Эрис');
+  // The lone oak on the ridge: visible from the Crossroads, a bench, a carved stone, a small cache.
+  const oak = POI.hill_oak;
+  W.group('hill_oak', { x: oak.x, z: oak.z }, (r) => {
+    tree(W, oak.x, oak.z - 2, 1.9, r, 'oak');
+    bench(W, new Frame(W, oak.x + 3, H(W, oak.x + 3, oak.z + 1.5), oak.z + 1.5, -0.9), 0, 0, 0);
+    W.addSign(sp(oak.x - 2.5, oak.z + 2), 0.6, ['Камень на гребне:', '«Отсюда видно и Аксель, и Ольховку.', 'Кто дошёл до дуба — прошёл полпути.»']);
+    W.addChest(sp(oak.x + 1.2, oak.z - 4.2), 2.6, 'hill_oak');
+  }, 'Одинокий дуб');
+  // The ford: gravel, stepping stones downstream, depth posts.
+  const fd = POI.alder_ford;
+  W.group('alder_ford', { x: fd.x, z: fd.z }, (r) => {
+    for (let i = -4; i <= 4; i++) {
+      const x = fd.x + i * 1.6, z = fd.z + 4.2 + (r() - 0.5) * 0.4;
+      new Frame(W, x, H(W, x, z) - 0.15, z, r() * 6).box(0.9, 0.35, 0.8, 0, 0, 0, 'stone', { tint: 0x9a948a, detail: true });
+    }
+    for (const s of [-1, 1]) {
+      const x = fd.x + s * 8, z = fd.z - 2.8;
+      new Frame(W, x, H(W, x, z), z, 0).box(0.18, 1.6, 0.18, 0, -0.2, 0, 'log', { collide: false });
+    }
+    W.spot('alder_ford', sp(fd.x, fd.z), Math.PI / 2);
+  }, 'Тележный брод');
+  // Boundary stone at the fork to the gorge trail.
+  const bs = POI.boundary_stone;
+  W.group('boundary_stone', { x: bs.x, z: bs.z }, (r) => {
+    const F = new Frame(W, bs.x, H(W, bs.x, bs.z), bs.z, 0.3);
+    F.box(0.9, 2.2, 0.5, 0, -0.2, 0, 'stone', { tint: 0x8e8a80 });
+    F.box(0.6, 0.5, 0.06, 0, 1.2, 0.27, 'stoneDark', { collide: false });
+    rock(W, bs.x + 2.5, bs.z + 1, 0.8, r);
+  }, 'Межевой камень');
+  // Tar burners' clearing in the pines (optional, no enemies).
+  const tc = POI.tar_camp;
+  W.group('tar_camp', { x: tc.x, z: tc.z }, (r) => {
+    const F = new Frame(W, tc.x, H(W, tc.x, tc.z), tc.z, 0.5);
+    F.cyl(1.4, 1.6, 0, 0, 0, 'stone', { seg: 10, tint: 0x6a6058 });
+    F.cyl(0.5, 1.2, 0, 1.6, 0, 'stoneDark', { seg: 8 });
+    prop(F, 'nature/log_stackLarge', 4, 0, 1, { s: 3 });
+    for (let i = 0; i < 3; i++) barrel(W, F, -3 + i * 0.9, 2.5);
+    campfire(W, tc.x - 5, tc.z + 3);
+    W.addChest(F.at(-3, 0, -2.5), 0.5, 'tar_camp');
+  }, 'Поляна смолокуров');
+  // Reed pond with a pier, a boat and the fisher's hut.
+  const pond = LAKES.find((l) => l.id === 'reed_pond');
+  W.group('reed_pond', { x: pond.center.x, z: pond.center.z }, (r) => {
+    const px = pond.center.x - 4, pz0 = pond.center.z - pond.radius + 1;
+    for (let i = 0; i < 7; i++) {
+      const z = pz0 + i * 1.6;
+      W.box(2.0, 0.12, 1.5, px, pond.level + 0.35, z, 'plank', 0);
+      if (i % 2 === 0) for (const s of [-1, 1]) W.cylinder(0.1, 0.1, 1.6, px + s, pond.level - 1.0, z, 'log', 5, { collide: false });
+    }
+    W.addChest(new THREE.Vector3(px, pond.level + 0.47, pz0 + 6 * 1.6), Math.PI, 'reed_pond');
+    const B = new Frame(W, px + 3, pond.level + 0.05, pz0 + 6, 0.3);
+    B.box(1.2, 0.35, 3.2, 0, 0, 0, 'plank', { tint: 0x7a5a3a, collide: false });
+    for (let i = 0; i < 26; i++) {
+      const a = r() * Math.PI * 2, rr = pond.radius * (0.95 + r() * 0.2);
+      const x = pond.center.x + Math.cos(a) * rr, z = pond.center.z + Math.sin(a) * rr;
+      new Frame(W, x, H(W, x, z), z, r() * 6).kit('nature/grass_large', 0, 0, 0, { s: 2.2, collide: false, castShadow: false, detail: true });
+    }
+  }, 'Камышовый пруд');
+  const fh = POI.fisher_hut;
+  W.group('fisher_hut', { x: fh.x, z: fh.z, rot: Math.PI }, (r) => {
+    const h = house(W, { x: fh.x, z: fh.z, rot: Math.PI, w: 5, d: 4, floors: 1, style: 'wood', roofTint: ROOF_COLORS.straw, chimney: true, kind: 'house' }, r);
+    prop(h.frame, 'survival/workbench', 3.4, 0, 1, { s: 2.2 });
+    barrel(W, h.frame, -3, 1.4);
+  }, 'Хижина рыбака');
+  // Apiary and orchard on the village approach.
+  const ap = POI.apiary;
+  W.group('apiary', { x: ap.x, z: ap.z }, (r) => {
+    for (let i = 0; i < 9; i++) {
+      const x = ap.x + (i % 3) * 2.4 - 2.4, z = ap.z + Math.floor(i / 3) * 2.4 - 2.4;
+      const F = new Frame(W, x, H(W, x, z), z, r() * 0.4);
+      F.box(0.7, 0.4, 0.7, 0, 0, 0, 'plank', { tint: 0xc8a060 });
+      F.box(0.75, 0.25, 0.75, 0, 0.4, 0, 'plank', { tint: 0xd8b070 });
+      F.box(0.8, 0.08, 0.8, 0, 0.65, 0, 'roof', { tint: 0x7a5a3a });
+    }
+    for (let i = 0; i < 12; i++) {
+      const x = 644 + (i % 4) * 12 + (r() - 0.5) * 3, z = -186 + Math.floor(i / 4) * 9 + (r() - 0.5) * 3;
+      if (Math.hypot(x - ap.x, z - ap.z) < 5) continue;
+      tree(W, x, z, 0.7 + r() * 0.3, r, r() < 0.5 ? 'oak' : 'birch');
+    }
+  }, 'Пасека и сад');
+  // Village gate: two posts and a board over the road.
+  const vg = POI.village_gate;
+  W.group('village_gate', { x: vg.x, z: vg.z, rot: Math.PI / 2 - 0.18 }, () => {
+    const F = new Frame(W, vg.x, H(W, vg.x, vg.z), vg.z, Math.PI / 2 - 0.18);
+    for (const s of [-1, 1]) F.box(0.35, 4.2, 0.35, s * 3.6, 0, 0, 'log', { tint: 0x6a4a30 });
+    F.box(7.8, 0.3, 0.4, 0, 4.0, 0, 'log', { tint: 0x6a4a30, collide: false });
+    F.box(3.2, 0.8, 0.12, 0, 3.2, 0, 'plank', { tint: 0xb08a5a, collide: false });
+    W.addSign(F.at(4.6, 0, 0.8), Math.PI / 2 - 0.18, ['Деревня Ольховка', '«Добро пожаловать, путник!»']);
+  }, 'Ворота Ольховки');
 }
 
 /** Farmstead across the river: a cottage, a fenced vegetable patch, a cart. */

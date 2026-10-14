@@ -279,21 +279,26 @@ class NPC {
       if (dist > (this.follow.keep ?? 2.2)) {
         moving = this._step(t, dt, dist > 8 ? 2.6 : WALK_SPEED * 1.2);
       }
-    } else if (this.path?.length && !this.paused) {
+    } else if (this.path?.length && !this.paused && !this.cower) {
       // Wait if the player stands right in the way.
       const nxt = this.path[0];
       _v.set(nxt.x - this.pos.x, 0, nxt.z - this.pos.z).normalize();
       const px = playerPos.x - this.pos.x, pz = playerPos.z - this.pos.z;
       const block = Math.hypot(px, pz) < 0.9 && px * _v.x + pz * _v.z > 0;
+      const reach = this.escorting ? 0.8 : 0.25;
       if (!block) {
-        moving = this._step(nxt, dt, this.escorting ? ESCORT_SPEED : WALK_SPEED);
+        moving = this._step(nxt, dt, this.escorting ? this.escortSpeed || ESCORT_SPEED : WALK_SPEED);
+        this.blocked = 0;
+      } else if (this.escorting && this.path.length > 1 && Math.hypot(nxt.x - this.pos.x, nxt.z - this.pos.z) < 1.5) {
+        // The player waits on his next waypoint: take the one after it.
+        this.path.shift();
         this.blocked = 0;
       } else if ((this.blocked = (this.blocked || 0) + dt) > 1.2) {
         // The player keeps standing in the way: step around her.
         this.path.unshift(new THREE.Vector3(this.pos.x - _v.z * 1.1 + _v.x * 0.6, 0, this.pos.z + _v.x * 1.1 + _v.z * 0.6));
         this.blocked = 0;
       }
-      if (Math.hypot(nxt.x - this.pos.x, nxt.z - this.pos.z) < 0.25) {
+      if (this.path[0] === nxt && Math.hypot(nxt.x - this.pos.x, nxt.z - this.pos.z) < reach) {
         this.path.shift();
         if (!this.path.length) {
           this.path = null;
@@ -318,7 +323,7 @@ class NPC {
     this.animAcc += dt;
     const interval = d < 30 ? 0 : d < 70 ? 0.1 : Infinity;
     if (this.animAcc >= interval || !this.posed) {
-      this.mixer.update((this.posed ? this.animAcc : this.animAcc + 1) * (moving && this.escorting ? ESCORT_SPEED / WALK_SPEED : 1));
+      this.mixer.update((this.posed ? this.animAcc : this.animAcc + 1) * (moving && this.escorting ? Math.min(2.2, (this.escortSpeed || ESCORT_SPEED) / WALK_SPEED) : 1));
       this.animAcc = 0;
       this.posed = true;
       if (this.sitting) this._sitPose();

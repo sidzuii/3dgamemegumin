@@ -126,6 +126,9 @@ export const CHEST_LOOT = {
   crimson_gorge: [['eris', 300], ['ring_crimson', 1], ['gem_ruby', 1], ['manatite', 1]],
   old_mines: [['eris', 90], ['iron_ore', 4], ['old_coin', 1]],
   astrarium: [['eris', 120], ['mana_potion', 3]],
+  hill_oak: [['eris', 35], ['apple', 3], ['old_coin', 1]],
+  reed_pond: [['eris', 45], ['frog_meat', 2], ['hp_potion', 1]],
+  tar_camp: [['eris', 40], ['wood', 4], ['st_potion', 1]],
 };
 
 /** Enemy drops: [item, chance, min, max]. */

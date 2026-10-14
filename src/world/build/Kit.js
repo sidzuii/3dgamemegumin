@@ -881,8 +881,18 @@ export function plankBridge(world, ax, az, bx, bz, width, deckY) {
     for (let z = -len / 2; z <= len / 2; z += 2) F.box(0.14, 0.95, 0.14, sx * (width / 2), -0.1, z, 'log', deco);
     for (let z = -len / 2; z <= len / 2; z += 4) F.box(0.25, 2.5, 0.25, sx * (width / 2), -2.4, z, 'log', deco);
   }
-  // Invisible rails so nobody walks off by accident.
-  for (const sx of [-1, 1]) F.box(0.1, 1, len, sx * (width / 2 + 0.05), 0, 0, 'plank', { collideOnly: true });
+  // Invisible rails so nobody walks off by accident; they reach down to the creek bed so
+  // nobody can walk in under the deck either.
+  for (const sx of [-1, 1]) F.box(0.1, 3.5, len, sx * (width / 2 + 0.05), -2.5, 0, 'plank', { collideOnly: true });
+  // Ramps at both ends when the bank is lower than the deck (the step stays under 0.3 m).
+  for (const s of [-1, 1]) {
+    const p = F.at(0, 0, s * (len / 2 + 1.5));
+    const drop = deckY - world.heightAt(p.x, p.z);
+    if (drop < 0.2) continue;
+    const L = Math.min(5, Math.max(1.5, drop * 4));
+    const th = Math.atan2(drop, L);
+    F.box(width, 0.12, Math.hypot(L, drop) + 0.2, 0, -drop / 2 - 0.12, s * (len / 2 + L / 2), 'plank', { tint: 0x7a5a3a, rx: s * th });
+  }
   world.addFootprint(mx, mz, width, len, rot, 'bridge');
 }
 
