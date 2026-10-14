@@ -341,7 +341,8 @@ for (const [id, list] of byGid) {
   const front = (fp.d - 0.3) / 2 - 0.6;
   const doors = list.filter((p) => /^village\/(Wall_\w+_Door_Round|Wall_Arch)$/.test(p.name)).map((p) => ({ p, l: toL(...ctr(p)) })).filter((q) => q.l[1] > front);
   for (const q of doors) doorModules.push({ id, x: ctr(q.p)[0], z: ctr(q.p)[1], rot: fp.rot, closed: /Door_Round/.test(q.p.name) });
-  const steps = list.filter((p) => p.name === 'solid:stone' && Math.abs(Math.hypot(p.e[0], p.e[1], p.e[2]) - 1.8) < 1e-3 && Math.abs(Math.hypot(p.e[4], p.e[5], p.e[6]) - 0.57) < 1e-3).map((p) => toL(...ctr(p)));
+  // Door steps: 0.57 high, 0.9 deep, 1.8 m wide (a hall's step spans its arch).
+  const steps = list.filter((p) => p.name === 'solid:stone' && Math.hypot(p.e[0], p.e[1], p.e[2]) > 1.8 - 1e-3 && Math.abs(Math.hypot(p.e[4], p.e[5], p.e[6]) - 0.57) < 1e-3 && Math.abs(Math.hypot(p.e[8], p.e[9], p.e[10]) - 0.9) < 1e-3).map((p) => toL(...ctr(p)));
   if (!steps.length) continue;
   checked++;
   const closed = doors.filter((q) => /Door_Round$/.test(q.p.name)).map((q) => q.l);

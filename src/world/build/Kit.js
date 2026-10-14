@@ -169,7 +169,7 @@ function roofVariant(hex) {
  * The door snaps to a wall tile of the front (the step, the lantern and the returned `door` stand
  * in front of the real doorway); a hall's open tiles merge into one wide arch unless `arcade`.
  * The upper storeys jut out (jetty) at the front and the back only; the roof overhangs every wall
- * by ROOF_OVERHANG (houseEnvelope() gives the whole outline).
+ * by ROOF_OVERHANG (AxelPlan ENVELOPE keeps the city plan in step with these numbers).
  * Returns { frame, top (eaves height), door (world pos), base, w, d }
  */
 export function house(world, spec, rng) {
@@ -234,7 +234,9 @@ export function house(world, spec, rng) {
   let door = null;
   if (spec.door !== false && open !== 'shop') {
     const dz = d / 2 + 0.04;
-    F.box(1.8, 0.57, 0.9, doorX, base - 0.55, dz + 0.4, 'stone', { castShadow: false }); // down to the plinth foot
+    // A hall's one wide arch gets a step as wide as the opening.
+    const sw = open === 'hall' && !spec.arcade && doorTiles ? Math.max(1.8, (doorTiles[1] - doorTiles[0] + 1) * tw - 0.4) : 1.8;
+    F.box(sw, 0.57, 0.9, doorX, base - 0.55, dz + 0.4, 'stone', { castShadow: false }); // down to the plinth foot
     door = F.at(doorX, base, dz + 1.2);
     if (spec.lantern !== false && rng() < 0.7) lantern(world, F.sub(doorX + (doorX > 0.01 ? -1.3 : 1.3), base + 2.1, dz + 0.18)); // on the side towards the middle
   }
@@ -266,14 +268,6 @@ export function house(world, spec, rng) {
 
 /** Plinth margin round the walls (m). */
 const PLINTH = 0.15;
-/**
- * Outline of a house() beyond its w × d walls (m): x = each side wall, z = front / back, for the
- * city plan (tools/plan/render_plan.mjs) — the roof overhang, the jetty of the upper storeys,
- * the plinth and the corner posts all stay inside it (the door step and signs stand in front).
- */
-export function houseEnvelope(jetty = 0.3) {
-  return { x: Math.max(ROOF_OVERHANG, PLINTH, 0.12), z: Math.max(ROOF_OVERHANG + jetty, PLINTH) };
-}
 
 /** Far version of a house: a box (wall colour), a gable roof prism and lit window strips. */
 const PROXY_WALL = { Plaster: 0xe6dac2, UnevenBrick: 0x9a8e7c };
@@ -610,7 +604,7 @@ function kitTower(world, F, S, height) {
 
 /**
  * Gatehouse: the castle kit's 'tower-square-arch' stretched into a gate tower with a carriage
- * passage (≈ gw wide, 5.6 m high at the crown), a floor and a tiled roof above; open gate leaves.
+ * passage (≈ gw wide, 5.6 m high at the crown, open: no leaves), a floor and a tiled roof above.
  */
 function gatehouse2(world, F, gw, H, node) {
   const SX = gw * 2, SZ = 7, SY = (H + 1.2) / 1.01;
@@ -624,8 +618,7 @@ function gatehouse2(world, F, gw, H, node) {
   const clear = SX * 0.274; // passage half-width
   const p0 = clear - 0.03, p1 = SX * 0.47 - 0.02; // a hair off the arch faces (no z-fight)
   for (const sx of [-1, 1]) F.kit('castle/tower-square-base', (sx * (p0 + p1)) / 2, y, 0, { sx: p1 - p0, sy: (SY * 0.86) / 1.01, sz: SZ * 0.274 * 2 + 0.3, collide: 'box', retex: STONE });
-  // Opened gate leaves folded flat against the passage walls.
-  for (const sx of [-1, 1]) F.kit('castle/gate', sx * (p0 - 0.1), 0, -0.4, { sx: 1.2, sy: 4.2, sz: 4.4, collide: false });
+  // No gate leaves: folded against the passage walls they read as doors in the city wall.
   // Banners on the outer face, lanterns at night.
   const tint = { north: 0x2f5a8a, east: 0xa82a2a, south: 0xc89a30, west: 0x3a7a4a }[node.gate] ?? 0xa82a2a;
   const face = (SZ * 0.94) / 2 + 0.05;
