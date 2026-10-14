@@ -43,6 +43,9 @@ export class Editor {
     this.layout = JSON.parse(JSON.stringify(this.W.layout));
     this.layout.vegetation ||= {};
     this.layout.erase ||= [];
+    this.layout.spots ||= {};
+    this.layout.camps ||= {};
+    this.markerRecs = new Map();
     this.layerState = Object.fromEntries(LAYERS.map((l) => [l.id, { visible: true, locked: false }]));
     this.vegRecs = new Map(); // id -> editor wrapper of a recorded plant (proxy object only while selected)
     this.eraseR = 6;
@@ -75,6 +78,7 @@ export class Editor {
     this.g.scene.add(this.box);
     for (const rec of this.W.groups.values()) this._remember(rec);
     this._initGizmo();
+    this._buildMarkers();
     this._loadDraft();
     document.body.classList.add('editor-mode');
     this._buildUI();
@@ -172,8 +176,7 @@ export class Editor {
       found = { rec, distance: h.distance };
       break;
     }
-    const veg = this._pickVeg(_ray.ray);
-    if (veg && (!found || veg.distance < found.distance)) return veg.rec;
+    for (const c of [this._pickVeg(_ray.ray), this._pickMarker(_ray.ray)]) if (c && (!found || c.distance < found.distance)) found = c;
     return found?.rec ?? null;
   }
 
@@ -182,6 +185,10 @@ export class Editor {
   // ---------------------------------------------------------------------------
   /** Current placement of a group (layout values, defaults from the builder pivot). */
   place(rec) {
+    if (rec.marker) {
+      const m = rec.marker, o = this.layout[m.kind + 's'][m.key] || {}, b = m.base;
+      return { x: o.x ?? b.x, z: o.z ?? b.z, rot: o.yaw ?? b.yaw ?? 0, s: 1, dy: 0 };
+    }
     if (rec.veg) {
       const o = this.layout.vegetation[rec.veg.id] || {}, r = rec.veg;
       return { x: o.x ?? r.x, z: o.z ?? r.z, rot: o.rot ?? r.rot, s: o.s ?? 1, dy: o.dy ?? 0 };
@@ -198,7 +205,8 @@ export class Editor {
   _setPlace(rec, T) {
     const round = (v, n = 100) => Math.round(v * n) / n;
     const vals = { x: round(T.x), z: round(T.z), rot: round(T.rot, 10000), s: round(T.s, 1000), dy: round(T.dy) };
-    if (rec.veg) { const o = { ...(this.layout.vegetation[rec.veg.id] || {}), ...vals }; delete o.deleted; this.layout.vegetation[rec.veg.id] = o; }
+    if (rec.marker) { const m = rec.marker; this.layout[m.kind + 's'][m.key] = m.kind === 'spot' ? { x: vals.x, z: vals.z, yaw: vals.rot } : { x: vals.x, z: vals.z }; }
+    else if (rec.veg) { const o = { ...(this.layout.vegetation[rec.veg.id] || {}), ...vals }; delete o.deleted; this.layout.vegetation[rec.veg.id] = o; }
     else if (rec.added) Object.assign(this._added(rec.id), vals);
     else this.layout.overrides[rec.id] = vals;
     this._applyObject(rec);
@@ -207,6 +215,7 @@ export class Editor {
   }
 
   _applyObject(rec) {
+    if (rec.marker) return this._applyMarker(rec);
     if (rec.veg) return this._applyVeg(rec);
     const obj = rec.object;
     if (!obj) return;
@@ -263,21 +272,21 @@ export class Editor {
   /** The selection proxy of a plant: an invisible box the gizmo and the selection frame use. */
   _vegProxy(w) {
     if (w.object) return;
-    const r = w.veg, it = r.item;
-    const width = Math.max(0.6, Math.min(r.h * 0.5, (it?.r ?? 1) * 1.2));
+    const r = w.veg, it = r?.item;
+    const h = r ? r.h : 2, width = r ? Math.max(0.6, Math.min(r.h * 0.5, (it?.r ?? 1) * 1.2)) : 1.2;
     const obj = new THREE.Object3D();
-    obj.name = 'veg-proxy';
-    const m = new THREE.Mesh(new THREE.BoxGeometry(width, r.h, width), new THREE.MeshBasicMaterial({ visible: false }));
-    m.position.y = r.h / 2;
+    obj.name = 'edit-proxy';
+    const m = new THREE.Mesh(new THREE.BoxGeometry(width, h, width), new THREE.MeshBasicMaterial({ visible: false }));
+    m.position.y = h / 2;
     obj.add(m);
     obj.userData.groupId = w.id;
     this.g.scene.add(obj);
     w.object = obj;
-    this._applyVeg(w);
+    if (w.marker) this._applyMarker(w); else this._applyVeg(w);
   }
 
   _vegDrop(w) {
-    if (!w?.veg || !w.object) return;
+    if (!(w?.veg || w?.marker) || !w.object) return;
     this.g.scene.remove(w.object);
     w.object.traverse((o) => o.geometry?.dispose());
     w.object = null;
@@ -306,6 +315,75 @@ export class Editor {
     return best ? { rec: this._vegWrap(best), distance: bd } : null;
   }
 
+  // ---------------------------------------------------------------------------
+  // Markers: named spots (NPC schedules, quest places) and enemy spawn points
+  // ---------------------------------------------------------------------------
+  _markerList() {
+    const out = [];
+    for (const [key, b] of Object.entries(this.W.spotBase)) out.push({ kind: 'spot', key, base: b, label: 'Точка: ' + key });
+    for (const [key, b] of Object.entries(this.W.campBase)) out.push({ kind: 'camp', key, base: { x: b.x, z: b.z, yaw: 0, y: 0 }, label: `Лагерь: ${key} (${b.type})` });
+    return out;
+  }
+
+  _markerWrap(m) {
+    const id = m.kind + ':' + m.key;
+    let w = this.markerRecs.get(id);
+    if (!w) {
+      w = { id, label: m.label, marker: m, pivot: { x: m.base.x, z: m.base.z, rot: m.base.yaw || 0, y: this.W.heightAt(m.base.x, m.base.z) }, added: false, hasLogic: m.kind === 'spot', object: null, parent: null };
+      this.markerRecs.set(id, w);
+    }
+    return w;
+  }
+
+  _buildMarkers() {
+    this.markers = this._markerList();
+    const geo = new THREE.ConeGeometry(0.45, 2.2, 8).translate(0, 1.1, 0);
+    const mk = (n, color) => {
+      const m = new THREE.InstancedMesh(geo, new THREE.MeshBasicMaterial({ color, depthTest: false, transparent: true, opacity: 0.85 }), Math.max(1, n));
+      m.frustumCulled = false;
+      m.renderOrder = 9;
+      this.g.scene.add(m);
+      return m;
+    };
+    this.pins = { spot: mk(this.markers.filter((m) => m.kind === 'spot').length, 0x4aa8ff), camp: mk(this.markers.filter((m) => m.kind === 'camp').length, 0xff4a4a) };
+    this._applyAllMarkers();
+  }
+
+  _applyAllMarkers() {
+    const idx = { spot: 0, camp: 0 };
+    for (const m of this.markers) {
+      const w = this._markerWrap(m), T = this.place(w);
+      const dummy = new THREE.Matrix4().compose(_v.set(T.x, this.W.heightAt(T.x, T.z) + (m.base.y || 0), T.z), _q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), T.rot), _s.set(1, 1, 1));
+      this.pins[m.kind].setMatrixAt(idx[m.kind]++, dummy);
+      m.pos = [T.x, this.W.heightAt(T.x, T.z) + (m.base.y || 0), T.z];
+    }
+    for (const k of Object.keys(this.pins)) { this.pins[k].count = idx[k]; this.pins[k].instanceMatrix.needsUpdate = true; this.pins[k].visible = this.layerState[k + 's'].visible; }
+  }
+
+  _applyMarker(w) {
+    this._applyAllMarkers();
+    const o = w.object;
+    if (o) {
+      const T = this.place(w);
+      o.position.set(T.x, this.W.heightAt(T.x, T.z) + (w.marker.base.y || 0), T.z);
+      o.rotation.set(0, T.rot, 0);
+      o.updateMatrixWorld(true);
+    }
+  }
+
+  _pickMarker(ray) {
+    let best = null, bd = Infinity;
+    for (const m of this.markers) {
+      if (!this.layerState[m.kind + 's'].visible || this.layerState[m.kind + 's'].locked || !m.pos) continue;
+      _sph.center.set(m.pos[0], m.pos[1] + 1.1, m.pos[2]);
+      _sph.radius = 1.1;
+      if (!ray.intersectSphere(_sph, _hit)) continue;
+      const d = ray.origin.distanceTo(_hit);
+      if (d < bd) { bd = d; best = m; }
+    }
+    return best ? { rec: this._markerWrap(best), distance: bd } : null;
+  }
+
   // ---- eraser ----------------------------------------------------------------
   setEraser(on) {
     this.eraser = on;
@@ -327,6 +405,7 @@ export class Editor {
     this.layout.erase.push({ x: Math.round(p.x * 10) / 10, z: Math.round(p.z * 10) / 10, r: this.eraseR });
     this.dirty = true;
     this._applyAllVeg();
+    this._applyAllMarkers();
     this._layersPane();
   }
 
@@ -337,6 +416,8 @@ export class Editor {
     const counts = {};
     for (const rec of this.W.groups.values()) if (rec !== this.ghost) { const l = layerOf(rec); counts[l] = (counts[l] || 0) + 1; }
     for (const r of this.W.veg) counts[r.kind] = (counts[r.kind] || 0) + 1;
+    counts.spots = Object.keys(this.W.spotBase).length;
+    counts.camps = Object.keys(this.W.campBase).length;
     box.innerHTML = '<div class="ed-note">Слой: 👁 — показывать, 🔒 — не выбирать мышью. Счётчик — сколько объектов в слое.</div>' + LAYERS.map((l) => {
       const st = this.layerState[l.id];
       return `<div class="ed-row" data-layer="${l.id}"><input type="checkbox" data-lv ${st.visible ? 'checked' : ''} title="Показывать"><input type="checkbox" data-ll ${st.locked ? 'checked' : ''} title="Заблокировать (не выбирается)"><span>${l.label}</span><small>${counts[l.id] || 0}</small></div>`;
@@ -348,6 +429,7 @@ export class Editor {
     if (key === 'visible') {
       for (const rec of this.W.groups.values()) if (layerOf(rec) === id && rec.object) this._applyObject(rec);
       this._applyAllVeg();
+      if (this.pins) this._applyAllMarkers();
       if (this.sel && layerOf(this.sel) === id && !value) this.select(null);
     }
   }
@@ -501,8 +583,8 @@ export class Editor {
     }
     this.multi.clear();
     this._markMulti();
-    if (this.sel?.veg && this.sel !== rec) this._vegDrop(this.sel);
-    if (rec?.veg) this._vegProxy(rec);
+    if (this.sel && (this.sel.veg || this.sel.marker) && this.sel !== rec) this._vegDrop(this.sel);
+    if (rec?.veg || rec?.marker) this._vegProxy(rec);
     this.sel = rec;
     this.box.visible = !!rec?.object;
     if (rec?.object) this.box.setFromObject(rec.object, true);
@@ -529,6 +611,7 @@ export class Editor {
       this._markMulti();
       for (const r of more) this.remove(r);
     }
+    if (rec.marker) return this._status('Точки NPC, заданий и лагерей удалять нельзя: на них держатся расписания и квесты. Их можно двигать; «Вернуть как было» — в инспекторе.');
     if (rec.veg) {
       this._snapshot();
       this.layout.vegetation[rec.veg.id] = { ...(this.layout.vegetation[rec.veg.id] || {}), deleted: true };
@@ -550,6 +633,14 @@ export class Editor {
   }
 
   restore(rec = this.sel) {
+    if (rec?.marker) {
+      this._snapshot();
+      delete this.layout[rec.marker.kind + 's'][rec.marker.key];
+      this._applyMarker(rec);
+      this.dirty = true;
+      this._inspector();
+      return;
+    }
     if (rec?.veg) {
       this._snapshot();
       const o = this.layout.vegetation[rec.veg.id];
@@ -971,7 +1062,8 @@ export class Editor {
     ui.querySelector('.ed-list').addEventListener('click', (e) => {
       const row = e.target.closest('[data-id]');
       if (!row) return;
-      const rec = row.dataset.id.startsWith('veg:') ? this._vegWrap(this.W.veg.find((r) => r.id === row.dataset.id.slice(4))) : this.W.groups.get(row.dataset.id);
+      const mk = row.dataset.id.match(/^(spot|camp):(.+)$/);
+      const rec = mk ? this._markerWrap(this.markers.find((m) => m.kind === mk[1] && m.key === mk[2])) : row.dataset.id.startsWith('veg:') ? this._vegWrap(this.W.veg.find((r) => r.id === row.dataset.id.slice(4))) : this.W.groups.get(row.dataset.id);
       if (!rec) return;
       if (e.target.dataset.act === 'restore') return this.restore(rec);
       this.arm(null);
@@ -1013,6 +1105,14 @@ export class Editor {
     }
     if (q.length >= 2) {
       let n = 0;
+      for (const m of this.markers) {
+        if (n >= 60) break;
+        const id = m.kind + ':' + m.key;
+        if (!(m.label + ' ' + id).toLowerCase().includes(q)) continue;
+        const ov = this.layout[m.kind + 's'][m.key];
+        n++;
+        rows.push(`<div class="ed-row${this.sel?.id === id ? ' on' : ''}" data-id="${esc(id)}"><span>${esc(m.label)}</span><small>${ov ? 'изменена' : ''}</small></div>`);
+      }
       for (const r of this.W.veg) {
         if (n >= 150) { rows.push('<div class="ed-more">…уточните поиск (растений много)</div>'); break; }
         if (!(r.label + ' ' + r.id).toLowerCase().includes(q)) continue;
@@ -1039,7 +1139,7 @@ export class Editor {
     }
     box.dataset.id = rec.id;
     const a = rec.added ? this._added(rec.id) : null;
-    const scalable = !a || PLACEABLES[a.type]?.scalable;
+    const scalable = !rec.marker && (!a || PLACEABLES[a.type]?.scalable);
     const num = (f, label, v, step) => `<label>${label}<input type="number" data-f="${f}" step="${step}" value="${+(+v).toFixed(2)}"></label>`;
     let params = '';
     if (a?.type === 'house') {
@@ -1051,7 +1151,7 @@ export class Editor {
         + sel('p:goods', 'Товар', a.goods, ['fruit', 'veg', 'bread', 'mixed'], { fruit: 'фрукты', veg: 'овощи', bread: 'хлеб', mixed: 'разное' });
     } else if (a?.type === 'fence') params = num('p:len', 'Длина, м', a.len, 0.5);
     else if (a?.type === 'kit') params = `<div class="ed-note">${esc(a.name)}</div><label class="ed-check"><input type="checkbox" data-f="p:collide" ${a.collide === false ? '' : 'checked'}> Твёрдый (коллизия)</label>`;
-    const overridden = rec.veg ? this.layout.vegetation[rec.veg.id] : !rec.added && this.layout.overrides[rec.id];
+    const overridden = rec.marker ? this.layout[rec.marker.kind + 's'][rec.marker.key] : rec.veg ? this.layout.vegetation[rec.veg.id] : !rec.added && this.layout.overrides[rec.id];
     box.innerHTML = `
       <div class="ed-title">${esc(rec.label)}</div>
       <div class="ed-id">${rec.parent ? esc(rec.parent.label) + ' › ' : ''}${rec.id}${rec.hasLogic ? ' · есть места NPC / квестов' : ''}</div>
@@ -1068,7 +1168,7 @@ export class Editor {
         ${overridden ? '<button data-act="restore">Вернуть как было</button>' : ''}
         <button data-act="del" class="ed-danger">Удалить (Del)</button>
       </div>
-      ${rec.veg ? '<div class="ed-note">Растение карты (устойчивый id). Изменения применятся после «Сохранить» и перезапуска; Del — убрать, «вернуть» — в списке.</div>' : rec.added ? '' : '<div class="ed-note">Встроенное место. После сохранения NPC, квестовые точки, свет и коллизии сдвинутся вместе с ним.</div>'}`;
+      ${rec.marker ? '<div class="ed-note">' + (rec.marker.kind === 'spot' ? 'Именованная точка: по ней ходят NPC и ведут квесты. Поворот — куда смотрит NPC.' : 'Точка появления врага. Лагерь двигается по одной точке.') + ' Применится после «Сохранить» и перезапуска.</div>' : rec.veg ? '<div class="ed-note">Растение карты (устойчивый id). Изменения применятся после «Сохранить» и перезапуска; Del — убрать, «вернуть» — в списке.</div>' : rec.added ? '' : '<div class="ed-note">Встроенное место. После сохранения NPC, квестовые точки, свет и коллизии сдвинутся вместе с ним.</div>'}`;
     box.onchange = (e) => this._field(e.target);
     box.onclick = (e) => {
       const act = e.target.dataset.act;

@@ -38,6 +38,11 @@ Full description, file map and how-to guides: see `README.md` (Russian). The use
   squares, wall sides, door leaves, steps, barrels, crates, benches and `prop()` furniture are parts. A deleted
   part still runs its builder with all sinks muted (`world._mute`) so the parent's rng stays stable. Editor:
   Alt+click picks a part, Shift+click multi-select, gizmo (TransformControls) 1/2/3, [ ] fine rotation.
+  Every object is editable: wild vegetation (trees, bushes, rocks, stumps, mushrooms, flowers) is RECORDED by Kit.js
+  (`world.veg`, stable id `kind:Model@x,z`) and built in `World._realizeVegetation` with `layout.vegetation` overrides
+  and `layout.erase` circles; named spots / enemy spawn points take `layout.spots[name]` / `layout.camps['camp#n']`
+  (World.spot / World.camp). Signs, bridges, fields and the training field are groups. `src/editor/layers.js` has the
+  layers and `validateLayout` (used on save, import, draft restore). Local draft: localStorage `megumin-editor-draft`.
 - Raw user models go to `model/` (never loaded by the game); optimised copies go to `public/models/`.
   Convert FBX with FBX2glTF (not three's FBXLoader), optimise with gltf-transform. Blender is NOT
   installed any more (the old 4.5 path is gone) — prefer FBX/glTF sources. Scripts: `tools/`

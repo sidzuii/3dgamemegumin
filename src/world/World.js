@@ -70,6 +70,9 @@ export class World {
     this._group = null;
     this.trees = new TreeField(this); // instanced trees / bushes with LOD
     this.veg = []; // recorded wild vegetation (see Kit.js recordVeg)
+    this.spotBase = {}; // named spots as the builders placed them (editor: before layout.spots)
+    this.campBase = {}; // enemy spawn points as built (before layout.camps)
+    this._campN = {};
     this._vegIds = new Map();
     this.collider = null;
     this.dynamicColliders = [];
@@ -108,7 +111,13 @@ export class World {
       const p = this.xf(new THREE.Vector3(x, y ?? this.heightAt(x, z), z));
       x = p.x; z = p.z; y = y === undefined ? undefined : p.y;
     }
-    this.campSpawns.push({ type, x, z, camp, y });
+    // Editor layout (layout.camps['<camp>#<n>'] = { x, z }) moves single spawn points.
+    const n = (this._campN[camp] = (this._campN[camp] || 0) + 1);
+    const key = `${camp}#${n}`;
+    this.campBase[key] = { x, z, type };
+    const o = this.layout.camps?.[key];
+    if (o) { x = o.x; z = o.z; y = undefined; }
+    this.campSpawns.push({ type, x, z, camp, y, key });
   }
 
   addChest(pos, rotY, id) {
@@ -172,7 +181,13 @@ export class World {
   /** Named spot for NPC schedules / quest markers. */
   spot(name, pos, yaw = 0) {
     if (this._mute) return;
-    this.npcSpots[name] = { pos: this.xf(pos.clone()), yaw: yaw + (this._D ? this._group.dyaw : 0) };
+    const sp = { pos: this.xf(pos.clone()), yaw: yaw + (this._D ? this._group.dyaw : 0) };
+    // Editor layout (layout.spots[name] = { x, z, yaw }) moves a single named point; the height
+    // above the ground (floor level inside a building) is kept.
+    this.spotBase[name] = { x: sp.pos.x, z: sp.pos.z, yaw: sp.yaw, y: sp.pos.y - this.heightAt(sp.pos.x, sp.pos.z) };
+    const o = this.layout.spots?.[name];
+    if (o) { sp.pos.set(o.x, this.heightAt(o.x, o.z) + this.spotBase[name].y, o.z); sp.yaw = o.yaw ?? sp.yaw; }
+    this.npcSpots[name] = sp;
     this._markLogic();
   }
 
@@ -273,7 +288,7 @@ export class World {
     buildCountryside(this);
     buildDungeon(this);
     for (const a of this.layout.added || []) buildPlacement(this, a);
-    for (const [x, z, rot, lines] of SIGNS) this.addSign(new THREE.Vector3(x, 0, z), rot, lines);
+    SIGNS.forEach(([x, z, rot, lines], i) => this.group('sign_' + i, { x, z, rot }, () => this.addSign(new THREE.Vector3(x, 0, z), rot, lines), 'Указатель: ' + lines[0].slice(0, 34)));
     for (const c of CAMPS) this.camp(c.type, c.x, c.z, c.camp);
     this._buildVegetation();
     this._realizeVegetation();

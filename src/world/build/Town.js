@@ -905,12 +905,17 @@ function caravanCamp(rng) {
 function trainingField() {
   // The guild's proving ground north of the walls (room for an Explosion!).
   const c = REGION.guild_field.center;
+  W.group('training_field', { x: c.x, z: c.z }, () => trainingFieldBody(c), 'Тренировочное поле гильдии');
+}
+
+function trainingFieldBody(c) {
   const cx = c.x, cz = c.z;
   const y = W.heightAt(cx, cz);
   fence(W, [[cx - 20, cz + 14], [cx - 20, cz - 16], [cx + 22, cz - 16], [cx + 22, cz + 14]], { open: true, tint: 0x7a5a3a });
   const spots = [[cx - 4, cz - 8], [cx + 2, cz - 10], [cx + 8, cz - 7], [cx - 9, cz - 4], [cx + 13, cz - 3]];
   for (const [x, z] of spots) {
-    const d = new TrainingDummy(W, new THREE.Vector3(x, W.heightAt(x, z), z));
+    const dp = W.xf(new THREE.Vector3(x, W.heightAt(x, z), z)); // the group's move carries the dummy
+    const d = new TrainingDummy(W, dp);
     W.dummies.push(d);
     W.dynamicColliders.push(d.collider);
     W.scene.add(d.root);
@@ -918,7 +923,7 @@ function trainingField() {
   }
   new Frame(W, cx + 2, y, cz - 7, 0).cyl(6, 0.05, 0, -0.02, 0, 'stoneDark', { seg: 16, collide: false, castShadow: false, tint: 0x5a5048 });
   W.spot('training_field', new THREE.Vector3(cx - 6, y, cz + 10), Math.PI);
-  W.trainingTarget = new THREE.Vector3(cx + 2, y, cz - 7);
+  W.trainingTarget = W.xf(new THREE.Vector3(cx + 2, y, cz - 7));
   W.spot('training_center', W.trainingTarget, 0);
   W.addFootprint(cx, cz, 40, 30, 0, 'field');
 }

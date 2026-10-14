@@ -46,8 +46,9 @@ const H = (W, x, z) => W.heightAt(x, z);
 function bridges(W, rng) {
   const deck = (b) => Math.max(H(W, ...b.a), H(W, ...b.b)) + 0.25;
   for (const b of BRIDGES) {
-    if (b.kind === 'stone') bridge(W, ...b.a, ...b.b, b.width, deck(b));
-    else if (b.kind === 'plank') plankBridge(W, ...b.a, ...b.b, b.width, Math.max(H(W, ...b.a), H(W, ...b.b)) + 0.15);
+    const mx = (b.a[0] + b.b[0]) / 2, mz = (b.a[1] + b.b[1]) / 2;
+    if (b.kind === 'stone') W.group('bridge_' + b.id, { x: mx, z: mz }, () => bridge(W, ...b.a, ...b.b, b.width, deck(b)), b.name);
+    else if (b.kind === 'plank') W.group('bridge_' + b.id, { x: mx, z: mz }, () => plankBridge(W, ...b.a, ...b.b, b.width, Math.max(H(W, ...b.a), H(W, ...b.b)) + 0.15), b.name);
   }
   const moon = BRIDGES.find((b) => b.id === 'moon_bridge');
   W.spot('east_bridge', new THREE.Vector3((moon.a[0] + moon.b[0]) / 2, deck(moon), (moon.a[1] + moon.b[1]) / 2), Math.PI / 2);
@@ -99,11 +100,11 @@ function farmFields(W, rng) {
     { x: -288, z: 286, w: 16, d: 10, crop: 'pumpkin' },
   ];
   W.fields = W.fields || [];
-  fields.forEach((f, i) => {
+  fields.forEach((f, i) => W.group('field_' + i, { x: f.x, z: f.z }, () => {
     const pts = [[f.x - f.w / 2, f.z - f.d / 2], [f.x + f.w / 2, f.z - f.d / 2], [f.x + f.w / 2, f.z + f.d / 2], [f.x - f.w / 2, f.z + f.d / 2], [f.x - f.w / 2, f.z - f.d / 2 + 3]];
     fence(W, pts, { tint: 0x9a7a50 });
     if (f.crop === 'wheat') {
-      W.fields.push({ rect: { x: f.x, z: f.z, w: f.w - 1, d: f.d - 1 }, count: Math.round(f.w * f.d * 9), hue: 0.12, scale: 2.1, sat: 0.55, light: 0.55, crop: true });
+      W.fields.push({ rect: { x: W.xf(new THREE.Vector3(f.x, 0, f.z)).x, z: W.xf(new THREE.Vector3(f.x, 0, f.z)).z, w: f.w - 1, d: f.d - 1 }, count: Math.round(f.w * f.d * 9), hue: 0.12, scale: 2.1, sat: 0.55, light: 0.55, crop: true });
     } else {
       for (let rz = f.z - f.d / 2 + 1.2; rz < f.z + f.d / 2 - 0.8; rz += 1.6) {
         for (let rx = f.x - f.w / 2 + 1.2; rx < f.x + f.w / 2 - 0.8; rx += 1.3) {
@@ -116,8 +117,8 @@ function farmFields(W, rng) {
       }
     }
     W.spot('field_' + i, new THREE.Vector3(f.x, H(W, f.x, f.z), f.z + f.d / 2 - 1), 0);
-  });
-  for (const f of fields) W.addFootprint(f.x, f.z, f.w, f.d, 0, 'field');
+    W.addFootprint(f.x, f.z, f.w, f.d, 0, 'field');
+  }, 'Поле ' + (i + 1)));
   // Scarecrow.
   W.group('scarecrow', { x: -312, z: 254, rot: 0.4 }, () => {
     const S = new Frame(W, -312, H(W, -312, 254), 254, 0.4);

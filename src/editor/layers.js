@@ -14,6 +14,8 @@ export const LAYERS = [
   { id: 'places', label: 'Места и постройки' },
   { id: 'parts', label: 'Мелкие части (двери, мебель, бочки)' },
   { id: 'signs', label: 'Указатели' },
+  { id: 'spots', label: 'Точки NPC и заданий' },
+  { id: 'camps', label: 'Лагеря врагов (точки появления)' },
   { id: 'added', label: 'Добавленные в редакторе' },
   { id: 'tree', label: 'Деревья' },
   { id: 'bush', label: 'Кусты' },
@@ -27,6 +29,7 @@ const KEY = new Set(BUILDINGS.map((b) => b.id));
 /** Layer id of an editor record (a group or a vegetation wrapper). */
 export function layerOf(rec) {
   if (rec.veg) return rec.veg.kind;
+  if (rec.marker) return rec.marker.kind === 'spot' ? 'spots' : 'camps';
   if (rec.added) return 'added';
   const id = rec.id;
   if (rec.parent) {
