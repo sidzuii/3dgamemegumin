@@ -18,6 +18,11 @@ Full description, file map and how-to guides: see `README.md` (Russian). The use
   a plank floor and a ceiling; `open: 'work'` = open-fronted workshop; furnishing in `world/build/Interiors.js`
   (wrapped in `world.lodMode = 'near'`). Closed houses have a solid door leaf. Walk-in shops register
   `<id>_counter` / `_front` / `_entrance` spots.
+- Megumin uses `retarget: 'rest'` (bind pose = neutral, only limbs re-aimed, hips at bind height); others use 'dir'.
+  CapsLock = walk mode (`MOVE.strollSpeed` 1.5); W = 3.4 m/s pure jog; Shift = sprint; gait thresholds `GAIT` in CharacterAnimator.
+- Axel lots are checked against `AxelPlan.ENVELOPE` + key-building `annex` rects; street centre lines = `streetLine()` /
+  `ringLine()` (not raw STREETS.pts); paving layer heights `PAVE_LIFT`. `tools/city_audit.js` = geometry regression audit
+  (page script; all counts must be 0). MAP_REV is 3. Never run two headless SwiftShader browsers at once (OOM).
 - Buildings have LOD: `house()` emits a near model and a far proxy (`world.lodMode`), small parts use
   `detail: true`; distances come from the quality preset (`lod`, `detail`). Terrain is chunked (170 m).
 - Saves: `mapRev` (State.MAP_REV) moves the player of an older-map save to a safe spot; placements.json
