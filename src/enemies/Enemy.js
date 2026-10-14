@@ -19,18 +19,18 @@ export const TYPES = {
   goblin: {
     name: 'Гоблин-капюшонник', model: 'goblin', hp: 45, speed: 4.4, walk: 1.5, radius: 0.42, height: 1.15,
     aggro: 13, attackRange: 1.6, damage: 8, windup: 0.42, strike: 0.2, recover: 0.65, lunge: 4.5,
-    poise: 0, knock: 1.25, style: 'hop', hitRadius: 0.55, xp: 8,
+    poise: 6, knock: 1.25, style: 'hop', hitRadius: 0.55, xp: 8,
   },
   mushroom: {
     name: 'Гриб-переросток', model: 'mushroom', hp: 70, speed: 3.6, walk: 1.4, radius: 0.5, height: 1.45,
     aggro: 12, attackRange: 1.8, damage: 10, windup: 0.5, strike: 0.25, recover: 0.7, lunge: 5,
-    poise: 0, knock: 1.0, style: 'waddle', hitRadius: 0.6, xp: 10,
+    poise: 10, knock: 1.0, style: 'waddle', hitRadius: 0.6, xp: 10,
   },
   // Quaternius Bestiary: a pig-faced goblin with a club and a quick clawing imp.
   puglin: {
     name: 'Пуглин', model: 'puglin', hp: 55, speed: 4.0, walk: 1.4, radius: 0.45, height: 1.05,
     aggro: 13, attackRange: 1.7, damage: 9, windup: 0.5, strike: 0.22, recover: 0.7, lunge: 4,
-    poise: 0, knock: 1.1, style: 'hop', hitRadius: 0.6, xp: 10,
+    poise: 8, knock: 1.1, style: 'hop', hitRadius: 0.6, xp: 10,
   },
   imp: {
     name: 'Бес', model: 'imp', hp: 90, speed: 5.0, walk: 1.6, radius: 0.45, height: 1.7,
@@ -149,6 +149,9 @@ export class Enemy {
   }
 
   setState(s) {
+    // Leaving the attack (or being interrupted) frees the attack slot for the next enemy.
+    if (s !== 'windup' && s !== 'strike' && s !== 'recover') this.game.enemies.releaseSlot?.(this);
+    if (this.state === 'windup' && s !== 'windup') this.uniforms.uFlashColor.value.setRGB(1, 1, 1);
     this.state = s;
     this.stateTime = 0;
     this.struck = false;
@@ -160,6 +163,12 @@ export class Enemy {
     this.stateTime += dt;
     this.cooldown -= dt;
     this.flash = Math.max(0, this.flash - dt * 6);
+    this.poiseDamage = Math.max(0, this.poiseDamage - 12 * dt);
+    // Wind-up tell: an orange glow that swells until the strike.
+    if (this.state === 'windup') {
+      const k = this.stateTime / this.type.windup;
+      this.flash = Math.max(this.flash, 0.15 + 0.6 * k + 0.12 * Math.sin(this.stateTime * 40));
+    }
     this.uniforms.uFlash.value = this.flash;
 
     if (this.state === 'dead') {
@@ -247,7 +256,25 @@ export class Enemy {
       }
       case 'recover': {
         cmd.canMove = false;
-        if (this.stateTime >= this.type.recover) this.setState('chase');
+        if (this.stateTime >= this.type.recover) {
+          // Light enemies hop back out of her face after a swing.
+          if (dist < 1.1 && this.type.style !== 'brute') this.controller.addImpulse(_v.set(-dx / Math.max(dist, 1e-3), 0, -dz / Math.max(dist, 1e-3)).multiplyScalar(3));
+          this.setState('chase');
+        }
+        break;
+      }
+      case 'circle': {
+        // Waiting for an attack slot: strafe around her at a respectful distance.
+        if (!playerAlive || leash > 38) { this.setState('return'); break; }
+        cmd.run = false;
+        cmd.faceYaw = toPlayerYaw;
+        const ring = this.type.attackRange + 1.6;
+        const rx = dx / Math.max(dist, 1e-3), rz = dz / Math.max(dist, 1e-3);
+        this.orbitT = (this.orbitT ?? 0) - dt;
+        if (this.orbitT <= 0 || (this.stateTime > 0.4 && this.controller.horizontalSpeed < 0.2)) { this.orbitSign = -(this.orbitSign || 1); this.orbitT = rand(1.2, 2.8); }
+        _move.set(-rz * this.orbitSign * 0.8 + rx * (dist - ring) * 0.6, 0, rx * this.orbitSign * 0.8 + rz * (dist - ring) * 0.6);
+        if (_move.lengthSq() > 1) _move.normalize();
+        if ((this.cooldown <= 0 && g.enemies.slotFree?.(this)) || dist > ring + 2.5) this.setState('chase');
         break;
       }
       case 'hurt': {
@@ -330,7 +357,14 @@ export class Enemy {
       cmd.faceYaw = yaw;
     }
     if (dist < t.attackRange && this.cooldown <= 0 && this.canSee) {
+      // At most two enemies attack at once; the rest circle and wait their turn.
+      if (!this.game.enemies.takeSlot(this)) {
+        if (dist < t.attackRange + 2.5) this.setState('circle');
+        return;
+      }
       this.setState('windup');
+      this.game.audio?.play('windup', { dist, vol: 0.6 });
+      this.uniforms.uFlashColor.value.setRGB(1, 0.42, 0.1);
       if (t.style === 'brute') this._showTelegraph();
     }
   }
@@ -338,7 +372,9 @@ export class Enemy {
   _beginStrike(yaw) {
     const t = this.type;
     this.lungeDir.set(Math.sin(yaw), 0, Math.cos(yaw));
-    this.controller.addImpulse(_v.copy(this.lungeDir).multiplyScalar(t.lunge));
+    // Lunge less when already close: they stop about a metre from her instead of hugging.
+    const d = Math.hypot(this.game.player.position.x - this.position.x, this.game.player.position.z - this.position.z);
+    this.controller.addImpulse(_v.copy(this.lungeDir).multiplyScalar(t.lunge * clamp((d - 0.9) / t.attackRange, 0, 1)));
     this.game.audio?.play?.('swing');
     if (t.style === 'brute') this._slam();
   }
@@ -375,6 +411,7 @@ export class Enemy {
     g.vfx.burst('groundDust', c, 22, { scale: 0.45 });
     g.vfx.burst('sparks', c, 16, { scale: 0.4 });
     g.combat.groundImpact(c, this.type.aoe);
+    g.audio?.play('slam', { dist: g.player.position.distanceTo(c) });
     const d = g.player.position.distanceTo(c);
     g.cameraRig.addTrauma(clamp(0.5 - d / 30, 0.05, 0.45));
     if (d < this.type.aoe + 0.3 && Math.abs(g.player.position.y - c.y) < 1.6) {
@@ -411,6 +448,7 @@ export class Enemy {
       this.setState(heavy && t.knock > 0.5 ? 'airborne' : 'hurt');
       this.a.vPitch -= 6;
     }
+    else this.a.vPitch -= 3; // flinch
     if (this.state === 'idle' || this.state === 'return') this._alert();
     return false;
   }

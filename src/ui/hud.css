@@ -236,6 +236,7 @@ kbd {
   will-change: transform, opacity; white-space: nowrap;
 }
 .dmg.big { font-size: 26px; color: #ffcf6a; }
+.dmg.word { font-size: 22px; color: #9fe8ff; letter-spacing: 1px; }
 .alert-mark {
   position: absolute; left: 0; top: 0; opacity: 0;
   font: 900 26px/1 var(--font); color: #ffdf4a;

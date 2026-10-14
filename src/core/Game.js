@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { Audio } from './Audio.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
@@ -171,6 +172,7 @@ export class Game {
 
     await step('Будим жителей…', 0.88);
     this.combat = new Combat(this);
+    this.audio = new Audio();
     this.projectiles = new Projectiles(this);
     this.enemies = new EnemyManager(this);
     for (const s of this.world.campSpawns) this.enemies.spawn(s.type, new THREE.Vector3(s.x, s.y ?? 0, s.z), s.camp);
@@ -331,6 +333,12 @@ export class Game {
     this.hitStopTimer = Math.max(this.hitStopTimer, t);
   }
 
+  /** Slow motion for `t` seconds at time `scale` (perfect dodge, last kill). */
+  slowMo(t, scale = 0.35) {
+    this.slowMoTimer = Math.max(this.slowMoTimer || 0, t);
+    this.slowMoScale = scale;
+  }
+
   _frame() {
     const now = performance.now();
     const raw = this._lastFrame ? (now - this._lastFrame) / 1000 : 0;
@@ -359,6 +367,9 @@ export class Game {
     if (this.hitStopTimer > 0) {
       this.hitStopTimer -= dt;
       dt *= 0.08;
+    } else if (this.slowMoTimer > 0) {
+      this.slowMoTimer -= dt;
+      dt *= this.slowMoScale;
     }
     this.time += dt;
     this.update(dt);
@@ -381,6 +392,7 @@ export class Game {
       if (this.combat.attacking || !this.ability.tryCast()) this.hud.denyAbility();
     }
     if (input.wasMousePressed(0) || input.wasPressed('KeyF')) this.combat.request();
+    if (input.wasMousePressed(2) || input.wasPressed('KeyV')) this.player.tryDodge();
 
     // Player (controller + animation), ability timeline, combat.
     this._surfaceEffects(dt);

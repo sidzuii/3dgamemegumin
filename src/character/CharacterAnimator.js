@@ -30,14 +30,14 @@ export const CLIPSET = {
   Hit: { src: 'Hit_Chest' },
   Death: { src: 'Death01' },
   Crouch: { src: 'Crouch_Idle_Loop', loop: true },
-  Roll: { src: 'Roll', hipsY: 'down' },
+  Roll: { src: 'Roll', hipsY: 'down', speed: 2.4 },
   CastEnter: { src: 'Spell_Simple_Enter' },
   CastLoop: { src: 'Spell_Simple_Idle_Loop', loop: true },
   CastShoot: { src: 'Spell_Simple_Shoot' },
   CastExit: { src: 'Spell_Simple_Exit' },
   // Staff combo (the staff is in the right hand): thrust, backhand sweep, lunging slash.
   Attack1: { src: 'Punch_Cross', speed: 1.45 },
-  Attack2: { src: 'Sword_Attack', speed: 1.8, reverse: true },
+  Attack2: { src: 'Punch_Jab', speed: 1.35 }, // quick jab with the staff butt: the hit lands fast
   Attack3: { src: 'Sword_Attack', speed: 1.3 },
   Interact: { src: 'Interact', speed: 1.6 },
 };

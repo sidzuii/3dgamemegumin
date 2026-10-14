@@ -82,9 +82,11 @@ export class Projectiles {
       m.rotation.y += dt * 8;
       if (Math.random() < dt * 90) g.vfx.emit('waterTrail', m.position);
       const dp = m.position.distanceTo(_p.set(player.position.x, player.position.y + 1.0, player.position.z));
-      if (dp < 0.65) {
+      if (dp < 0.65 && !player.iframes) {
         player.takeHit(it.damage, m.position, 5);
         this._splash(it);
+      } else if (dp < 0.65) {
+        if (!player.dodgePerfect) player.takeHit(it.damage, m.position, 5); // counts the perfect dodge; the bolt flies on
       } else if (hit || it.life <= 0) {
         if (hit) m.position.copy(hit.point);
         this._splash(it);
