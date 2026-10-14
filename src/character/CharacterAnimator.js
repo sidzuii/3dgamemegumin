@@ -363,18 +363,20 @@ export class CharacterAnimator {
     const a = this.model.anim;
     a.rotation.set(lean.pitch, 0, lean.roll, 'YXZ');
 
-    // Cloak / hair wind (blend shapes + shader flutter).
+    // Cloak / hair wind (blend shapes + shader flutter). At walking pace (the CapsLock stroll)
+    // the cloak hangs closer to the body: half the speed-driven wind, full again from a jog.
     const lv = m.localVel;
-    const capeAmt = speed > 4 ? 1 : speed > 0.5 ? 0.4 : 0.1;
-    this.capeWind.x = damp(this.capeWind.x, -lv.x * 0.03, 6, dt);
+    const calm = speed < 0.5 ? 1 : 0.5 + 0.5 * clamp((speed - GAIT.walk) / (GAIT.jog - GAIT.walk), 0, 1);
+    const capeAmt = (speed > 4 ? 1 : speed > 0.5 ? 0.4 : 0.1) * calm;
+    this.capeWind.x = damp(this.capeWind.x, -lv.x * 0.03 * calm, 6, dt);
     this.capeWind.y = damp(this.capeWind.y, clamp(-lv.y * 0.012 + capeAmt * 0.05, -0.15, 0.25), 6, dt);
-    this.capeWind.z = damp(this.capeWind.z, clamp(-lv.z * 0.045 - capeAmt * 0.08, -0.4, 0.12), 6, dt);
+    this.capeWind.z = damp(this.capeWind.z, clamp(-lv.z * 0.045 * calm - capeAmt * 0.08, -0.4, 0.12), 6, dt);
     // Keep the long braids moving gently even while standing. Roxy has no hair
     // bones in her source rig, so her hair material uses this as vertex sway.
     const idleSway = this.base === 'Loco' && speed < 0.35 ? Math.sin(this.time * 1.35) * 0.045 : 0;
     this.hairWind.set(-lv.x * 0.006 + idleSway, -lv.y * 0.004, -lv.z * 0.009 + idleSway * 0.45);
     const st = this.base;
-    let tb = 0.05 + Math.sin(this.time * 1.3) * 0.03 + clamp(speed / 7, 0, 1) * 0.62;
+    let tb = 0.05 + Math.sin(this.time * 1.3) * 0.03 + clamp(speed / 7, 0, 1) * 0.62 * calm;
     if (st === 'JumpStart' || st === 'Fall') tb = Math.max(tb, 0.45 + clamp(-lv.y * 0.04, 0, 0.4));
     if (st === 'CastEnter' || st === 'CastLoop') tb = 0.2 + this.ctx.castCharge * 0.7 + Math.sin(this.time * 9) * 0.05 * this.ctx.castCharge;
     if (st === 'CastShoot') tb = 1;
