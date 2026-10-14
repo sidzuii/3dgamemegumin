@@ -57,6 +57,15 @@ export const MAPS = {
     lThigh: 'thigh_l', lShin: 'calf_l', lFoot: 'foot_l', lToe: 'ball_l',
     rThigh: 'thigh_r', rShin: 'calf_r', rFoot: 'foot_r', rToe: 'ball_r',
   },
+  // KayKit Rig_Medium (Skeletons pack): no neck / clavicles; GLTFLoader strips the dots
+  // ("upperarm.l" -> "upperarml"); the hand slot is the tip of the hand chain.
+  kk: {
+    hips: 'hips', spine: 'spine', chest: 'chest', head: 'head',
+    lArm: 'upperarml', lFore: 'lowerarml', lHand: 'handl', lHandTip: 'handslotl',
+    rArm: 'upperarmr', rFore: 'lowerarmr', rHand: 'handr', rHandTip: 'handslotr',
+    lThigh: 'upperlegl', lShin: 'lowerlegl', lFoot: 'footl', lToe: 'toesl',
+    rThigh: 'upperlegr', rShin: 'lowerlegr', rFoot: 'footr', rToe: 'toesr',
+  },
   demon: {
     hips: 'hips', spine: 'spine', chest: 'chest', neck: 'neck', head: 'head',
     lShoulder: 'shoulder_L', lArm: 'upperarm_L', lFore: 'forearm_L', lHand: 'hand_L',

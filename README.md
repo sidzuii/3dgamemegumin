@@ -179,6 +179,9 @@ RPG (часы, квесты, события, сохранение) → NPC → �
 | `kits/*.glb` (town, castle, survival, food, nature, furniture, graveyard, dungeon) | `assets-for-project/assets-kenney` (Kenney, CC0) | `tools/pack_kits.mjs`: выбранные модели одного набора — один GLB |
 | `kits/village.glb` | `assets-for-project/Medieval Village MegaKit` (Quaternius) | `tools/pack_kits.mjs village`: все модули, текстуры PBR → WebP 1K |
 | `kits/wilds.glb` | `assets-for-project/Stylized Nature MegaKit` (Quaternius) | `tools/pack_kits.mjs wilds`: деревья + дальние копии `__lod` (половина карточек листвы), кусты, камни, папоротники |
+| `kits/props.glb` | `assets-for-project/Fantasy Props MegaKit[Standard]/Exports/glTF` (Quaternius) | `tools/pack_kits.mjs props`: 94 реквизита (оружие, алхимия, свет, мебель), PBR → WebP 1K |
+| `kits/bits.glb` | `assets-for-project/KayKit_ResourceBits_1.0_FREE` (KayKit, CC0) | `tools/pack_kits.mjs bits`: слитки, самородки, брёвна, доски, камень, ткань (без нефти/деталей/паллет) |
+| `enemies/Skeleton_*.glb` | `assets-for-project/KayKit_Skeletons_1.1_FREE` (KayKit, CC0) | `tools/pack_skeletons.mjs`: Warrior/Minion/Rogue как есть + `Skeleton_Gear.glb` (оружие/щиты в слоты рук); анимации — перенос mocap (`MAPS.kk`) |
 | `enemies/Puglin.glb`, `enemies/Imp.glb` | `assets-for-project/Bestiary - Dungeon Monsters Kit` (Quaternius) | `tools/pack_monsters.mjs`: текстуры → WebP 1K; анимации — перенос mocap (`MAPS.ue`) |
 
 **Жители** (`npc/People.js`) собираются из частей наряда (голова, тело, ноги, обувь, рюкзак/меч) в один
@@ -196,7 +199,8 @@ mocap-клипы UAL, перенесённые на скелет пака (`MAPS
 фронтоны, подогнанные под размер дома; печные трубы. **Деревья и кусты** — Quaternius Stylized Nature,
 рисуются инстансингом с двумя уровнями детализации (`world/TreeField.js`: полная модель с тенью до 42 м,
 облегчённая — до 330 м, отсечение по полю зрения). **Новые враги:** Пуглин (логово гоблинов, Чаща) и Бес
-(Чаща, Багровое ущелье, заброшенный посёлок). Стена и башни Акселя — геометрия Kenney castle-kit с камнем Medieval Village (`cityWall()` в `Kit.js`). Процедурными остались мосты, мельница,
+(Чаща, Багровое ущелье, заброшенный посёлок); скелеты KayKit — воин, разбойник и прислужник (заброшенный
+посёлок Старой шахты, комната шахтёров в подземелье). Стена и башни Акселя — геометрия Kenney castle-kit с камнем Medieval Village (`cityWall()` в `Kit.js`). Процедурными остались мосты, мельница,
 колодец, фургоны и рельеф.
 Ретаргет строится от bind-позы скелета; ноги в покое ставятся IK ровно; голова стабилизируется;
 посох держится в кулаке (`rigUtils.js`: `gripStaff`, `StaffHold`, `solveTwoBone`).

@@ -407,6 +407,12 @@ function woodcutter(W, rng) {
   prop(F, 'nature/log_stackLarge', 4.5, 0, 1, { s: 3 });
   prop(F, 'survival/workbench', -4, 0, 3, { s: 2.6 });
   for (let i = 0; i < 3; i++) prop(F, 'nature/stump_round', 2 + i * 1.6, 0, 4.5, { s: 2, collide: 'box' });
+  // KayKit ResourceBits: sawn planks and a log pile beside the hut.
+  if (W.kits.has('bits/Wood_Planks_Stack_Medium')) {
+    const at = (lx, lz, ry) => { const q = F.at(lx, 0, lz); return new Frame(W, q.x, H(W, q.x, q.z) - 0.04, q.z, F.rot + ry); };
+    prop(at(-5.0, -0.6, 0.2), 'bits/Wood_Planks_Stack_Medium', 0, 0, 0, { s: 1 });
+    prop(at(-5.2, 1.6, -0.3), 'bits/Wood_Log_A', 0, 0, 0, { s: 1.1, collide: false });
+  }
 }
 
 /** Graveyard beside the chapel (Kenney graveyard kit): iron fence, rows of graves, a family crypt. */
@@ -743,6 +749,14 @@ function oldMines(W, rng) {
   for (let i = 0; i < 5; i++) P.box(4, 0.25, 0.1, 0, 0.5 + i * 0.6, 0.3, 'plank', { rz: (rng() - 0.5) * 0.3 });
   for (let i = 0; i < 8; i++) rock(W, c.x + (rng() - 0.5) * 30, c.z - 22 + (rng() - 0.5) * 6, 1 + rng() * 2, rng, 'rockDark');
   W.addChest(new THREE.Vector3(c.x + 2, H(W, c.x + 2, c.z + 2), c.z + 2), 1.2, 'old_mines');
+  // KayKit ResourceBits at the adit: ore piles and a stack of mine timber (after every rng use).
+  if (W.kits.has('bits/Iron_Nuggets')) {
+    const at = (dx, dz, ry) => { const x = c.x + dx, z = c.z + dz; return new Frame(W, x, H(W, x, z) - 0.04, z, ry); };
+    prop(at(-4.2, -15.5, 0.4), 'bits/Iron_Nuggets', 0, 0, 0, { s: 1.5, collide: false });
+    prop(at(3.8, -16.2, -0.5), 'bits/Gold_Nuggets', 0, 0, 0, { s: 1.0, collide: false });
+    prop(at(-6.5, -14, 1.2), 'bits/Stone_Chunks_Small', 0, 0, 0, { s: 1.4 });
+    prop(at(6.5, -13, 0.3), 'bits/Wood_Planks_Stack_Small', 0, 0, 0, { s: 1 });
+  }
 }
 
 function eastPass(W, rng) {

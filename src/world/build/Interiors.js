@@ -8,12 +8,15 @@ import { prop, food, barrel, crate, lantern } from './Kit.js';
  * Every function gets the house frame F (origin = centre of the footprint on the ground, front =
  * local +z, the floor top at FY) and the footprint w × d; the inner wall faces are at
  * ±(w/2 − 0.4), ±(d/2 − 0.4). They return the local points the NPCs use.
- * Kit models: Kenney furniture / survival / food / graveyard, Quaternius village props. Weapons,
- * shields, the cauldron and the oven are simple modelled shapes (the packs have no such models).
+ * Kit models: Kenney furniture / survival / food / graveyard, Quaternius village + Fantasy Props
+ * (swords, shields, anvil, cauldron, potions, chandelier, banners; every use falls back to the
+ * simple modelled shape when the 'props' kit is missing). The oven is a modelled shape.
  */
 export const FY = 0.39; // floor top inside (plinth 0.35 + plank 0.04)
 const NC = { collide: false, castShadow: false };
 const D = { collide: false, castShadow: false, detail: true }; // tiny things: distance-culled
+
+const hasKit = (F, name) => F.w.kits.has(name);
 
 function light(F, lx, ly, lz, color = 0xffc070, intensity = 6, distance = 11) {
   F.w.addLightSource(F.at(lx, ly, lz), { color, intensity, distance, always: true, flicker: true });
@@ -21,6 +24,11 @@ function light(F, lx, ly, lz, color = 0xffc070, intensity = 6, distance = 11) {
 
 /** Iron ring chandelier with candles + its light. */
 function chandelier(F, lx, lz, ceil, color = 0xffc070) {
+  if (hasKit(F, 'props/Chandelier')) {
+    prop(F, 'props/Chandelier', lx, ceil - 1.5, lz, { s: 1, collide: false, castShadow: false });
+    light(F, lx, ceil - 1.1, lz, color, 7, 12);
+    return;
+  }
   F.cyl(0.7, 0.06, lx, ceil - 0.9, lz, 'metal', { ...NC, seg: 12 });
   F.box(0.03, 0.9, 0.03, lx, ceil - 0.9, lz, 'metal', NC);
   for (let i = 0; i < 6; i++) {
@@ -48,6 +56,7 @@ function shelves(F, lx, lz, len, levels, items) {
 
 /** A sword hung on the wall (blade, guard, grip), lx/lz on the wall face, `ry` turns it. */
 function sword(F, lx, ly, lz, ry, len = 1.0) {
+  if (hasKit(F, 'props/Sword_Bronze')) return prop(F, 'props/Sword_Bronze', lx, ly - 0.1, lz, { s: len / 1.0, ry, collide: false, castShadow: false });
   const S = F.sub(lx, ly, lz, ry);
   S.box(0.07, len, 0.015, 0, 0.32, 0, 'metal', D);
   S.box(0.32, 0.05, 0.05, 0, 0.28, 0, 'metal', { ...D, tint: 0x8a7040 });
@@ -56,6 +65,7 @@ function sword(F, lx, ly, lz, ry, len = 1.0) {
 
 /** Round shield on a wall (faces local +z of `ry`). */
 function shield(F, lx, ly, lz, ry, tint) {
+  if (hasKit(F, 'props/Shield_Wooden')) return prop(F, 'props/Shield_Wooden', lx, ly - 0.4, lz, { s: 1.4, ry, collide: false, castShadow: false });
   const S = F.sub(lx, ly, lz, ry);
   S.cyl(0.45, 0.06, 0, 0, 0, 'wood', { ...NC, seg: 12, rx: Math.PI / 2, tint });
   S.cyl(0.12, 0.08, 0, 0, 0.02, 'metal', { ...D, seg: 8, rx: Math.PI / 2 });
@@ -86,7 +96,8 @@ export function weaponShop(F, w, d, rng) {
   armourStand(F, -bw + 0.7, -bd + 0.8, 0.5);
   armourStand(F, bw - 0.7, -bd + 0.8, -0.4);
   // Grindstone behind the counter, a display table by the window with daggers.
-  prop(F, 'survival/workbench-grind', bw - 1.6, FY, -bd + 0.7, { s: 2.4 });
+  if (hasKit(F, 'props/Whetstone')) prop(F, 'props/Whetstone', bw - 1.6, FY, -bd + 0.8, { s: 1.0 });
+  else prop(F, 'survival/workbench-grind', bw - 1.6, FY, -bd + 0.7, { s: 2.4 });
   prop(F, 'furniture/sideTable', bw - 0.6, FY, bd - 0.8, { s: 2.3 });
   for (let i = 0; i < 3; i++) F.box(0.06, 0.02, 0.4, bw - 0.85 + i * 0.22, FY + 0.72, bd - 0.8, 'metal', D);
   chandelier(F, 0, 0, FY + 3.0);
@@ -100,13 +111,20 @@ export function alchemyShop(F, w, d, rng) {
   for (let i = 0; i < 6; i++) F.cyl(0.08, 0.26, 0.1 + i * 0.5, FY + 1.08, 0.6, 'glass', { ...D, seg: 8, tint: [0xe04050, 0x4080f0, 0x50d080][i % 3] });
   shelves(F, 0.6, -bd + 0.25, w - 2.6, 4, (x, y, z, k, i) => {
     if ((i + k) % 3 === 2) return;
-    prop(F, (i + k) % 2 ? 'survival/bottle' : 'survival/bottle-large', x, y, z, { s: 1.3, collide: false });
+    const pk = ['props/Potion_1', 'props/Potion_2', 'props/Potion_4', 'props/Bottle_1'][(i + k * 2) % 4];
+    if (hasKit(F, pk)) prop(F, pk, x, y, z, { s: 1.15, collide: false, ry: i });
+    else prop(F, (i + k) % 2 ? 'survival/bottle' : 'survival/bottle-large', x, y, z, { s: 1.3, collide: false });
   });
   // Cauldron on a stone ring, green brew, glow.
   const C = F.sub(-bw + 1.3, FY, -bd + 1.4);
   C.cyl(0.75, 0.25, 0, 0, 0, 'stone', { seg: 10, tint: 0x8a8278 });
-  C.cyl(0.6, 0.7, 0, 0.25, 0, 'metal', { seg: 12, tint: 0x2a2626 });
-  C.cyl(0.52, 0.04, 0, 0.92, 0, 'crystal', { ...NC, seg: 12 });
+  if (hasKit(F, 'props/Cauldron')) {
+    prop(F, 'props/Cauldron', -bw + 1.3, FY + 0.25, -bd + 1.4, { s: 1.15 });
+    C.cyl(0.36, 0.03, 0, 0.98, 0, 'crystal', { ...NC, seg: 12 });
+  } else {
+    C.cyl(0.6, 0.7, 0, 0.25, 0, 'metal', { seg: 12, tint: 0x2a2626 });
+    C.cyl(0.52, 0.04, 0, 0.92, 0, 'crystal', { ...NC, seg: 12 });
+  }
   F.w.addLightSource(C.at(0, 1.3, 0), { color: 0x60ff90, intensity: 4, distance: 7, always: true, flicker: true });
   // Alembic table: flasks and coils.
   prop(F, 'furniture/table', bw - 1.0, FY, -bd + 1.0, { s: 2.3 });
@@ -181,17 +199,31 @@ export function forgeShop(F, w, d, rng) {
   // Coal heap by the furnace.
   for (let i = 0; i < 7; i++) F.sphere(0.22, bw - 0.5 - (i % 3) * 0.3, FY + 0.12 + Math.floor(i / 3) * 0.18, -bd + 2.4 + (i % 2) * 0.2, 'rockDark', { ...D, tint: 0x2a2624 });
   // Anvil in the middle, quench trough, grindstone, workbench and tool rack on the left wall.
-  prop(F, 'survival/workbench-anvil', 0.4, FY, 0.6, { s: 2.6, ry: Math.PI / 2 });
+  if (hasKit(F, 'props/Anvil_Log')) prop(F, 'props/Anvil_Log', 0.4, FY, 0.6, { s: 1.15, ry: Math.PI / 2 });
+  else prop(F, 'survival/workbench-anvil', 0.4, FY, 0.6, { s: 2.6, ry: Math.PI / 2 });
   F.box(1.6, 0.6, 0.7, bw - 1.0, FY, 1.0, 'wood', { tint: 0x5a4a3a });
   F.box(1.4, 0.05, 0.5, bw - 1.0, FY + 0.55, 1.0, 'water', NC);
-  prop(F, 'survival/workbench-grind', -bw + 1.0, FY, 1.6, { s: 2.4, ry: Math.PI / 2 });
-  prop(F, 'survival/workbench', -bw + 1.2, FY, -bd + 0.8, { s: 2.6 });
+  if (hasKit(F, 'props/Whetstone')) prop(F, 'props/Whetstone', -bw + 1.0, FY, 1.6, { s: 1.0, ry: Math.PI / 2 });
+  else prop(F, 'survival/workbench-grind', -bw + 1.0, FY, 1.6, { s: 2.4, ry: Math.PI / 2 });
+  if (hasKit(F, 'props/Workbench')) prop(F, 'props/Workbench', -bw + 1.2, FY, -bd + 0.85, { s: 1.25 });
+  else prop(F, 'survival/workbench', -bw + 1.2, FY, -bd + 0.8, { s: 2.6 });
   F.box(2.4, 0.08, 0.1, -bw + 1.5, FY + 1.8, -bd + 0.06, 'wood', { ...NC, tint: 0x4a3020 });
-  for (const [t, x] of [['tool-hammer', -0.5], ['tool-pickaxe', 0.2], ['tool-axe', 0.9], ['tool-shovel', 1.6]]) prop(F, 'survival/' + t, -bw + 0.4 + x, FY + 1.0, -bd + 0.12, { s: 2.2, collide: false, ry: Math.PI / 2 });
+  const TOOLS = { 'tool-pickaxe': ['props/Pickaxe_Bronze', 1.0, 0.7], 'tool-axe': ['props/Axe_Bronze', 1.1, 1.0] };
+  for (const [t, x] of [['tool-hammer', -0.5], ['tool-pickaxe', 0.2], ['tool-axe', 0.9], ['tool-shovel', 1.6]]) {
+    const alt = TOOLS[t];
+    if (alt && hasKit(F, alt[0])) prop(F, alt[0], -bw + 0.4 + x, FY + alt[2] + 0.5, -bd + 0.12, { s: alt[1], collide: false, castShadow: false });
+    else prop(F, 'survival/' + t, -bw + 0.4 + x, FY + 1.0, -bd + 0.12, { s: 2.2, collide: false, ry: Math.PI / 2 });
+  }
   // Finished blades on the left wall, a barrel of iron bars.
   for (let i = 0; i < 4; i++) sword(F, -bw + 0.12, FY + 1.1, -0.6 + i * 0.5, Math.PI / 2, 0.85);
   barrel(F.w, F.sub(-bw + 0.6, FY, -1.6), 0, 0);
   for (let i = 0; i < 3; i++) F.box(0.06, 1.2, 0.06, -bw + 0.6 + (i - 1) * 0.12, FY + 0.6, -1.6, 'metal', { ...D, tint: 0x6a6460 });
+  // KayKit ResourceBits: ingots, nuggets and a bar on the bench.
+  if (hasKit(F, 'bits/Iron_Bars_Stack_Small')) {
+    prop(F, 'bits/Iron_Bars_Stack_Small', -bw + 0.75, FY, -bd + 2.5, { s: 0.7 });
+    prop(F, 'bits/Iron_Nuggets', bw - 3.4, FY, -bd + 2.5, { s: 0.55, collide: false, ry: 0.5 });
+    prop(F, 'bits/Copper_Bar', -bw + 1.2, FY + 1.11, -bd + 0.85, { s: 0.55, collide: false, castShadow: false, ry: 0.4 });
+  }
   return { anvil: [0.4, -0.5], counter: [-1.5, 2.2] };
 }
 
@@ -207,7 +239,8 @@ export function caravanOffice(F, w, d, rng) {
   F.box(3.2, 2.0, 0.05, 0.2, FY + 0.9, -bd + 0.03, 'plaster', { ...NC, tint: 0xe8d8b0 });
   for (const [x, y, l, a] of [[-0.6, 1.9, 1.6, 0.2], [0.6, 1.6, 1.4, -0.4], [0.9, 2.3, 1.0, 0.9]]) F.box(l, 0.05, 0.02, 0.2 + x, FY + y, -bd + 0.07, 'cloth', { ...D, tint: 0x8a3a2a, rz: a });
   F.box(0.6, 0.4, 0.02, 0.2 + 1.2, FY + 1.3, -bd + 0.07, 'cloth', { ...D, tint: 0x4a7aa8 });
-  prop(F, 'survival/chest', bw - 0.7, FY, -bd + 0.6, { s: 2.2 });
+  if (hasKit(F, 'props/Chest_Wood')) prop(F, 'props/Chest_Wood', bw - 0.9, FY, -bd + 0.6, { s: 0.9 });
+  else prop(F, 'survival/chest', bw - 0.7, FY, -bd + 0.6, { s: 2.2 });
   prop(F, 'furniture/bookcaseOpen', -bw + 0.35, FY, -1.0, { s: 2.3, ry: Math.PI / 2 });
   prop(F, 'furniture/books', -bw + 0.4, FY + 1.35, -1.0, { s: 2.0, collide: false, ry: Math.PI / 2 });
   prop(F, 'furniture/bench', bw - 0.6, FY, 1.4, { s: 2.3, ry: -Math.PI / 2 });
@@ -222,12 +255,18 @@ export function guildExtras(F) {
   prop(F, 'furniture/rugRectangle', 0, 0.39, 1.2, { s: 4.2, collide: false, tint: 0x8a6a9a });
   for (const sx of [-1, 1]) prop(F, 'furniture/pottedPlant', sx * 7.9, 0.39, 5.3, { s: 2.3 });
   prop(F, 'furniture/coatRackStanding', -2.4, 0.39, 5.6, { s: 2.3 });
-  for (const sx of [-1, 1]) F.box(1.2, 2.4, 0.06, sx * 2.6, 3.2, -6.05, 'cloth', { ...NC, tint: 0x2f5a8a });
+  for (const sx of [-1, 1]) {
+    if (hasKit(F, 'props/Banner_2')) prop(F, 'props/Banner_2', sx * 2.6, 3.0, -5.9, { s: 1.15, collide: false, castShadow: false, tint: 0x4a78b8 });
+    else F.box(1.2, 2.4, 0.06, sx * 2.6, 3.2, -6.05, 'cloth', { ...NC, tint: 0x2f5a8a });
+  }
 }
 
 /** Extra furniture for the tavern (bar stools, a rug by the fire, hams over the bar). */
 export function tavernExtras(F) {
-  for (let i = 0; i < 4; i++) prop(F, 'furniture/stoolBar', -5.0, 0.35, -4.2 + i * 1.3, { s: 2.3 });
+  for (let i = 0; i < 4; i++) {
+    if (hasKit(F, 'props/Stool')) prop(F, 'props/Stool', -5.0, 0.35, -4.2 + i * 1.3, { s: 1.3, ry: i * 0.7 });
+    else prop(F, 'furniture/stoolBar', -5.0, 0.35, -4.2 + i * 1.3, { s: 2.3 });
+  }
   prop(F, 'furniture/rugRound', 3.0, 0.36, -3.6, { s: 3.6, collide: false, tint: 0xb07058 });
   for (let i = 0; i < 3; i++) {
     F.box(0.02, 0.4, 0.02, -6.4, 3.4, -3.8 + i * 1.6, 'log', D);
@@ -240,7 +279,10 @@ export function tavernExtras(F) {
 export function templeExtras(F, w, d) {
   F.box(1.6, 0.02, d - 5, 0, 0.36, 0.6, 'cloth', { ...NC, tint: 0x8a2a3a });
   for (const sx of [-1, 1]) {
-    for (let i = 0; i < 3; i++) prop(F, 'graveyard/candle', sx * (w / 2 - 0.8), 0.35, d / 2 - 4 - i * 5, { s: 1.6, collide: false });
+    for (let i = 0; i < 3; i++) {
+      if (hasKit(F, 'props/CandleStick_Stand')) prop(F, 'props/CandleStick_Stand', sx * (w / 2 - 0.8), 0.35, d / 2 - 4 - i * 5, { s: 1.0, collide: false });
+      else prop(F, 'graveyard/candle', sx * (w / 2 - 0.8), 0.35, d / 2 - 4 - i * 5, { s: 1.6, collide: false });
+    }
     F.box(1.0, 3.0, 0.06, sx * 3.2, 3.0, -d / 2 + 0.45, 'cloth', { ...NC, tint: 0x3a6a8a });
   }
 }

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
 import { groupMatrix, pivotMatrix } from '../world/World.js';
 import { LAYERS, layerOf, validateLayout } from './layers.js';
+import { checkAxelLayout } from '../world/AxelLayoutCheck.js';
 import { buildPlacement, PLACEABLES, placeableLabel, STALL_COLORS } from '../world/build/Placements.js';
 import { ROOF_COLORS } from '../world/KitLibrary.js';
 import './editor.css';
@@ -421,7 +422,20 @@ export class Editor {
     box.innerHTML = '<div class="ed-note">Слой: 👁 — показывать, 🔒 — не выбирать мышью. Счётчик — сколько объектов в слое.</div>' + LAYERS.map((l) => {
       const st = this.layerState[l.id];
       return `<div class="ed-row" data-layer="${l.id}"><input type="checkbox" data-lv ${st.visible ? 'checked' : ''} title="Показывать"><input type="checkbox" data-ll ${st.locked ? 'checked' : ''} title="Заблокировать (не выбирается)"><span>${l.label}</span><small>${counts[l.id] || 0}</small></div>`;
-    }).join('') + `<div class="ed-note">Стёрто кругов ластиком: ${this.layout.erase.length}</div><div class="ed-btns"><button data-act="eraseclear">Вернуть стёртое</button></div>`;
+    }).join('') + `<div class="ed-note">Стёрто кругов ластиком: ${this.layout.erase.length}</div><div class="ed-btns"><button data-act="eraseclear">Вернуть стёртое</button></div>
+      <div class="ed-cat">Проверка домов</div><div class="ed-btns"><button data-act="checkhouses">Проверить дома</button></div>${this._checkHtml()}`;
+  }
+
+  /** Result of the last "Проверить дома": houses inside each other / on a street, clickable. */
+  _checkHtml() {
+    const c = this._check;
+    if (!c) return '<div class="ed-note">Ищет дома, стоящие друг в друге или на проезжей части (по текущей раскладке).</div>';
+    const label = (id) => esc(this.W.groups.get(id)?.label || id);
+    const rows = [
+      ...c.overlaps.map(([a, b]) => `<div class="ed-row" data-gid="${esc(a)}"><span>Друг в друге: ${label(a)} и ${label(b)}</span><small>${esc(a)}</small></div>`),
+      ...c.onStreet.map((s) => `<div class="ed-row" data-gid="${esc(s.id)}"><span>На улице «${esc(s.name)}»: ${label(s.id)}</span><small>${s.depth} м</small></div>`),
+    ];
+    return `<div class="ed-note">${rows.length ? `Найдено проблем: ${rows.length} (сдвинуто домов: ${c.moved}). Клик — выбрать дом.` : `Проблем не найдено (сдвинуто домов: ${c.moved}).`}</div>${rows.join('')}`;
   }
 
   _setLayer(id, key, value) {
@@ -1019,7 +1033,15 @@ export class Editor {
       else if (e.target.matches('[data-ll]')) this._setLayer(row.dataset.layer, 'locked', e.target.checked);
     });
     ui.querySelector('[data-pane="layers"]').addEventListener('click', (e) => {
-      if (e.target.dataset.act !== 'eraseclear') return;
+      const act = e.target.dataset.act;
+      if (act === 'checkhouses') { this._check = checkAxelLayout(this.layout.overrides); this._layersPane(); return; }
+      const row = e.target.closest('[data-gid]');
+      if (row) {
+        const rec = this.W.groups.get(row.dataset.gid);
+        if (rec) { this.arm(null); this.select(rec); this.focus(rec); }
+        return;
+      }
+      if (act !== 'eraseclear') return;
       this._snapshot(); this.layout.erase.length = 0; this.dirty = true; this._applyAllVeg(); this._layersPane();
     });
     ui.querySelector('[data-act="rsnap"]').addEventListener('change', (e) => { this.rotSnap = +e.target.value; this.setGizmoMode(this.gizmoMode); e.target.blur(); });

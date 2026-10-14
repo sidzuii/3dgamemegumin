@@ -11,9 +11,9 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
  * Every part carries position / normal / uv / color so pieces merge into the world's static
  * batches (World.addKit).
  */
-export const KITS = ['town', 'castle', 'survival', 'food', 'nature', 'furniture', 'graveyard', 'dungeon', 'village', 'wilds'];
+export const KITS = ['town', 'castle', 'survival', 'food', 'nature', 'furniture', 'graveyard', 'dungeon', 'village', 'wilds', 'props', 'bits'];
 /** Kits with several PBR materials (Quaternius MegaKits): one material per source material. */
-const MULTI = new Set(['village', 'wilds']);
+const MULTI = new Set(['village', 'wilds', 'props']);
 
 /** Palette remaps for flat-coloured kits (the nature kit's teal foliage -> the valley's greens). */
 const RECOLOR = {

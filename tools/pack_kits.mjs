@@ -43,6 +43,10 @@ const KITS = {
   dungeon: { dir: 'kenney_modular-dungeon-kit_1.0/Models/GLB format', models: /^(gate|stairs|template-(wall|floor|corner|detail))/ },
   // Quaternius MegaKits (textured PBR; textures re-encoded to WebP 1K).
   village: { dir: Q + 'Medieval Village MegaKit[Standard]/glTF', models: ALL, compress: true, size: 1024 },
+  // Quaternius Fantasy Props MegaKit (weapons, shop/tavern/alchemy props, containers, lights).
+  props: { dir: Q + 'Fantasy Props MegaKit[Standard]/Exports/glTF', models: ALL, compress: true, size: 1024 },
+  // KayKit ResourceBits (CC0): bars, nuggets, logs, planks, stone, textiles; one palette texture.
+  bits: { dir: Q + 'KayKit_ResourceBits_1.0_FREE/Assets/gltf', models: /^(?!Fuel_|Parts_|Pallet_)/ },
   wilds: {
     dir: Q + 'Stylized Nature MegaKit[Standard]/glTF',
     models: /^(CommonTree_\d|Pine_\d|TwistedTree_1|DeadTree_[13]|Bush_Common(_Flowers)?|Fern_1|Flower_[34]_Group|Mushroom_Common|Plant_[17]|Rock_Medium_\d|Pebble_Round_[123])$/,

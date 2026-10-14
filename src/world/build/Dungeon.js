@@ -62,6 +62,9 @@ export function buildDungeon(world) {
   lanternPost(W, 28, 1145);
   W.addInteractable(new QuestProp({ id: 'miner_journal', name: 'Дневник шахтёра', prompt: 'Прочитать', position: C.at(2.4, 0.4, -3.4), shape: 'book' }));
   W.addChest(new THREE.Vector3(37.5, 0, 1146), Math.PI, 'dungeon_side');
+  // A miner's rest: the unquiet dead (KayKit skeletons) guard the chest.
+  for (const [x, z] of [[30, 1143], [34, 1135]]) W.camp('skeleton_minion', x, z, 'dungeon');
+  W.camp('skeleton_rogue', 37, 1139, 'dungeon');
   W.spot('ore_d2', new THREE.Vector3(39, 0, 1134), -Math.PI / 2);
   W.spot('ore_d3', new THREE.Vector3(30, 0, 1133), 0);
 
