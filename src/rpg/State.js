@@ -10,7 +10,7 @@ export const SAVE_KEY = 'megumin-save-v2';
 const LEGACY_KEY = 'megumin-save-v1';
 export const SAVE_VERSION = 2;
 /** Map layout revision: saves from an older map get the player moved to a safe spot (RPG._fixups). */
-export const MAP_REV = 2;
+export const MAP_REV = 3;
 
 export class EventBus {
   constructor() {

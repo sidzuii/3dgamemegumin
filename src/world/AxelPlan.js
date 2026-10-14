@@ -101,12 +101,16 @@ export const STREETS = [
   { id: 'tavern_lane', name: 'Пивной переулок', kind: 'lane', width: 3, pts: [[30, -34], [50, -22], [66, -14]] },
 ];
 
-/** Key buildings (fixed places). */
+/**
+ * Key buildings (fixed places). w × d = the walls as built (Town.js builds exactly this size);
+ * `annex` = parts outside the walls in the building frame (x along the front, z towards the
+ * front): towers, turrets, steps — the plan keeps the neighbours clear of them too.
+ */
 export const BUILDINGS = [
   // --- Centre
-  { id: 'guild', label: 'Гильдия искателей приключений', kind: 'guild', u: 8, v: -40, w: 22, d: 15, face: 'S', floors: 2, landmark: 'колокольня с синей крышей' },
-  { id: 'tavern', label: 'Таверна «Кружка и посох»', kind: 'tavern', u: 40, v: -4, w: 16, d: 13, face: 'W', floors: 2 },
-  { id: 'town_hall', label: 'Ратуша', kind: 'public', u: -38, v: -6, w: 18, d: 14, face: 'E', floors: 2, landmark: 'часовая башня' },
+  { id: 'guild', label: 'Гильдия искателей приключений', kind: 'guild', u: 8, v: -40, w: 18, d: 13, face: 'S', floors: 2, landmark: 'колокольня с синей крышей', annex: [{ x: 9.6, z: -5, w: 4.2, d: 4.2 }, { x: 0, z: 7.6, w: 5, d: 1.6 }] },
+  { id: 'tavern', label: 'Таверна «Кружка и посох»', kind: 'tavern', u: 40, v: -4, w: 16, d: 12, face: 'W', floors: 2, annex: [{ x: 0, z: 8.4, w: 14, d: 3 }] },
+  { id: 'town_hall', label: 'Ратуша', kind: 'public', u: -38, v: -6, w: 16, d: 12, face: 'E', floors: 2, landmark: 'часовая башня', annex: [{ x: 0, z: 5.6, w: 5, d: 4.4 }] },
   { id: 'exchange', label: 'Меняльная контора', kind: 'public', u: -14, v: 28, w: 11, d: 9, face: 'N', floors: 2 },
   { id: 'post', label: 'Почтовая станция', kind: 'public', u: 24, v: 28, w: 10, d: 9, face: 'N', floors: 2 },
   { id: 'barracks', label: 'Казармы стражи', kind: 'military', u: 20, v: -88, w: 16, d: 9, face: 'S', floors: 2 },
@@ -114,7 +118,7 @@ export const BUILDINGS = [
   { id: 'market_hall', label: 'Крытый рынок', kind: 'public', u: 57, v: 30, w: 14, d: 8, face: 'N', floors: 1, inside: 'market_square', landmark: 'открытая аркада с часами посреди площади' },
   { id: 'bakery', label: 'Пекарня Лины', kind: 'shop', u: 56, v: -5, w: 9, d: 7, face: 'S', floors: 2 },
   { id: 'store', label: 'Лавка Отто «Всё для путника»', kind: 'shop', u: 78, v: -11, w: 9, d: 7, face: 'S', floors: 2 },
-  { id: 'alchemist', label: 'Алхимик', kind: 'shop', u: 30, v: 48, w: 8, d: 8, face: 'N', floors: 3, landmark: 'фиолетовая башенка' },
+  { id: 'alchemist', label: 'Алхимик', kind: 'shop', u: 30, v: 48, w: 8, d: 8, face: 'N', floors: 3, landmark: 'фиолетовая башенка', annex: [{ x: 4.5, z: -4.5, w: 3.8, d: 3.8 }] },
   { id: 'weaponsmith', label: 'Оружейник', kind: 'shop', u: 82, v: 14, w: 9, d: 7, face: 'N', floors: 2 },
   { id: 'magic_shop', label: 'Лавка магических товаров', kind: 'shop', u: 58, v: -26, w: 7, d: 7, face: 'E', floors: 2 },
   // --- Caravan district
@@ -122,8 +126,8 @@ export const BUILDINGS = [
   { id: 'inn_axle', label: 'Постоялый двор «Ось и колесо»', kind: 'inn', u: 21, v: 74, w: 16, d: 9, face: 'E', floors: 3, landmark: 'колесо-вывеска над воротами' },
   { id: 'inn_dust', label: 'Постоялый двор «Пыльный тракт»', kind: 'inn', u: 44, v: 84, w: 14, d: 7, face: 'N', floors: 2 },
   { id: 'stables', label: 'Конюшни', kind: 'stable', u: 72, v: 64, w: 12, d: 7, face: 'W', floors: 1 },
-  // --- Temple district (terrace +2.4 m)
-  { id: 'temple', label: 'Храм Эрис', kind: 'temple', u: -60, v: -74, w: 14, d: 26, face: 'S', floors: 1, landmark: 'шпиль — самое высокое здание города' },
+  // --- Temple district (the temple hill, MapData FLATS)
+  { id: 'temple', label: 'Храм Эрис', kind: 'temple', u: -60, v: -74, w: 12, d: 22, face: 'S', floors: 1, landmark: 'шпиль — самое высокое здание города', annex: [{ x: 0, z: 11.9, w: 5, d: 1.8 }] },
   { id: 'rectory', label: 'Дом настоятеля', kind: 'public', u: -40, v: -76, w: 10, d: 8, face: 'W', floors: 2 },
   { id: 'hospice', label: 'Лечебница', kind: 'public', u: -38, v: -60, w: 10, d: 7, face: 'W', floors: 2 },
   { id: 'crypt', label: 'Склеп (crypt_door)', kind: 'temple', u: -79, v: -70, w: 6, d: 6, face: 'E', floors: 1, inside: 'cemetery' },
@@ -159,6 +163,78 @@ export const DISTRICTS = [
 
 /** Wanted number of buildings (key + generated). */
 export const TARGET = { min: 80, max: 118 };
+
+/**
+ * Space a building takes beyond its w × d walls (m), as built by Kit.house(): `side` = each side
+ * wall (roof overhang, plinth), `back` = the back (overhang + the jetty of the upper storeys),
+ * `front` by kind = what stands in front of the door (step, lantern, sign, awning, workbench,
+ * hay). Neighbouring envelopes keep GAP apart (detached houses, nothing inside each other).
+ */
+export const ENVELOPE = {
+  side: 0.45, back: 0.75, gap: 0.3,
+  front: { house: 1.0, shop: 1.7, workshop: 2.2, warehouse: 1.4, stable: 2.4, inn: 1.6, public: 1.2, military: 1.2, guild: 1.0, tavern: 1.0, temple: 1.0 },
+};
+
+/** Turning radius of the street centre lines at their bends (m). */
+export const BEND_RADIUS = { main: 16, secondary: 11, lane: 7, ring: 14 };
+
+/**
+ * A polyline with rounded bends: the straight runs stay, every corner becomes an arc of `radius`
+ * (smaller where the runs are short), sampled about every `step` m. `closed` = a loop (no repeated
+ * first point in the input or the output).
+ */
+export function smoothLine(pts, radius, closed = false, step = 2) {
+  const n = pts.length, out = [];
+  for (let i = 0; i < n; i++) {
+    const b = pts[i];
+    if (!closed && (i === 0 || i === n - 1)) { out.push([b[0], b[1]]); continue; }
+    const a = pts[(i + n - 1) % n], c = pts[(i + 1) % n];
+    const l1 = Math.hypot(b[0] - a[0], b[1] - a[1]), l2 = Math.hypot(c[0] - b[0], c[1] - b[1]);
+    const d1 = [(b[0] - a[0]) / l1, (b[1] - a[1]) / l1], d2 = [(c[0] - b[0]) / l2, (c[1] - b[1]) / l2];
+    const turn = Math.atan2(d1[0] * d2[1] - d1[1] * d2[0], d1[0] * d2[0] + d1[1] * d2[1]);
+    const half = Math.tan(Math.abs(turn) / 2);
+    if (Math.abs(turn) < 0.02) { out.push([b[0], b[1]]); continue; }
+    const t = Math.min(radius * half, 0.45 * l1, 0.45 * l2);
+    const r = t / half, sg = Math.sign(turn);
+    const s0 = [b[0] - d1[0] * t, b[1] - d1[1] * t];
+    const cc = [s0[0] - d1[1] * sg * r, s0[1] + d1[0] * sg * r]; // centre on the inside of the bend
+    const k = Math.max(2, Math.ceil((r * Math.abs(turn)) / step));
+    for (let j = 0; j <= k; j++) {
+      const ang = (turn * j) / k, cs = Math.cos(ang), sn = Math.sin(ang);
+      const rx = s0[0] - cc[0], rz = s0[1] - cc[1];
+      out.push([cc[0] + rx * cs - rz * sn, cc[1] + rx * sn + rz * cs]);
+    }
+  }
+  return out;
+}
+
+/** Built centre line of a street (local u, v): its polyline with rounded bends. */
+export const streetLine = (s) => smoothLine(s.pts, BEND_RADIUS[s.kind]);
+
+/** Inset of a closed polygon by d metres (towards its centroid side of every edge). */
+export function insetPolygon(pts, d) {
+  const n = pts.length;
+  const cx = pts.reduce((s, p) => s + p[0], 0) / n, cz = pts.reduce((s, p) => s + p[1], 0) / n;
+  const lines = pts.map((a, i) => {
+    const b = pts[(i + 1) % n];
+    let nx = -(b[1] - a[1]), nz = b[0] - a[0];
+    const L = Math.hypot(nx, nz);
+    nx /= L; nz /= L;
+    if ((cx - (a[0] + b[0]) / 2) * nx + (cz - (a[1] + b[1]) / 2) * nz < 0) { nx = -nx; nz = -nz; }
+    return [[a[0] + nx * d, a[1] + nz * d], [b[0] + nx * d, b[1] + nz * d]];
+  });
+  return lines.map((l, i) => {
+    const [p1, p2] = lines[(i + n - 1) % n], [p3, p4] = l;
+    const d1x = p2[0] - p1[0], d1z = p2[1] - p1[1], d2x = p4[0] - p3[0], d2z = p4[1] - p3[1];
+    const den = d1x * d2z - d1z * d2x;
+    if (Math.abs(den) < 1e-9) return p3;
+    const t = ((p3[0] - p1[0]) * d2z - (p3[1] - p1[1]) * d2x) / den;
+    return [p1[0] + d1x * t, p1[1] + d1z * t];
+  });
+}
+
+/** Built centre line of the pomerium (closed loop, local u, v; first point not repeated). */
+export const ringLine = () => smoothLine(insetPolygon(WALL.nodes.map((n) => [n.u, n.v]), RING.inset), BEND_RADIUS.ring, true);
 
 /** Generated plots by district: what kind of building and how big. */
 export const FILL = {

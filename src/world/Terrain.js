@@ -1,5 +1,6 @@
 import { fbm, smoothstep, clamp } from '../core/math.js';
 import { HALF, RIVER, RIVERS, LAKES, LAVA, ROADS, FLATS, HILLS, RIDGES, REGION } from './MapData.js';
+import { STREETS, RING, streetLine, ringLine, toWorld } from './AxelPlan.js';
 
 /**
  * Terrain height model.
@@ -10,6 +11,9 @@ import { HALF, RIVER, RIVERS, LAKES, LAVA, ROADS, FLATS, HILLS, RIDGES, REGION }
  * samples the cached grid bilinearly, so gameplay queries are cheap and match the mesh.
  * Roads and rivers are looked up through a coarse grid of their segments (only the ones near a
  * point are measured; farther than their reach the distance is reported as Infinity).
+ * Inside Axel the overworld road levelling is off (the city is flat); instead the ground across
+ * every city street (AxelPlan, built centre lines) is levelled to the height of its centre line,
+ * so the paving lies flush on slopes (the temple hill) and the cross-section is level.
  */
 
 export const GRID_STEP = 2.5;
@@ -50,6 +54,12 @@ function segmentGrid(lines, reach) {
 }
 const NONE = [];
 const ROAD_GRID = segmentGrid(ROADS, 16);
+const STREET_FEATHER = 3;
+const CITY_LINES = [
+  ...STREETS.map((s) => ({ points: streetLine(s).map(([u, v]) => toWorld(u, v)), width: s.width })),
+  { points: [...ringLine(), ringLine()[0]].map(([u, v]) => toWorld(u, v)), width: RING.width },
+];
+const CITY_GRID = segmentGrid(CITY_LINES, STREET_FEATHER);
 const RIVER_GRID = segmentGrid(RIVERS, 70);
 const _near = (grid, x, z) => grid.get(Math.floor(x / CELL) * 4099 + Math.floor(z / CELL)) || NONE;
 
@@ -127,7 +137,31 @@ function polyBox(pts) {
   return [Math.min(...pts.map((p) => p[0])), Math.min(...pts.map((p) => p[1])), Math.max(...pts.map((p) => p[0])), Math.max(...pts.map((p) => p[1]))];
 }
 
+/** Final ground height: the base terrain with the city streets levelled across. */
 export function analyticHeight(x, z) {
+  const h = baseHeight(x, z);
+  const segs = _near(CITY_GRID, x, z);
+  if (!segs.length) return h;
+  // The nearest point of every street within reach (one per street), blended by distance.
+  const best = new Map();
+  for (const s of segs) {
+    const dx = s.bx - s.ax, dz = s.bz - s.az;
+    const t = clamp(((x - s.ax) * dx + (z - s.az) * dz) / (dx * dx + dz * dz || 1), 0, 1);
+    const px = s.ax + dx * t, pz = s.az + dz * t, d = Math.hypot(x - px, z - pz);
+    const b = best.get(s.line);
+    if (d < s.line.width / 2 + STREET_FEATHER && (!b || d < b.d)) best.set(s.line, { d, px, pz });
+  }
+  let W = 0, sw = 0, sh = 0;
+  for (const [line, { d, px, pz }] of best) {
+    const w = 1 - smoothstep(line.width / 2, line.width / 2 + STREET_FEATHER, d);
+    W = Math.max(W, w);
+    sw += w;
+    sh += w * baseHeight(px, pz);
+  }
+  return sw > 0 ? h * (1 - W) + (sh / sw) * W : h;
+}
+
+function baseHeight(x, z) {
   let h = naturalHeight(x, z);
   // River valley: the land eases down towards the water (a creek has a narrow valley).
   const { d: rd, river: R } = riverInfo(x, z);
@@ -140,6 +174,7 @@ export function analyticHeight(x, z) {
     h = h * (1 - valley) + bank * valley;
   }
   // Settlements, camps and landmarks sit on flattened ground.
+  let city = 0; // weight of the walled city's flat
   for (const F of FLATS) {
     let d, r = F.r;
     if (F.poly) {
@@ -157,11 +192,12 @@ export function analyticHeight(x, z) {
     }
     const w = 1 - smoothstep(r, r + F.feather, d);
     h = h * (1 - w) + level * w;
+    if (F.city) city = w;
   }
-  // Roads: levelled (small bumps removed, steep slopes softened).
+  // Roads: levelled (small bumps removed, steep slopes softened) — outside the city.
   const road = roadInfo(x, z);
-  if (road.d < 5) {
-    const w = 1 - smoothstep(-1, 5, road.d);
+  if (road.d < 5 && city < 1) {
+    const w = (1 - smoothstep(-1, 5, road.d)) * (1 - city);
     const smooth = naturalHeightSmooth(x, z, h);
     h = h * (1 - w * 0.55) + smooth * w * 0.55;
   }
