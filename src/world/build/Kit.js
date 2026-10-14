@@ -386,13 +386,32 @@ function openGround(F, w, d, y0, h, spec) {
     // Shelves along the back wall.
     for (const yy of [0.9, 1.6, 2.3]) F.box(w - 1.4, 0.08, 0.45, 0, y0 + yy, -d / 2 + 0.6, 'plank', deco);
     F.box(w - 0.6, 0.06, d - 0.6, 0, y0 - 0.02, 0, 'plank', { castShadow: false });
-    // Awning.
-    const aw = spec.awningTint ?? 0xb83a3a;
-    F.box(w + 0.6, 0.06, 1.8, 0, y0 + h - 0.35, d / 2 + 0.75, 'cloth', { ...deco, tint: aw, rx: -0.32 });
+    awning(F, w - 0.5, y0 + h - 0.45, d / 2 + 0.05, 1.7, spec.awningTint ?? 0xb83a3a);
   } else {
     F.box(w - 0.6, 0.06, d - 0.6, 0, y0 - 0.02, 0, 'plank', { castShadow: false });
     // Ceiling.
     F.box(w - 0.4, 0.2, d - 0.4, 0, y0 + h - 0.2, 0, 'plank', { tint: 0x8a6a4a });
+  }
+}
+
+/**
+ * Striped canvas awning over a shop front: slopes DOWN away from the wall (from `yTop` at the wall
+ * by 0.55 m over `depth`), alternating stripes, a scalloped valance on the front edge, two wooden
+ * posts at the outer corners and brackets at the wall. `z0` = the wall plane, `width` along x.
+ */
+export function awning(F, width, yTop, z0, depth, tint) {
+  const drop = 0.55, len = Math.hypot(depth, drop), th = Math.atan2(drop, depth);
+  const n = Math.max(3, Math.round(width / 0.6)), sw = width / n;
+  const c = new THREE.Color(tint), cream = new THREE.Color(0xf0e6cc);
+  for (let i = 0; i < n; i++) {
+    const x = -width / 2 + (i + 0.5) * sw, col = i % 2 ? cream : c;
+    F.box(sw + 0.005, 0.05, len, x, yTop - drop / 2, z0 + depth / 2, 'cloth', { castShadow: false, collide: false, tint: col.getHex(), rx: th });
+    // Valance: a short hanging flap per stripe, pointed (a thin cone-ish wedge as a rotated box).
+    F.box(sw * 0.96, 0.22, 0.03, x, yTop - drop - 0.1, z0 + depth - 0.02, 'cloth', { castShadow: false, collide: false, tint: col.getHex() });
+  }
+  for (const s of [-1, 1]) {
+    F.box(0.08, yTop - drop + 0.02, 0.08, s * (width / 2 - 0.05), 0, z0 + depth - 0.06, 'timber', { collide: false, tint: 0x4a3222, castShadow: false });
+    F.box(0.07, 0.07, depth, s * (width / 2 - 0.05), yTop - 0.1, z0 + depth / 2, 'timber', { collide: false, tint: 0x4a3222, castShadow: false, rx: th });
   }
 }
 
@@ -594,14 +613,32 @@ export function cityWall(world, nodes, opts = {}) {
 
 /** Square tower: castle-kit base / mid floors / crenellated top, village tile roof. Base at the frame. */
 function kitTower(world, F, S, height) {
+  houseTower(F, S, S, height);
+}
+
+/**
+ * A masonry tower for a building (guild bell tower, town-hall clock tower, temple belfry,
+ * alchemist's turret): the castle kit's square tower faced with the village stone, a crenellated
+ * crown and the village tiled tower roof. `F` stands on the tower's centre at its base (sunk a bit
+ * into the ground by the caller); sx × sz = footprint, `height` to the crown.
+ * o: { roofTint, clock (face on +z), banner (cloth tint on +z) }.
+ */
+export function houseTower(F, sx, sz, height, o = {}) {
   const baseH = Math.min(5, height * 0.4);
-  F.kit('castle/tower-square-base', 0, 0, 0, { sx: S, sy: baseH / 1.01, sz: S, collide: 'box', retex: STONE });
+  F.kit('castle/tower-square-base', 0, 0, 0, { sx, sy: baseH / 1.01, sz, collide: 'box', retex: STONE });
   const mids = Math.max(1, Math.round((height - baseH - 1) / 4.5));
   const midH = (height - baseH - 0.9) / mids;
-  for (let k = 0; k < mids; k++) F.kit(k === mids - 1 ? 'castle/tower-square-mid-windows' : 'castle/tower-square-mid', 0, baseH + k * midH, 0, { sx: S, sy: midH / 1.01, sz: S, collide: 'box', retex: STONE });
-  F.kit('castle/tower-square-top', 0, height - 0.9, 0, { sx: S * 1.04, sy: 3, sz: S * 1.04, collide: false, retex: STONE });
-  const rs = (S * 1.08) / 5.66;
-  F.kit('village/Roof_Tower_RoundTiles', 0, height - 0.9 + 0.57 * rs + 0.25, 0, { s: rs, collide: false });
+  for (let k = 0; k < mids; k++) F.kit(k === mids - 1 ? 'castle/tower-square-mid-windows' : 'castle/tower-square-mid', 0, baseH + k * midH, 0, { sx, sy: midH / 1.01, sz, collide: 'box', retex: STONE });
+  F.kit('castle/tower-square-top', 0, height - 0.9, 0, { sx: sx * 1.04, sy: 3, sz: sz * 1.04, collide: false, retex: STONE });
+  const rs = (Math.min(sx, sz) * 1.08) / 5.66;
+  F.kit('village/Roof_Tower_RoundTiles', 0, height - 0.9 + 0.57 * rs + 0.25, 0, { sx: (sx * 1.08) / 5.66, sy: rs, sz: (sz * 1.08) / 5.66, collide: false, tint: o.roofTint ?? null });
+  if (o.clock) {
+    const y = height - 3.4;
+    F.cyl(1.0, 0.12, 0, y, sz / 2 + 0.03, 'plaster', { seg: 20, rx: Math.PI / 2, collide: false, tint: 0xf4ecd8, castShadow: false });
+    F.box(0.07, 0.75, 0.05, 0, y + 0.05, sz / 2 + 0.12, 'metal', { collide: false, castShadow: false });
+    F.box(0.5, 0.07, 0.05, 0.2, y + 0.05, sz / 2 + 0.12, 'metal', { collide: false, castShadow: false });
+  }
+  if (o.banner !== undefined) for (const s of [-1, 1]) F.box(0.9, 2.4, 0.05, s * sx * 0.3, baseH + 0.6, sz / 2 + 0.04, 'cloth', { collide: false, tint: o.banner, castShadow: false });
 }
 
 /**
@@ -827,7 +864,7 @@ export function pavePoly(world, pts, opts = {}) {
     _tri(pos, a, a2, b, out);
     _tri(pos, b, a2, b2, out);
   }
-  pavingSolid(world, pos, 'cobble', { castShadow: false, tint: opts.tint ?? 0xbab2a2 });
+  pavingSolid(world, pos, 'plaza', { castShadow: false, tint: opts.tint ?? 0xf0e8d8 });
 }
 
 // -----------------------------------------------------------------------------------------

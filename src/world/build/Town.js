@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mulberry32 } from '../../core/math.js';
-import { Frame, house, cityWall, paveRibbon, pavePoly, lamp, lantern, barrel, crate, stall, well, bench, wagon, haystack, fence, tree, bush, food, prop, tableware } from './Kit.js';
+import { Frame, house, houseTower, cityWall, paveRibbon, pavePoly, lamp, lantern, barrel, crate, stall, well, bench, wagon, haystack, fence, tree, bush, food, prop, tableware } from './Kit.js';
 import { HealingCrystal, Brazier, QuestProp } from '../Interactables.js';
 import { TrainingDummy } from '../TrainingDummy.js';
 import { ROOF_COLORS } from '../KitLibrary.js';
@@ -100,7 +100,7 @@ function walls() {
     p.y = W.heightAt(p.x, p.z);
     W.spot('gate_' + node.gate, p, frame.rot);
     const a = frame.at(0, 0, -9), b = frame.at(0, 0, 9);
-    paveRibbon(W, [[a.x, a.z], [b.x, b.z]], WALL.gateWidth - 0.6, { tint: 0xa89e8c, lift: PAVE_LIFT.gate, covered: underSquare });
+    paveRibbon(W, [[a.x, a.z], [b.x, b.z]], WALL.gateWidth - 0.6, { tint: 0xd6ccb8, lift: PAVE_LIFT.gate, covered: underSquare });
   }
 }
 
@@ -110,7 +110,7 @@ function walls() {
  * coplanar faces). Streets of one kind that meet alternate by a few millimetres.
  */
 const PAVE_LIFT = { square: 0.125, main: 0.105, secondary: 0.093, lane: 0.083, ring: 0.07, gate: 0.075 };
-const TINT = { main: 0xb0a898, secondary: 0xaba292, lane: 0xa2988a };
+const TINT = { main: 0xf0e8d8, secondary: 0xe4dccb, lane: 0xd6ccb8 }; // the cobble texture carries the colour
 const SQW = SQUARES.map((q) => q.pts.map(([u, v]) => P(u, v)));
 const inPolygon = (pts, x, z) => {
   let c = false;
@@ -164,13 +164,32 @@ function paveStreet(s) {
   paveRibbon(W, pts, s.width, { tint: TINT[s.kind], lift: PAVE_LIFT[s.kind] + Math.min(2, LIFT_STEP[s.id]) * 0.004, kerb: s.kind === 'main', covered: underSquare, kerbSkip });
 }
 
+/**
+ * A paved footpath from a door straight out along the house's front to the nearest street, ring
+ * road or square (stops at its edge, reaching a little under it so the two paving layers meet
+ * without a gap). Nothing is built if the street is already at the door or farther than 9 m.
+ */
+function doorPath(door, rot) {
+  const dx = Math.sin(rot), dz = Math.cos(rot);
+  const lines = [...Object.values(STREET_W).map((pts, i) => [pts, STREETS[i].width / 2]), [RING_W(), RING.width / 2]];
+  const hit = (x, z) => underSquare(x, z) || lines.some(([pts, half]) => lineDist(pts, x, z) < half - 0.05);
+  const x0 = door.x - dx * 1.2, z0 = door.z - dz * 1.2; // from the house front
+  if (hit(door.x, door.z)) return;
+  let t = 0;
+  while (t < 9 && !hit(door.x + dx * t, door.z + dz * t)) t += 0.25;
+  if (t >= 9) return;
+  const x1 = door.x + dx * (t + 0.4), z1 = door.z + dz * (t + 0.4);
+  if (Math.hypot(x1 - x0, z1 - z0) < 1.2) return;
+  W.part('path', door.x, door.z, rot, () => paveRibbon(W, [[x0, z0], [x1, z1]], 1.7, { tint: TINT.lane, lift: PAVE_LIFT.lane + 0.006, covered: underSquare }), 'Дорожка к двери');
+}
+
 /** Pomerium: a darker, rougher ring inside the wall. */
 function paveRing() {
-  paveRibbon(W, RING_W().slice(0, -1), RING.width, { tint: 0x9a9284, lift: PAVE_LIFT.ring, closed: true, covered: underSquare });
+  paveRibbon(W, RING_W().slice(0, -1), RING.width, { tint: 0xcfc6b4, lift: PAVE_LIFT.ring, closed: true, covered: underSquare });
 }
 
 function paveSquare(q) {
-  pavePoly(W, q.pts.map(([u, v]) => P(u, v)), { tint: q.id === 'fountain_square' ? 0xbab2a2 : q.id === 'caravan_yard' ? 0xa09684 : 0xb4ac9c, lift: PAVE_LIFT.square });
+  pavePoly(W, q.pts.map(([u, v]) => P(u, v)), { tint: q.id === 'fountain_square' ? 0xf6eedc : q.id === 'caravan_yard' ? 0xcdbfa6 : 0xeee6d4, lift: PAVE_LIFT.square });
 }
 
 // -----------------------------------------------------------------------------------------
@@ -192,14 +211,10 @@ function guild(rng) {
   F.box(3.0, 0.12, 0.05, 0, 5.4, 6.78, 'metal', { collide: false, rz: 0.4 });
   F.box(3.0, 0.12, 0.05, 0, 5.4, 6.78, 'metal', { collide: false, rz: -0.4 });
   // Bell tower on the east corner (the guild's landmark: a blue spire).
-  const T = F.sub(9.6, 0, -5);
-  T.box(3.6, 13, 3.6, 0, -0.5, 0, 'stone', { tint: 0xd8ccb8 });
-  T.box(4.2, 0.4, 4.2, 0, 12.5, 0, 'stoneDark');
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) T.box(0.5, 2.4, 0.5, sx * 1.6, 12.9, sz * 1.6, 'stone', { tint: 0xd8ccb8 });
-  T.cone(3.1, 4.4, 0, 15.3, 0, 'roof', { tint: 0x2f5a8a, seg: 6, ry: Math.PI / 6 });
-  T.box(0.9, 1.1, 0.06, 0, 8.5, 1.84, 'window', { collide: false, castShadow: false });
-  T.cyl(0.05, 2, 0, 19.6, 0, 'metal', { seg: 6, collide: false });
-  T.box(1.3, 0.8, 0.04, 0.68, 20.6, 0, 'cloth', { collide: false, tint: 0xd84040 });
+  const T = F.sub(9.6, -0.6, -5);
+  houseTower(T, 3.8, 3.8, 15.5, { roofTint: 0x2f5a8a });
+  T.cyl(0.05, 2, 0, 15.5 + 2.6, 0, 'metal', { seg: 6, collide: false });
+  T.box(1.3, 0.8, 0.04, 0.68, 15.5 + 3.6, 0, 'cloth', { collide: false, tint: 0xd84040 });
   // --- Interior ---
   F.box(6.0, 1.1, 1.0, 0, fy, -4.0, 'wood', { tint: 0x7a5232 }); // walk-round ends ≥ 1.5 m (NPC grid)
   F.box(6.2, 0.08, 1.2, 0, fy + 1.1, -4.0, 'plank');
@@ -297,12 +312,11 @@ function temple(rng) {
   // Steps up from the temple square.
   F.box(5, 0.8, 1.8, 0, -0.55, d / 2 + 0.9, 'stone', { tint: 0xd8d0c0 });
   // Spire over the entrance: the city's highest landmark.
-  const S = F.sub(0, 7.3, d / 2 - 1.6);
-  S.box(3.2, 7, 3.2, 0, 0, 0, 'plaster', { tint: 0xf4f0e8 });
-  S.box(1.2, 1.8, 0.06, 0, 3.4, 1.63, 'window', { collide: false, castShadow: false });
-  S.cone(2.6, 9, 0, 7, 0, 'roof', { tint: 0x3a6a8a, seg: 4, ry: Math.PI / 4 });
-  S.cyl(0.05, 1.6, 0, 15.9, 0, 'metal', { seg: 6, collide: false });
-  S.box(0.8, 0.1, 0.1, 0, 16.9, 0, 'metal', { collide: false });
+  // A belfry tower on the front-left corner of the nave (stands on the ground, not on the roof).
+  const S = F.sub(-(w / 2 + 0.9), -0.6, d / 2 - 1.2);
+  houseTower(S, 3.4, 3.4, 20, { roofTint: 0x3a6a8a });
+  S.cyl(0.05, 1.8, 0, 20 + 2.9, 0, 'metal', { seg: 6, collide: false });
+  S.box(0.8, 0.1, 0.1, 0, 20 + 4.2, 0, 'metal', { collide: false });
   // Interior: altar, crystal, pews, tall windows.
   const back = -d / 2 + 1.6;
   F.box(4, 0.5, 2.6, 0, fy, back, 'stone', { tint: 0xe8e2d8 });
@@ -333,25 +347,17 @@ function townHall(rng) {
   // The entrance is the clock tower's door (the tower stands in front of the middle of the facade).
   const h = house(W, { x, z, rot, w: B.town_hall.w, d: B.town_hall.d, floors: 2, floorH: 3.6, style: 'brick', roofTint: ROOF_COLORS.slate, chimney: true, door: false, kind: 'public', lantern: false, shutters: 0.2 }, rng);
   const F = h.frame;
-  const T = F.sub(0, 0, 4.4);
-  T.box(4.2, 15.5, 3.4, 0, -0.5, 0, 'stone', { tint: 0xc8bca8 });
-  T.box(4.8, 0.4, 4.0, 0, 15, 0, 'stoneDark');
-  T.cone(3.6, 5, 0, 15.4, 0, 'roof', { tint: 0x5c6070, seg: 4, ry: Math.PI / 4 });
-  // Clock face on the front.
-  T.cyl(1.2, 0.12, 0, 11.2, 1.72, 'plaster', { seg: 16, rx: Math.PI / 2, collide: false, tint: 0xf4ecd8 });
-  T.box(0.08, 0.9, 0.05, 0, 11.2, 1.85, 'metal', { collide: false });
-  T.box(0.6, 0.08, 0.05, 0.25, 11.2, 1.85, 'metal', { collide: false });
-  // Double door on the steps, in a stone frame.
-  T.box(2.0, 2.6, 0.2, 0, 0.3, 1.75, 'door', { collide: false, tint: 0x5a3a22 });
-  for (const s of [-1, 1]) T.box(0.3, 2.9, 0.3, s * 1.15, 0.3, 1.78, 'stone', { collide: false, tint: 0xb0a492 });
-  T.box(2.6, 0.35, 0.3, 0, 3.05, 1.78, 'stone', { collide: false, tint: 0xb0a492 });
-  T.box(0.04, 2.5, 0.04, 0, 0.35, 1.86, 'metal', { collide: false });
-  for (const s of [-1, 1]) {
-    T.box(1.0, 2.6, 0.06, s * 1.5, 5.5, 1.73, 'cloth', { collide: false, tint: 0xa82a2a });
-    lantern(W, T.sub(s * 1.6, 2.4, 1.9));
-  }
-  T.box(5, 0.6, 1.4, 0, -0.3, 2.4, 'stone', { tint: 0xc8bca8 });
-  W.spot('town_hall_door', T.at(0, 0, 3.2), rot);
+  // The clock tower stands out of the facade (4.4 x 3.0, front at z 7.4) and carries the door.
+  const T = F.sub(0, -0.6, 5.9);
+  houseTower(T, 4.4, 3.0, 16, { roofTint: ROOF_COLORS.slate, clock: true });
+  const D = F.sub(0, 0, 5.9 + 1.5); // front face of the tower
+  D.box(2.0, 2.6, 0.12, 0, 0.3, 0.02, 'door', { collide: false, tint: 0x5a3a22 });
+  for (const s of [-1, 1]) D.box(0.3, 2.9, 0.22, s * 1.15, 0.3, 0.05, 'stone', { collide: false, tint: 0xb0a492 });
+  D.box(2.6, 0.35, 0.22, 0, 3.05, 0.05, 'stone', { collide: false, tint: 0xb0a492 });
+  D.box(0.04, 2.5, 0.04, 0, 0.35, 0.1, 'metal', { collide: false });
+  for (const s of [-1, 1]) lantern(W, D.sub(s * 1.7, 2.4, 0.2));
+  D.box(5, 0.5, 1.0, 0, -0.3, 0.55, 'stone', { tint: 0xc8bca8 }); // steps
+  W.spot('town_hall_door', D.at(0, 0, 1.8), rot);
 }
 
 /** House with an optional open shop front and a hanging sign; spots <id>_door / <id>_counter. */
@@ -446,11 +452,8 @@ function alchemist(rng) {
   const b = B.alchemist;
   const { F } = walkIn('alchemist', rng, { floors: 3, roofTint: 0x5a4a6e, chimney: true, vines: 1, sign: 0x7a4aa8 }, alchemyShop);
   // The purple turret (landmark) corbelled out over the back corner, from the first floor up.
-  const T = F.sub(b.w / 2 + 0.5, 3.3, -b.d / 2 - 0.5); // outside the corner: nothing pokes into the shop
-  T.cone(1.2, 1.2, 0, -1.1, 0, 'stone', { seg: 10, tint: 0xb0a8b8, rx: Math.PI });
-  T.cyl(1.4, 8.2, 0, 0, 0, 'plaster', { seg: 10, tint: 0xe8dcf0 });
-  T.cone(1.9, 3.6, 0, 8.1, 0, 'roof', { seg: 10, tint: 0x6a4e80 });
-  T.box(0.6, 0.9, 0.06, 0, 5.4, 1.38, 'window', { collide: false, castShadow: false });
+  const T = F.sub(b.w / 2 + 1.4, -0.6, -b.d / 2 + 0.4); // a slim stone tower touching the back corner from outside
+  houseTower(T, 2.8, 2.8, 12.5, { roofTint: 0x6a4e80 });
 }
 
 function weaponsmith(rng) {
@@ -572,6 +575,7 @@ function lots() {
       const h = lotBuilding(l, x, z, r);
       if (!h?.door) return;
       DOORS.push([h.door.x, h.door.z]);
+      doorPath(h.door, l.rot);
       const n = named.get(l.id);
       if (n !== undefined) W.spot('house_' + n, h.door, l.rot);
       if (l.id === mia.id) {
@@ -691,16 +695,37 @@ function places(rng) {
 
 function fountainSquare(rng) {
   const F = new Frame(W, AXEL.x, AXEL.level, AXEL.z, 0);
-  // Dark stone ring on the square's paving (PAVE_LIFT.square), the fountain on it.
+  // Inlay on the square's paving (PAVE_LIFT.square): dark rings, a light band and eight spokes
+  // round the fountain, then the fountain itself (three stone basins, running water).
   const top = PAVE_LIFT.square;
-  F.cyl(13.5, 0.04, 0, top - 0.01, 0, 'stoneDark', { seg: 24, castShadow: false, collide: false, tint: 0x9a9284 });
-  F.kit('town/fountain-round', 0, top + 0.02, 0, { s: 4.3 });
-  F.cyl(0.9, 2.2, 0, 0.5, 0, 'stone', { seg: 12, tint: 0xd6ccbc });
-  F.cyl(1.6, 0.3, 0, 2.6, 0, 'stone', { seg: 12, tint: 0xd6ccbc });
-  F.cyl(0.38, 1.4, 0, 2.9, 0, 'stone', { seg: 10, tint: 0xece4d8, collide: false });
-  F.sphere(0.26, 0, 4.45, 0, 'stone', { tint: 0xece4d8, collide: false });
-  F.cone(0.75, 1.5, 0, 2.9, 0, 'stone', { tint: 0xece4d8, collide: false, seg: 12 });
-  for (const s of [-1, 1]) F.box(0.9, 0.12, 0.25, s * 0.55, 3.9, 0, 'stone', { tint: 0xece4d8, collide: false, rz: s * 0.6 });
+  const ring = (r0, r1, y, tint) => F.put(new THREE.RingGeometry(r0, r1, 72), 1, 1, 1, 0, top + y, 0, 'stoneDark', { rx: -Math.PI / 2, collide: false, castShadow: false, tint });
+  ring(12.4, 13.3, 0.02, 0x6f685c);
+  ring(11.5, 12.2, 0.02, 0xd9d0bc);
+  ring(5.9, 6.5, 0.02, 0x6f685c);
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
+    F.sub(Math.cos(a) * 8.9, 0, Math.sin(a) * 8.9, -a + Math.PI / 2).box(0.55, 0.02, 5.0, 0, top + 0.02, 0, 'stone', { collide: false, castShadow: false, tint: 0xe2d9c4 });
+  }
+  const lathe = (pts, y, tint) => F.put(new THREE.LatheGeometry(pts.map(([r, h]) => new THREE.Vector2(r, h)), 40), 1, 1, 1, 0, top + y, 0, 'stone', { tint });
+  const STONE_TONE = 0xd9d0bc, TRIM = 0xc8bca6;
+  // Lower basin: a thick rounded rim, the water a hand below it.
+  lathe([[0, 0], [5.6, 0], [5.6, 0.85], [5.45, 1.05], [5.0, 1.05], [4.85, 0.9], [4.85, 0.6], [0, 0.6]], 0, STONE_TONE);
+  lathe([[5.7, 0.2], [5.7, 0.35], [5.55, 0.4], [5.55, 0.2]], 0, TRIM); // plinth moulding
+  F.cyl(4.85, 0.05, 0, top + 0.78, 0, 'water', { seg: 24, collide: false, castShadow: false });
+  // Pedestal and middle bowl.
+  lathe([[0, 0.6], [1.25, 0.6], [1.25, 0.95], [0.8, 1.25], [0.62, 1.6], [0.62, 2.7], [1.0, 2.95], [2.55, 3.15], [2.55, 3.5], [2.35, 3.62], [1.95, 3.62], [1.8, 3.45], [0.45, 3.4], [0, 3.4]], 0, STONE_TONE);
+  F.cyl(1.85, 0.05, 0, top + 3.48, 0, 'water', { seg: 20, collide: false, castShadow: false });
+  // Crown: slender column, small bowl and a finial.
+  lathe([[0.4, 3.4], [0.4, 4.5], [0.9, 4.75], [0.95, 4.95], [0.7, 4.98], [0.55, 4.85], [0.18, 4.8], [0.18, 5.4], [0.3, 5.5], [0, 5.9]], 0, TRIM);
+  F.cyl(0.62, 0.04, 0, top + 4.88, 0, 'water', { seg: 14, collide: false, castShadow: false });
+  // Streams: from the middle bowl's rim down into the lower basin, and a jet from the crown.
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    const S = F.sub(Math.cos(a) * 2.3, 0, Math.sin(a) * 2.3, -a + Math.PI / 2);
+    S.box(0.14, 2.75, 0.05, 0, top + 0.85, 0.12 + 0.25, 'water', { collide: false, castShadow: false, rx: -0.12 });
+  }
+  F.cyl(0.07, 1.0, 0, top + 5.0, 0, 'water', { seg: 6, collide: false, castShadow: false });
+  F.sphere(0.2, 0, top + 6.0, 0, 'stone', { tint: 0xece4d8, collide: false });
   W.fountain = F.at(0, 3.4, 0);
   W.spot('square', G(0, 9), 0);
   W.spot('square_east', G(10, -8), 0);

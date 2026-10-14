@@ -10,7 +10,7 @@ import { Heightfield, GRID_N, GRID_STEP, roadInfo, riverDistance, surfaceAt, pol
 import { WALL, toWorld } from './AxelPlan.js';
 import { createWaterSurface, riverGeometry, lakeGeometry } from './Water.js';
 import { createLava } from './Surfaces.js';
-import { makeNoiseTexture } from './textures.js';
+import { makeNoiseTexture, makePavingTextures } from './textures.js';
 import { buildTown } from './build/Town.js';
 import { buildCountryside } from './build/Countryside.js';
 import { buildDungeon, DUNGEON } from './build/Dungeon.js';
@@ -360,6 +360,7 @@ export class World {
     const noise2 = makeNoiseTexture(128, 21, 0.5);
     noise2.wrapS = noise2.wrapT = THREE.RepeatWrapping;
     this.noiseTex = noise;
+    const cob = makePavingTextures('cobble', 512, 11), flag = makePavingTextures('flag', 512, 23);
     // Materials are white; their colour lives in the vertex tint (default = the colour below)
     // so a per-piece tint replaces the colour instead of darkening it.
     this.baseTint = {};
@@ -372,8 +373,8 @@ export class World {
     this.mats = {
       stone: M({ color: 0xb4ab9c, roughness: 0.92, map: noise }),
       stoneDark: M({ color: 0x8a8378, roughness: 0.95, map: noise }),
-      cobble: M({ color: 0xa79f90, roughness: 0.9, map: noise2 }),
-      plaza: M({ color: 0xa79f90, roughness: 0.88, map: noise2 }),
+      cobble: M({ color: 0xffffff, roughness: 0.88, map: cob.map, bumpMap: cob.bump, bumpScale: 2.2 }),
+      plaza: M({ color: 0xffffff, roughness: 0.84, map: flag.map, bumpMap: flag.bump, bumpScale: 1.4 }),
       wood: M({ color: 0xffffff, roughness: 0.8, map: noise2 }),
       plank: M({ color: 0x9a7a54, roughness: 0.85, map: noise2 }),
       timber: M({ color: 0xffffff, roughness: 0.85, map: noise2 }),
