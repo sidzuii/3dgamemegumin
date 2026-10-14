@@ -47,5 +47,7 @@ export default defineConfig({
     // The map layout is saved by the editor while it runs: no reload on that write.
     watch: { ignored: ['**/model/**', '**/dist/**', '**/public/data/**'] },
   },
+  // The map editor's gizmo: pre-bundled so the first ?editor load doesn't trigger a reload.
+  optimizeDeps: { include: ['three/examples/jsm/controls/TransformControls.js'] },
   preview: { host: '127.0.0.1', port: 4173 },
 });
