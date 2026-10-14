@@ -42,6 +42,11 @@ export class RPG {
     this.explored = new Uint8Array(EXPLORE_N * EXPLORE_N);
     this.ui = null; // set by Game (dialogue, shop, menu, notify)
     this.events.on('custom', (e) => this.quests._count('custom', (o) => o.name === e.name, e.n ?? 1));
+    // Audio feedback for story progress and loot (the player's own pickups, not shop restock).
+    this.events.on('questStart', () => this.game.audio?.play('questStart'));
+    this.events.on('questStage', () => this.game.audio?.play('questStage'));
+    this.events.on('questDone', () => this.game.audio?.play('questDone'));
+    this.events.on('item', () => this.game.audio?.play('pickup'));
     for (const ev of ['questStart', 'questDone', 'questStage']) this.events.on(ev, () => { this._syncProps(); this.npcs?.refresh(); });
     // Roxy's condition: no Explosion inside the Astrarium while she works.
     this.events.on('explosion', (e) => {
@@ -242,6 +247,7 @@ export class RPG {
       pl.heal(pl.maxHp);
       pl.restoreMana(pl.maxMana);
       this.notify('level', `Уровень ${pl.level}! Здоровье и мана выросли.`);
+      this.game.audio?.play('levelup');
       this.game.vfx.burst('magicPop', pl.position.clone().setY(pl.position.y + 1), 50);
     }
     this.markDirty();
