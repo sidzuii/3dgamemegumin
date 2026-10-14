@@ -68,6 +68,8 @@ export function loadSave() {
       if (!data || typeof data !== 'object' || data.version !== SAVE_VERSION) throw new Error('version');
       return { data: { ...freshState(), ...data } };
     } catch {
+      // Unreadable / unknown version: keep a copy before the game writes over it.
+      try { localStorage.setItem(SAVE_KEY + '.bak-' + Date.now(), raw); } catch { /* storage full */ }
       return { data: null, corrupted: true };
     }
   }

@@ -92,6 +92,8 @@ export class RPG {
     // Saved on an older map (Axel was rebuilt): the old position means nothing here. The fog of
     // war only before rev 2 (the new terrain); later revisions moved houses inside Axel.
     if (S.mapRev !== MAP_REV) {
+      // Keep the pre-migration save (the player may want it back).
+      if (S.player) try { localStorage.setItem(`megumin-save-v2.mapRev${S.mapRev ?? 1}.bak`, JSON.stringify(S)); } catch { /* storage full */ }
       if (!(S.mapRev >= 2)) S.explored = '';
       this._relocate = !!S.player;
       S.mapRev = MAP_REV;
@@ -255,6 +257,14 @@ export class RPG {
   apply(effects, npc) {
     if (!effects) return;
     const list = Array.isArray(effects) ? effects : [effects];
+    // A turn-in is all or nothing: if the items to hand over are no longer in the bag (sold,
+    // used), none of the effects happen.
+    const inv = this.inventory;
+    const short = list.flatMap((e) => (e && e.take ? e.take : [])).filter(([id, n]) => inv.count(id) < n);
+    if (short.length) {
+      this.game.hud.toast('Не хватает: ' + short.map(([id, n]) => `${ITEMS[id]?.name || id} ×${n}`).join(', '), 3);
+      return false;
+    }
     for (const e of list) {
       if (typeof e === 'function') { e(this, npc); continue; }
       for (const [k, v] of Object.entries(e)) this._effect(k, v, npc);
@@ -266,7 +276,7 @@ export class RPG {
     switch (k) {
       case 'setFlag': for (const f of [].concat(v)) this.setFlag(f); break;
       case 'clearFlag': for (const f of [].concat(v)) this.setFlag(f, false); break;
-      case 'give': for (const [id, n] of v) inv.add(id, n); break;
+      case 'give': for (const [id, n] of v) inv.add(id, n, false, true); break;
       case 'take': for (const [id, n] of v) inv.remove(id, n); break;
       case 'eris': if (v > 0) inv.add('eris', v); else inv.spend(-v); break;
       case 'xp': this.gainXp(v); break;
@@ -587,7 +597,14 @@ export class RPG {
     S.explored = btoa(bin);
     const e = this.escort;
     S.escort = e ? { def: e.def, ambushed: e.ambushed, x: e.npc.position.x, z: e.npc.position.z } : null;
-    writeSave(S);
+    if (!writeSave(S)) {
+      // Storage full / blocked: keep the progress dirty and retry soon; tell the player once.
+      this.saveTimer = 10;
+      if (!this._saveWarned) this.notify('info', 'Не удалось сохранить игру (хранилище браузера переполнено?). Повторю попытку.');
+      this._saveWarned = true;
+      return;
+    }
+    this._saveWarned = false;
     this.dirty = false;
     this.autosave = 30;
   }

@@ -107,6 +107,7 @@ export class Economy {
   craft(id) {
     const r = RECIPES.find((x) => x.id === id);
     if (!r) return { ok: false, msg: 'Неизвестный рецепт.' };
+    if (r.requires && !check(this.rpg, r.requires)) return { ok: false, msg: 'Этот рецепт пока недоступен.' };
     if (!this.canCraft(r)) return { ok: false, msg: 'Не хватает материалов или денег.' };
     const [out, n] = r.output;
     if (!this.inv.canAdd(out)) return { ok: false, msg: 'Сумка полна.' };
