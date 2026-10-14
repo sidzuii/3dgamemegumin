@@ -88,9 +88,10 @@ export class RPG {
 
   _fixups() {
     const S = this.state;
-    // Saved on an older map (Axel was rebuilt): the old position and fog of war mean nothing here.
+    // Saved on an older map (Axel was rebuilt): the old position means nothing here. The fog of
+    // war only before rev 2 (the new terrain); later revisions moved houses inside Axel.
     if (S.mapRev !== MAP_REV) {
-      S.explored = '';
+      if (!(S.mapRev >= 2)) S.explored = '';
       this._relocate = !!S.player;
       S.mapRev = MAP_REV;
     }
