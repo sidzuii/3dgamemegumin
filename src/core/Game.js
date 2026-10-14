@@ -322,10 +322,24 @@ export class Game {
     else if (input.wasPressed('KeyM')) this.menu.show('map');
     else if (input.wasPressed('KeyC')) this.menu.show('char');
     else if (input.wasPressed('KeyG')) this.menu.show('guild');
+    else if (input.wasPressed('KeyO')) this.menu.show('sound');
     if (input.wasPressed('Digit3')) this.inventory.use('hp_potion');
     if (input.wasPressed('Digit4')) this.inventory.use('st_potion');
     if (input.wasPressed('Digit5')) this.inventory.use('mana_potion');
     return this.uiBlocking;
+  }
+
+  /** Music state + warnings follow the situation (menus duck the music, never cut it). */
+  _audioFrame(dt, paused) {
+    const p = this.player;
+    this.audio.hud = this.hud;
+    this.audio.update({
+      dt, paused,
+      combat: !paused && p.inCombat,
+      night: (this.world?.nightFactor ?? 0) > 0.6,
+      safe: !!this.currentLocation?.safe,
+      hp: p.hp > 0 ? p.hp / p.maxHp : 1,
+    });
   }
 
   /** Brief slow-motion freeze on impactful hits. */
@@ -360,6 +374,7 @@ export class Game {
       }
       this.hud.update(0, this);
       this.rpgHud.update(0);
+      this._audioFrame(raw, true);
       this.composer.render();
       this.input.endFrame();
       return;
@@ -373,6 +388,7 @@ export class Game {
     }
     this.time += dt;
     this.update(dt);
+    this._audioFrame(raw, false);
     this.composer.render();
     this.input.endFrame();
   }
@@ -381,6 +397,7 @@ export class Game {
     const input = this.input;
 
     if (input.wasPressed('KeyH')) this.hud.toggleHelp();
+    if (input.wasPressed('KeyN')) this.hud.toast(this.audio.toggleMute() ? 'Звук выключен (N)' : 'Звук включён', 1.6);
     if (input.wasPressed('F9')) this.hud.toast('Графика: ' + this.quality.cycle());
     if (input.wasPressed('F8')) this._toggleFps();
     if (this.player.companionUnlocked) {

@@ -16,6 +16,7 @@ const TABS = [
   { id: 'map', label: 'Карта', key: 'M' },
   { id: 'char', label: 'Персонаж', key: 'C' },
   { id: 'guild', label: 'Гильдия', key: 'G' },
+  { id: 'sound', label: 'Звук', key: 'O' },
 ];
 const CAT = { story: 'Сюжет', contract: 'Заказ гильдии', side: 'Поручение' };
 
@@ -91,6 +92,50 @@ export class GameMenu {
     }
     if (this.tab === 'char') this._char(body);
     if (this.tab === 'guild') this._guild(body);
+    if (this.tab === 'sound') this._sound(body);
+  }
+
+  // --------------------------------------------------------------------------- sound
+  _sound(body) {
+    const A = this.game.audio, S = A.settings;
+    const wrap = div('col');
+    wrap.appendChild(h('Звук'));
+    const slider = (label, key) => {
+      const row = div('row');
+      row.style.cssText = 'display:flex;align-items:center;gap:12px;margin:10px 0';
+      const l = document.createElement('span');
+      l.style.minWidth = '150px';
+      l.textContent = label;
+      const r = document.createElement('input');
+      r.type = 'range'; r.min = 0; r.max = 100; r.value = Math.round(S[key] * 100);
+      r.addEventListener('input', () => { A.set(key, r.value / 100); v.textContent = r.value + '%'; });
+      const v = document.createElement('span');
+      v.textContent = r.value + '%';
+      row.append(l, r, v);
+      return row;
+    };
+    const check = (label, key, hint) => {
+      const row = document.createElement('label');
+      row.style.cssText = 'display:flex;align-items:center;gap:10px;margin:10px 0;cursor:pointer';
+      const c = document.createElement('input');
+      c.type = 'checkbox'; c.checked = !!S[key];
+      c.addEventListener('change', () => A.set(key, c.checked));
+      const t = document.createElement('span');
+      t.textContent = label;
+      row.append(c, t);
+      if (hint) { const s = document.createElement('small'); s.style.opacity = 0.7; s.textContent = hint; row.appendChild(s); }
+      return row;
+    };
+    wrap.append(
+      slider('Общая громкость', 'master'), slider('Эффекты', 'sfx'), slider('Музыка', 'music'),
+      check('Выключить звук', 'muted', '(клавиша N)'),
+      check('Подписи звуков', 'captions', 'важные сигналы показываются текстом'),
+    );
+    const note = document.createElement('p');
+    note.style.opacity = 0.7;
+    note.textContent = 'Музыка сменяется сама: город, поле, ночь, бой. Вкладка закрывается Esc.';
+    wrap.appendChild(note);
+    body.appendChild(wrap);
   }
 
   // --------------------------------------------------------------------------- inventory
