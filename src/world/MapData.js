@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { AXEL, WALL, toWorld } from './AxelPlan.js';
+import * as AIN from './AinstreyPlan.js';
 
 /**
  * The overworld as data. North = -Z, east = +X, metres (docs/axel-city-plan.md).
@@ -52,8 +53,23 @@ export const REGIONS = [
   { id: 'pump', name: 'Насосная станция', sub: 'Под городом', center: v(0, 2000), r: 130, icon: '◒', tier: 0, interior: true },
   { id: 'drain', name: 'Внешний отвод', sub: 'Под Багровым ущельем', center: v(0, 1740), r: 110, icon: '◒', tier: 0, interior: true },
   { id: 'relay', name: 'Ретранслятор', sub: 'Восточный пост Астрариума', center: v(0, 1508), r: 100, icon: '◒', tier: 0, interior: true },
+  // ---- Ainstrey sheet (docs/ainstrey): the road from the east pass and the capital. `poly` = world polygon (a district is not a circle).
+  ...AIN_REGIONS(),
 ];
 export const REGION = Object.fromEntries(REGIONS.map((r) => [r.id, r]));
+
+/** Does the region contain the point (a polygon when it has one, else the circle)? */
+export function regionContains(R, x, z) {
+  if (R.poly) {
+    let c = false;
+    const P = R.poly;
+    for (let i = 0, j = P.length - 1; i < P.length; j = i++) {
+      if (P[i][1] > z !== P[j][1] > z && x < ((P[j][0] - P[i][0]) * (z - P[i][1])) / (P[j][1] - P[i][1]) + P[i][0]) c = !c;
+    }
+    return c;
+  }
+  return Math.hypot(x - R.center.x, z - R.center.z) < R.r;
+}
 
 /** The Lunnaya: from the northern mountains through the ridge gap, past the city, south-east. */
 export const RIVER = {
@@ -67,7 +83,7 @@ export const RIVER = {
 export const CREEK = { points: [[360, -330], [345, -230], [332, -150], [328, -100], [320, -40], [300, 40], [280, 150], [250, 270], [215, 312]], width: 3, level: -0.65, bed: -1.4, valley: 14 };
 
 /** Every water ribbon that carves the terrain (Terrain.riverDistance = nearest of them). */
-export const RIVERS = [{ ...RIVER, valley: 48 }, CREEK];
+export const RIVERS = [{ ...RIVER, valley: 48 }, CREEK, AIN.BIG_RIVER, AIN.MILL_ARM];
 
 export const LAKES = [
   { id: 'mist_lake', center: v(60, 405), radius: 36, level: -0.6, bottom: -2.2, island: { x: 66, z: 410, r: 7.5 } },
@@ -116,6 +132,8 @@ export const ROADS = [
   { id: 'mines_road', kind: 'trail', width: 3, points: [[-420, -266], [-430, -320], [-466, -368], [-510, -392], [-536, -410], [-540, -440], [-538, -476], [-530, -530], [-520, -585]] },
   // Crossroads -> north -> watchtower hill.
   { id: 'tower_trail', kind: 'trail', width: 2.4, points: [[112, -26], [114, -80], [110, -140], [114, -186], [138, -200], [144, -222], [130, -238], [122, -236]] },
+  // The trakt to Ainstrey: Postal ascent -> Stone Ledge -> Chalk slopes -> White mills -> South dam -> the south gate (AinstreyPlan.js).
+  { id: 'ainstrey_road', kind: 'road', width: 6, points: AIN.TRAKT.map(([u, w]) => AIN.toWorld(u, w)) },
   // Olkhovka -> north through the ridge gap -> Crimson gorge.
   { id: 'lava_road', kind: 'trail', width: 3.2, points: [[728, -186], [700, -240], [684, -262], [640, -296], [580, -346], [520, -380], [470, -398], [452, -420], [446, -440], [444, -462], [438, -500], [430, -548]] },
 ];
@@ -144,6 +162,9 @@ export const FLATS = [
   { x: 786, z: -166, r: 8, feather: 10, level: 3.5 }, // east pass road climbs on a chain of flats
   { x: 803, z: -180, r: 8, feather: 10, level: 6 },
   { x: 822, z: -192, r: 13, feather: 12, level: 8.5 },
+  // Ainstrey: the city on its terraces (the wall pushed out, the level from AinstreyPlan.cityLevel) and the flats of the route
+  { poly: offsetPolygon(AIN.CITY_FLAT.pts.map(([u, w]) => AIN.toWorld(u, w)), AIN.CITY_FLAT.push), feather: AIN.CITY_FLAT.feather, level: (x, z) => AIN.cityLevel(x - AIN.ORIGIN.x, z - AIN.ORIGIN.z), city: true },
+  ...AIN.FLATS_LOCAL.map((f) => ({ x: AIN.ORIGIN.x + f.u, z: AIN.ORIGIN.z + f.v, r: f.r, feather: f.feather, level: f.level })),
 ];
 
 export const HILLS = [
@@ -156,9 +177,11 @@ export const HILLS = [
   { x: -470, z: 170, r: 34, h: 7 },
   { x: -100, z: -200, r: 50, h: 11 },
   { x: -282, z: -620, r: 18, h: 3 },
+  ...AIN.HILLS_LOCAL.map((h) => ({ x: AIN.ORIGIN.x + h.u, z: AIN.ORIGIN.z + h.v, r: h.r, h: h.h })),
 ];
 
 export const RIDGES = [
+  ...AIN.RIDGES_LOCAL.map((r) => ({ points: r.points.map(([u, w]) => AIN.toWorld(u, w)), height: r.height, width: r.width, gaps: r.gaps })),
   {
     points: [[-800, -430], [-620, -446], [-440, -432], [-300, -444], [-140, -426], [40, -442], [220, -430], [400, -446], [600, -426], [800, -440]],
     height: 24, width: 52,
@@ -182,6 +205,7 @@ export const FORESTS = [
   { id: 'east_groves', name: 'Восточные рощи', kind: 'mixed', pts: [[380, 60], [480, 0], [590, 40], [610, 170], [510, 250], [400, 210]] },
   { id: 'foothills', name: 'Предгорный бор', kind: 'pine', pts: [[-120, -500], [0, -480], [150, -520], [210, -640], [60, -710], [-110, -660]] },
   { id: 'mine_woods', name: 'Шахтёрский лес', kind: 'pine', pts: [[-420, -330], [-360, -380], [-400, -420], [-480, -420], [-470, -360]] },
+  ...AIN.FORESTS_LOCAL.map((f) => ({ id: f.id, name: f.id, kind: f.kind, pts: f.pts.map(([u, w]) => AIN.toWorld(u, w)) })),
 ];
 
 /** Named points between the settlements (Countryside registers them as spots / props). */
@@ -288,4 +312,31 @@ export function offsetPolygon(pts, d) {
     const t = ((p3[0] - p1[0]) * d2z - (p3[1] - p1[1]) * d2x) / den;
     return [p1[0] + d1x * t, p1[1] + d1z * t];
   });
+}
+
+/** Regions of the Ainstrey sheet (data/ainstrey: AinstreyPlan.js). Local (u, v) -> world. */
+function AIN_REGIONS() {
+  const P = (u, w) => v(...AIN.toWorld(u, w));
+  const cen = (pts) => [pts.reduce((a, p) => a + p[0], 0) / pts.length, pts.reduce((a, p) => a + p[1], 0) / pts.length];
+  const place = (id, name, sub, [u, w], r, extra = {}) => ({ id, name, sub, center: P(u, w), r, ...extra });
+  const district = (id, icon, sub, spawn, spawnYaw) => {
+    const D = AIN.DISTRICTS.find((d) => d.id === id);
+    const [cu, cw] = cen(D.pts);
+    return { id: 'ain_' + id, name: D.name, sub, center: P(cu, cw), r: 330, icon, tier: 0, safe: true, view: 2.2, poly: D.pts.map(([u, w]) => AIN.toWorld(u, w)), spawn: P(...spawn), spawnYaw };
+  };
+  return [
+    place('postal', 'Почтовый подъём', 'Стоянка у начала столичного тракта', [-1540, 2300], 62, { icon: '⛺', safe: true, tier: 0, view: 2.6, spawn: P(-1600, 2336), spawnYaw: 2.0 }),
+    place('ledge_road', 'Каменный уступ', 'Завал на тракте', [-1290, 2070], 85, { icon: '⛰', tier: 1, view: 2.6, spawn: P(-1395, 2215), spawnYaw: 2.2 }),
+    place('chalk', 'Меловые склоны', 'Первый вид столицы', [-950, 1780], 125, { icon: '⛰', tier: 0, view: 3.2, spawn: P(-974, 1789), spawnYaw: 2.3 }),
+    place('mills', 'Белые мельницы', 'Предместье у мельничного рукава', [-470, 1500], 160, { icon: '⚙', safe: true, tier: 0, view: 3.0, spawn: P(-520, 1535), spawnYaw: 2.3 }),
+    place('dam', 'Южная дамба', 'Переправа к южным воротам', [-33, 1300], 80, { icon: '≈', safe: true, tier: 0, view: 3.0, spawn: P(-30, 1345), spawnYaw: Math.PI }),
+    { id: 'ainstrey', name: 'Айнстрей', sub: 'Столица', center: P(0, 0), r: 1300, icon: '♛', tier: 0, safe: true, view: 2.2, poly: AIN.CITY_WALL.map((n) => AIN.toWorld(n.u, n.v)), spawn: P(-20, 1140), spawnYaw: Math.PI },
+    district('posad', '⌂', 'Постоялые дворы и рынок', [-20, 960], Math.PI),
+    district('steps', '▦', 'Главная площадь столицы', [0, 330], Math.PI),
+    district('guilds', '⚑', 'Корпуса объединений', [-420, 140], Math.PI / 2),
+    district('port', '⚓', 'Набережная и причалы', [560, 120], Math.PI / 2),
+    district('old', '❖', 'Архив и Соборная площадь', [-300, -420], Math.PI),
+    district('academy', '✦', 'Академический двор', [300, -470], Math.PI),
+    district('garden', '❀', 'Террасы и павильоны', [0, -780], Math.PI),
+  ];
 }

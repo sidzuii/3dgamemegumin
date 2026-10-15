@@ -7,6 +7,7 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { Input } from './Input.js';
 import { World } from '../world/World.js';
 import { DayNight } from '../world/DayNight.js';
+import { inSheet } from '../world/AinstreyPlan.js';
 import { DUNGEON } from '../world/build/Dungeon.js';
 import { Player } from '../character/Player.js';
 import { ThirdPersonCamera } from '../camera/ThirdPersonCamera.js';
@@ -429,6 +430,8 @@ export class Game {
 
     // Lighting for the time of day (or the dark of the mine).
     const dn = this.dayNight.update(dt, this.rpg.clock.hour, this.inDungeon ? 1 : 0);
+    const far = Math.max(480, this.scene.fog.far + 70);
+    if (Math.abs(this.camera.far - far) > 8) { this.camera.far = far; this.camera.updateProjectionMatrix(); }
 
     // World props (grass, water, interactables, dummies, lights).
     this.world.update(dt, { playerPos: pp, playerSpeed: this.player.controller.horizontalSpeed, vfx: this.vfx, night: dn.night, camera: this.camera });
@@ -473,6 +476,7 @@ export class Game {
     const L = this.world.locationAt(pp);
     if (L === this.currentLocation && !force) return;
     this.currentLocation = L;
+    this.world.viewTarget = L?.view ?? (inSheet(pp.x, pp.z) ? 2.6 : 1);
     if (!L) return;
     const first = this.rpg.enterRegion(L);
     if (first || this.time - (L._lastBanner || -99) > 60) {

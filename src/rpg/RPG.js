@@ -14,6 +14,7 @@ import { Guild } from './Guild.js';
 import { WorldEvents } from './WorldEvents.js';
 import { Gathering } from './Gathering.js';
 import { REGIONS, REGION, HALF, ROADS } from '../world/MapData.js';
+import { SHEET as AIN_SHEET, EXPLORE as EXPLORE_AIN, inSheet as inAinSheet } from '../world/AinstreyPlan.js';
 import { ITEMS } from '../data/items.js';
 import { PROP_TEXTS } from '../data/dialogues.js';
 
@@ -46,6 +47,7 @@ export class RPG {
     this.saveTimer = 0;
     this.autosave = 30;
     this.explored = new Uint8Array(EXPLORE_N * EXPLORE_N);
+    this.exploredAin = new Uint8Array(EXPLORE_AIN.nx * EXPLORE_AIN.nz); // the map page of the Ainstrey sheet
     this.ui = null; // set by Game (dialogue, shop, menu, notify)
     this.events.on('custom', (e) => this.quests._count('custom', (o) => o.name === e.name, e.n ?? 1));
     // Audio feedback for story progress and loot (the player's own pickups, not shop restock).
@@ -179,6 +181,14 @@ export class RPG {
       S.storyRev = STORY_REV;
     }
     for (const id of Object.keys(S.quests)) if (!this.quests.def(id)) delete S.quests[id];
+    if (S.exploredAin) {
+      try {
+        const bin = atob(S.exploredAin);
+        for (let i = 0; i < this.exploredAin.length; i++) this.exploredAin[i] = (bin.charCodeAt(i >> 3) >> (i & 7)) & 1;
+      } catch {
+        /* corrupted fog map of the sheet: start blank */
+      }
+    }
     if (S.explored) {
       try {
         const bin = atob(S.explored);
@@ -887,6 +897,14 @@ export class RPG {
   // Fog of war for the map.
   // ---------------------------------------------------------------------------------------
   _explore(p) {
+    if (inAinSheet(p.x, p.z)) {
+      const c = EXPLORE_AIN.cell, ci = Math.floor((p.x - AIN_SHEET.x0) / c), cj = Math.floor((p.z - AIN_SHEET.z0) / c), R = 5;
+      for (let j = cj - R; j <= cj + R; j++) for (let i = ci - R; i <= ci + R; i++) {
+        if (i < 0 || j < 0 || i >= EXPLORE_AIN.nx || j >= EXPLORE_AIN.nz || (i - ci) ** 2 + (j - cj) ** 2 > R * R) continue;
+        this.exploredAin[j * EXPLORE_AIN.nx + i] = 1;
+      }
+      return;
+    }
     const cell = (HALF * 2) / EXPLORE_N;
     const ci = Math.floor((p.x + HALF) / cell), cj = Math.floor((p.z + HALF) / cell);
     const R = 4;
@@ -898,6 +916,10 @@ export class RPG {
   }
 
   isExplored(x, z) {
+    if (inAinSheet(x, z)) {
+      const c = EXPLORE_AIN.cell, i = Math.floor((x - AIN_SHEET.x0) / c), j = Math.floor((z - AIN_SHEET.z0) / c);
+      return i >= 0 && j >= 0 && i < EXPLORE_AIN.nx && j < EXPLORE_AIN.nz && !!this.exploredAin[j * EXPLORE_AIN.nx + i];
+    }
     const cell = (HALF * 2) / EXPLORE_N;
     const i = Math.floor((x + HALF) / cell), j = Math.floor((z + HALF) / cell);
     return i >= 0 && j >= 0 && i < EXPLORE_N && j < EXPLORE_N && !!this.explored[j * EXPLORE_N + i];
@@ -980,6 +1002,13 @@ export class RPG {
       bin += String.fromCharCode(b);
     }
     S.explored = btoa(bin);
+    let bin2 = '';
+    for (let i = 0; i < this.exploredAin.length; i += 8) {
+      let b = 0;
+      for (let k = 0; k < 8; k++) b |= (this.exploredAin[i + k] || 0) << k;
+      bin2 += String.fromCharCode(b);
+    }
+    S.exploredAin = btoa(bin2);
     const e = this.escort;
     S.escort = e ? { def: e.def, ambushed: e.ambushed, x: e.npc.position.x, z: e.npc.position.z } : null;
     if (!writeSave(S)) {

@@ -1,4 +1,3 @@
-import { HALF } from '../world/MapData.js';
 import { BUILDINGS } from '../world/AxelPlan.js';
 
 /**
@@ -49,7 +48,8 @@ export function layerOf(rec) {
 }
 
 const NUM = (v) => typeof v === 'number' && Number.isFinite(v);
-const LIM = { coord: HALF * 1.3 + 1500, dy: 60, s: [0.2, 5], rot: 1e3, overrides: 20000, vegetation: 30000, added: 5000, erase: 500, bytes: 6e6, eraseR: 80 };
+/** coord: the Ainstrey sheet lies east of the old map (AinstreyPlan.js), so the limit covers it. */
+const LIM = { coord: 6500, dy: 60, s: [0.2, 5], rot: 1e3, overrides: 20000, vegetation: 30000, added: 5000, erase: 500, bytes: 6e6, eraseR: 80 };
 
 /**
  * Validate a layout document (placements.json). Returns { ok, errors }; stops at 12 errors.

@@ -5,7 +5,8 @@ import { fbm, mulberry32, smoothstep, clamp } from '../core/math.js';
 import { createSky } from './Sky.js';
 import { createGrass } from './Grass.js';
 import { Signpost, ModelChest } from './Interactables.js';
-import { HALF, REGIONS, REGION, RIVERS, LAKES, LAVA, CAMPS, SIGNS, FORESTS } from './MapData.js';
+import { CITY_WALL as AIN_WALL, toWorld as AIN_TO_WORLD, SHEET as AIN_SHEET, TRAKT as AIN_TRAKT } from './AinstreyPlan.js';
+import { HALF, REGIONS, REGION, RIVERS, LAKES, LAVA, CAMPS, SIGNS, FORESTS, regionContains } from './MapData.js';
 import { Heightfield, GRID_N, GRID_STEP, roadInfo, riverDistance, surfaceAt, polygonDistance } from './Terrain.js';
 import { WALL, toWorld } from './AxelPlan.js';
 import { createWaterSurface, riverGeometry, lakeGeometry } from './Water.js';
@@ -13,6 +14,7 @@ import { createLava } from './Surfaces.js';
 import { makeNoiseTexture, makePavingTextures } from './textures.js';
 import { buildTown } from './build/Town.js';
 import { buildCountryside } from './build/Countryside.js';
+import { buildAinstrey } from './build/Ainstrey.js';
 import { buildDungeon, DUNGEON } from './build/Dungeon.js';
 import { buildCrypt } from './build/Crypt.js';
 import { buildRelay } from './build/Relay.js';
@@ -38,13 +40,17 @@ const TERRAIN_CHUNK = 68; // terrain grid cells per chunk side (170 m)
 const LIGHT_POOL = 8; // fixed number of point lights (no shader recompiles)
 
 /** The city wall as a world polygon (+ bbox) for the "inside Axel" tests. */
-const CITY = WALL.nodes.map((n) => toWorld(n.u, n.v));
-const CITY_BOX = [Math.min(...CITY.map((p) => p[0])), Math.min(...CITY.map((p) => p[1])), Math.max(...CITY.map((p) => p[0])), Math.max(...CITY.map((p) => p[1]))];
-/** Signed distance to the city wall line (negative inside the walls); far away: a cheap lower bound. */
+const CITIES = [WALL.nodes.map((n) => toWorld(n.u, n.v)), AIN_WALL.map((n) => AIN_TO_WORLD(n.u, n.v))].map((pts) => ({
+  pts, box: [Math.min(...pts.map((p) => p[0])), Math.min(...pts.map((p) => p[1])), Math.max(...pts.map((p) => p[0])), Math.max(...pts.map((p) => p[1]))],
+}));
+/** Signed distance to the nearest city wall line (negative inside the walls; Axel and Ainstrey); far away: a cheap lower bound. */
 export function cityDistance(x, z) {
-  const dx = Math.max(CITY_BOX[0] - x, 0, x - CITY_BOX[2]), dz = Math.max(CITY_BOX[1] - z, 0, z - CITY_BOX[3]);
-  if (dx > 30 || dz > 30) return Math.hypot(dx, dz);
-  return polygonDistance(CITY, x, z);
+  let best = Infinity;
+  for (const C of CITIES) {
+    const dx = Math.max(C.box[0] - x, 0, x - C.box[2]), dz = Math.max(C.box[1] - z, 0, z - C.box[3]);
+    best = Math.min(best, dx > 30 || dz > 30 ? Math.hypot(dx, dz) : polygonDistance(C.pts, x, z));
+  }
+  return best;
 }
 const FOREST_BOX = FORESTS.map((f) => [Math.min(...f.pts.map((p) => p[0])), Math.min(...f.pts.map((p) => p[1])), Math.max(...f.pts.map((p) => p[0])), Math.max(...f.pts.map((p) => p[1]))]);
 /** Signed distance to the nearest forest polygon (negative inside) and that forest. */
@@ -98,6 +104,8 @@ export class World {
     this.lodDistance = 120;
     this.lodMode = null; // 'near' | 'far' while a builder emits the two versions of a building
     this.terrainChunks = [];
+    this.viewScale = 1; // fog / far-plane scale (DayNight): 1 on the old map, larger in the open country of the Ainstrey sheet
+    this.viewTarget = 1;
     this.rng = mulberry32(1337);
     this.campSpawns = [];
     this.regions = REGIONS;
@@ -277,8 +285,7 @@ export class World {
   locationAt(p) {
     let best = null;
     for (const R of REGIONS) {
-      const d = Math.hypot(p.x - R.center.x, p.z - R.center.z);
-      if (d < R.r && (!best || R.r < best.r)) best = R;
+      if (regionContains(R, p.x, p.z) && (!best || R.r < best.r)) best = R;
     }
     return best;
   }
@@ -292,6 +299,7 @@ export class World {
     this._buildWater();
     buildTown(this);
     buildCountryside(this);
+    buildAinstrey(this);
     buildDungeon(this);
     buildCrypt(this);
     buildRelay(this);
@@ -446,13 +454,20 @@ export class World {
 
   // ---------------------------------------------------------------------------
   _buildTerrain() {
-    const size = HALF * 2;
-    const seg = GRID_N - 1;
-    const geo = new THREE.PlaneGeometry(size, size, seg, seg);
+    this.terrainColors = null;
+    for (const sh of this.heightfield.sheets) this._buildTerrainSheet(sh);
+  }
+
+  /** One height grid -> chunked meshes (frustum culling) + the colours of the ground. */
+  _buildTerrainSheet(sh) {
+    const main = sh.id === 'main';
+    const NX = sh.nx, NZ = sh.nz;
+    const sizeX = (NX - 1) * sh.step, sizeZ = (NZ - 1) * sh.step;
+    const geo = new THREE.PlaneGeometry(sizeX, sizeZ, NX - 1, NZ - 1);
     geo.rotateX(-Math.PI / 2);
+    geo.translate(sh.x0 + sizeX / 2, 0, sh.z0 + sizeZ / 2);
     const pos = geo.attributes.position;
-    const hf = this.heightfield;
-    for (let i = 0; i < pos.count; i++) pos.setY(i, hf.data[i]);
+    for (let i = 0; i < pos.count; i++) pos.setY(i, sh.data[i]);
     geo.computeVertexNormals();
     const nrm = geo.attributes.normal;
     const colors = new Float32Array(pos.count * 3);
@@ -463,24 +478,29 @@ export class World {
       dirt: new THREE.Color(0x8d7454), trail: new THREE.Color(0x9a8a62), rock: new THREE.Color(0x857d70),
       snow: new THREE.Color(0xe8eef2), scorch: new THREE.Color(0x3b2a24), mud: new THREE.Color(0x6e5e44),
       sand: new THREE.Color(0xb9a77e), town: new THREE.Color(0x8e8a64), ruin: new THREE.Color(0x9a9a86),
+      chalk: new THREE.Color(0xc9c4b0), stone: new THREE.Color(0xa59d88), dry: new THREE.Color(0x9aa35a),
     };
     const farms = REGION.farms.center;
     const gorge = REGION.crimson_gorge.center, astra = REGION.astrarium.center;
+    const chalkC = REGION.chalk.center;
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i), z = pos.getZ(i), y = pos.getY(i);
       const n = fbm(x * 0.08, z * 0.08, 3) * 0.5 + 0.5;
       const big = fbm(x * 0.012 + 40, z * 0.012, 2) * 0.5 + 0.5;
       c.copy(T.grassA).lerp(T.grassB, n * 0.7 + big * 0.3);
-      // Biomes.
       const df = forestAt(x, z).d;
       c.lerp(T.forest, (1 - smoothstep(-25, 15, df)) * 0.75);
-      const dfa = Math.hypot(x - farms.x, z - farms.z);
-      c.lerp(T.farm, (1 - smoothstep(30, 70, dfa)) * 0.45);
+      if (main) {
+        const dfa = Math.hypot(x - farms.x, z - farms.z);
+        c.lerp(T.farm, (1 - smoothstep(30, 70, dfa)) * 0.45);
+      } else {
+        // Ainstrey: dry meadows, chalk on the slopes of the south-west, worn stone in and around the city.
+        c.lerp(T.dry, smoothstep(0.35, 0.7, big) * 0.4);
+        c.lerp(T.chalk, (1 - smoothstep(60, 240, Math.hypot(x - chalkC.x, z - chalkC.z))) * 0.55 * smoothstep(3, 9, y));
+      }
       c.lerp(T.meadow, smoothstep(0.62, 0.8, big) * 0.35);
-      // Town ground inside the walls: worn earth.
       const dt = cityDistance(x, z);
-      if (dt < 6) c.lerp(T.town, (1 - smoothstep(-6, 6, dt)) * 0.55);
-      // River banks.
+      if (dt < 6) c.lerp(main ? T.town : T.stone, (1 - smoothstep(-6, 6, dt)) * (main ? 0.55 : 0.7));
       const rd = riverDistance(x, z);
       c.lerp(T.mud, (1 - smoothstep(-1, 4, rd)) * 0.9);
       c.lerp(T.sand, (1 - smoothstep(2, 7, rd)) * smoothstep(-1, 2, rd) * 0.45);
@@ -488,33 +508,31 @@ export class World {
         const dl = Math.hypot(x - L.center.x, z - L.center.z);
         c.lerp(T.sand, (1 - smoothstep(L.radius * 0.95, L.radius * 1.25, dl)) * 0.8);
       }
-      // Roads.
       const r = roadInfo(x, z);
       const edge = 0.6 + fbm(x * 0.3, z * 0.3, 2) * 0.5;
       c.lerp(r.kind === 'trail' ? T.trail : T.dirt, smoothstep(edge + 0.6, edge - 0.6, r.d) * (r.kind === 'trail' ? 0.7 : 0.9));
-      // Slopes, altitude.
       const slope = 1 - nrm.getY(i);
-      c.lerp(T.rock, clamp(smoothstep(0.2, 0.42, slope) + smoothstep(14, 26, y) * 0.75, 0, 1));
+      c.lerp(T.rock, clamp(smoothstep(0.2, 0.42, slope) + smoothstep(main ? 14 : 30, main ? 26 : 50, y) * 0.75, 0, 1));
       c.lerp(T.snow, smoothstep(40, 52, y) * 0.85);
-      // Special places.
-      c.lerp(T.scorch, (1 - smoothstep(30, 70, Math.hypot(x - gorge.x, z - gorge.z))) * 0.9);
-      c.lerp(T.ruin, (1 - smoothstep(28, 46, Math.hypot(x - astra.x, z - astra.z))) * 0.4);
+      if (main) {
+        c.lerp(T.scorch, (1 - smoothstep(30, 70, Math.hypot(x - gorge.x, z - gorge.z))) * 0.9);
+        c.lerp(T.ruin, (1 - smoothstep(28, 46, Math.hypot(x - astra.x, z - astra.z))) * 0.4);
+      }
       colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
     }
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     const uv = geo.attributes.uv;
     for (let i = 0; i < uv.count; i++) uv.setXY(i, pos.getX(i) * 0.25, pos.getZ(i) * 0.25);
-    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.96, map: this.noiseTex });
-    this.terrainMaterial = mat;
+    this.terrainMaterial ??= new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.96, map: this.noiseTex });
+    const mat = this.terrainMaterial;
     // Chunks (frustum culling): each a slice of the full grid with the shared normals/colours.
-    const N = GRID_N;
     const nrmA = geo.attributes.normal.array, posA = pos.array, uvA = geo.attributes.uv.array;
-    for (let cj = 0; cj < N - 1; cj += TERRAIN_CHUNK) {
-      for (let ci = 0; ci < N - 1; ci += TERRAIN_CHUNK) {
-        const w = Math.min(TERRAIN_CHUNK, N - 1 - ci) + 1, h = Math.min(TERRAIN_CHUNK, N - 1 - cj) + 1;
+    for (let cj = 0; cj < NZ - 1; cj += TERRAIN_CHUNK) {
+      for (let ci = 0; ci < NX - 1; ci += TERRAIN_CHUNK) {
+        const w = Math.min(TERRAIN_CHUNK, NX - 1 - ci) + 1, h = Math.min(TERRAIN_CHUNK, NZ - 1 - cj) + 1;
         const P = new Float32Array(w * h * 3), Nn = new Float32Array(w * h * 3), Cc = new Float32Array(w * h * 3), U = new Float32Array(w * h * 2);
         for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
-          const src = (cj + j) * N + ci + i, dst = j * w + i;
+          const src = (cj + j) * NX + ci + i, dst = j * w + i;
           for (let k = 0; k < 3; k++) { P[dst * 3 + k] = posA[src * 3 + k]; Nn[dst * 3 + k] = nrmA[src * 3 + k]; Cc[dst * 3 + k] = colors[src * 3 + k]; }
           U[dst * 2] = uvA[src * 2]; U[dst * 2 + 1] = uvA[src * 2 + 1];
         }
@@ -540,8 +558,9 @@ export class World {
       }
     }
     geo.dispose();
-    // Low-res colour copy for the map screen.
-    this.terrainColors = colors;
+    // Low-res colour copy for the map screen (the old map; the Ainstrey sheet keeps its own).
+    if (main) this.terrainColors = colors;
+    else (this.sheetColors ??= {})[sh.id] = colors;
   }
 
   _buildWater() {
@@ -882,6 +901,39 @@ export class World {
     }
     const G = REGION.glade.center;
     for (let i = 0; i < 40; i++) { const a = rng() * Math.PI * 2, r = Math.sqrt(rng()) * 20; floor(G.x + Math.cos(a) * r, G.z + Math.sin(a) * r); }
+    this._buildAinstreyVegetation(rng, inClearing);
+  }
+
+  /** The Ainstrey sheet: groves and bushes on the plain, scrub and rocks on the chalk slopes, meadow flowers. */
+  _buildAinstreyVegetation(rng, inClearing) {
+    const S = AIN_SHEET, m = 120;
+    const rx = () => S.x0 + m + rng() * (S.x1 - S.x0 - 2 * m), rz = () => S.z0 + m + rng() * (S.z1 - S.z0 - 2 * m);
+    let placed = 0;
+    for (let i = 0; i < 40000 && placed < 700; i++) {
+      const x = rx(), z = rz();
+      if (!this._freeForPlants(x, z, 2) || inClearing(x, z, 6)) continue;
+      const y = this.heightAt(x, z);
+      if (y > 34 || y < 0.9) continue;
+      const grove = fbm(x * 0.02 + 7, z * 0.02 - 3, 2);
+      if (rng() > 0.2 + grove * 0.9) continue;
+      tree(this, x, z, 0.8 + rng() * 0.6, rng, y > 18 ? 'pine' : rng() < 0.2 ? 'birch' : 'oak');
+      placed++;
+    }
+    for (let i = 0; i < 3200; i++) {
+      const x = rx(), z = rz();
+      if (!this._freeForPlants(x, z, 1)) continue;
+      const y = this.heightAt(x, z);
+      if (y > 30 || y < 0.6) continue;
+      if (rng() < (y > 8 ? 0.45 : 0.65)) bush(this, x, z, 0.8 + rng() * 0.8, rng);
+      else rock(this, x, z, 0.4 + rng() * 1.6, rng);
+    }
+    const FLOWERS = ['flower_redA', 'flower_yellowA', 'flower_yellowB', 'flower_purpleA', 'flower_redB', 'flower_yellowC'];
+    for (let i = 0; i < 7000; i++) {
+      const x = rx(), z = rz();
+      if (fbm(x * 0.03 + 11, z * 0.03 - 5, 2) < 0.25) continue;
+      if (this.heightAt(x, z) > 22 || !this._freeForPlants(x, z, 0.3)) continue;
+      decor(this, x, z, FLOWERS[Math.floor(rng() * FLOWERS.length)], 0.35 + rng() * 0.25, rng);
+    }
   }
 
   _buildGrass() {
@@ -903,6 +955,8 @@ export class World {
     add(R('astrarium').x, R('astrarium').z, 50, 2500, { skip: notFree, hue: 0.16, scale: 0.9 });
     // Gardens and yards inside the walls (never on the paving or in the houses).
     if (this.cityGround) add(-330, 20, 125, 6000, { hue: 0.22, scale: 0.8, skip: (x, z) => !this.cityGround(x, z) });
+    // Ainstrey: meadows along the road, the mills and the dam.
+    for (let i = 0; i < AIN_TRAKT.length; i += 4) { const [x, z] = AIN_TO_WORLD(...AIN_TRAKT[i]); add(x, z, 85, 3200, { skip: notFree, hue: 0.19 }); }
     this.grass = createGrass(this, patches);
     this.scene.add(this.grass.mesh);
     this.updatables.push(this.grass);
