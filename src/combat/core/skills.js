@@ -592,6 +592,7 @@ function evalAim(sim, hero, spec, into) {
     else {
       const g = sim.env.allowed?.(hero.id, spec, r.desired);
       if (g && !g.ok) { r.valid = false; r.reason = g.reason || 'Здесь нельзя применять взрыв'; r.why = 'forbidden'; }
+      else if (g?.warn) r.warn = g.warn;
     }
     r.yaw = yawTo(hero.pos, r.desired);
   } else if (spec.id === 'M_F') {

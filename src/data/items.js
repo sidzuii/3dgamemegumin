@@ -13,14 +13,14 @@ export const ITEMS = {
   eris: { name: 'Эрисы', icon: '🪙', kind: 'currency', rarity: 'common', desc: 'Монеты королевства Бельзерг.' },
 
   // --- consumables ---
-  hp_potion: { name: 'Зелье исцеления', icon: '🧪', tint: 'hp', kind: 'consumable', rarity: 'common', price: 25, desc: 'Восстанавливает 60 HP.', use: (g) => g.player.heal(60) },
-  hp_potion_big: { name: 'Большое зелье исцеления', icon: '🧪', tint: 'hp', kind: 'consumable', rarity: 'rare', price: 70, desc: 'Восстанавливает 150 HP.', use: (g) => g.player.heal(150) },
+  hp_potion: { name: 'Зелье исцеления', icon: '🧪', tint: 'hp', kind: 'consumable', rarity: 'common', price: 25, desc: 'Восстанавливает 30% здоровья. Пить 0,9 с; общая задержка зелий отряда 20 с.', use: (g) => g.player.healFraction(0.3) },
+  hp_potion_big: { name: 'Большое зелье исцеления', icon: '🧪', tint: 'hp', kind: 'consumable', rarity: 'rare', price: 70, desc: 'Восстанавливает 60% здоровья. Пить 0,9 с; общая задержка зелий отряда 20 с.', use: (g) => g.player.healFraction(0.6) },
   st_potion: { name: 'Эликсир бодрости', icon: '🧪', tint: 'st', kind: 'consumable', rarity: 'common', price: 20, desc: 'Полностью восстанавливает выносливость.', use: (g) => g.player.restoreStamina(100) },
-  mana_potion: { name: 'Эликсир маны', icon: '🧪', tint: 'mana', kind: 'consumable', rarity: 'common', price: 35, desc: 'Восстанавливает 50 маны.', use: (g) => g.player.restoreMana(50) },
+  mana_potion: { name: 'Эликсир маны', icon: '🧪', tint: 'mana', kind: 'consumable', rarity: 'common', price: 35, desc: 'Восстанавливает 25 маны. Не снимает истощение. Общая задержка зелий 20 с.', use: (g) => g.player.restoreMana(25) },
   manatite: {
     name: 'Манатит', icon: '💎', tint: 'mana', kind: 'consumable', rarity: 'epic', price: 300,
-    desc: 'Кристалл, хранящий ману. Мгновенно восполняет ману и сбрасывает перезарядку способности.',
-    use: (g) => { g.player.restoreMana(999); for (const k in g.abilities) g.abilities[k].cooldownLeft = 0; },
+    desc: 'Кристалл, хранящий ману. Мгновенно восполняет ману. Истощение не снимает, перезарядки не сбрасывает.',
+    use: (g) => { g.player.restoreMana(999); },
   },
   scroll_return: {
     name: 'Свиток возвращения', icon: '📜', kind: 'consumable', rarity: 'rare', price: 60,

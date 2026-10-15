@@ -43,6 +43,13 @@
       </div>
     </div>
     <div class="notify" id="notify"></div>
+    <div class="ally" id="ally">
+      <div class="ally-name" id="ally-name"></div>
+      <div class="ally-bars"><i class="ally-hp"><b id="ally-hp"></b></i><i class="ally-mp"><b id="ally-mp"></b></i></div>
+      <div class="ally-state" id="ally-state"></div>
+    </div>
+    <div class="revive" id="revive"><div class="revive-bar"><b id="revive-fill"></b></div><span>Поднимаем…</span></div>
+    <div class="switch-wait" id="switch-wait">⏳</div>
 
     <!-- Left bottom: vitals -->
     <div class="vitals">
@@ -54,7 +61,7 @@
       </div>
       <div class="bar-row">
         <span class="bar-label">MP</span>
-        <div class="bar mp"><div class="bar-trail" id="mp-trail"></div><div class="bar-fill" id="mp-fill"></div></div>
+        <div class="bar mp"><div class="bar-trail" id="mp-trail"></div><div class="bar-fill" id="mp-fill"></div><div class="bar-reserve" id="mp-reserve"></div></div>
         <span class="bar-value" id="mp-value">100</span>
       </div>
       <div class="bar-row">
@@ -67,27 +74,8 @@
     <!-- Bottom center: ability -->
     <div class="ability-wrap">
       <div class="interact-hint" id="interact-hint"><kbd>E</kbd><span>—</span><em id="interact-name"></em></div>
-      <div class="ability" id="ability">
-        <div class="ability-icon">
-          <svg viewBox="0 0 48 48" aria-hidden="true">
-            <defs>
-              <radialGradient id="exg" cx="50%" cy="55%" r="55%">
-                <stop offset="0" stop-color="#fff6c8"/>
-                <stop offset="0.35" stop-color="#ffb12e"/>
-                <stop offset="0.7" stop-color="#ff3d14"/>
-                <stop offset="1" stop-color="#5a0b0b"/>
-              </radialGradient>
-            </defs>
-            <circle cx="24" cy="24" r="21" fill="none" stroke="#ff7a3a" stroke-width="1.2" stroke-dasharray="3 2.4" opacity="0.8"/>
-            <path d="M24 6 L28 18 L41 18 L30.5 26 L34.5 39 L24 31 L13.5 39 L17.5 26 L7 18 L20 18 Z" fill="none" stroke="#ffcf7a" stroke-width="1" opacity="0.7"/>
-            <circle cx="24" cy="25" r="10" fill="url(#exg)"/>
-          </svg>
-          <div class="ability-cd" id="ability-cd"></div>
-          <div class="ability-cd-text" id="ability-cd-text"></div>
-          <kbd class="ability-key">Q</kbd>
-        </div>
-        <div class="ability-name">Explosion<span>Взрыв</span></div>
-      </div>
+      <div class="aim-hint" id="aim-hint"></div>
+      <div class="slots" id="slots"></div>
       <div class="kills" id="kills"></div>
     </div>
 
@@ -121,7 +109,7 @@
     </div>
     <div class="book" id="book"><div class="book-page"><div class="book-title" id="book-title"></div><div class="book-text" id="book-text"></div><div class="book-hint">клик или Esc — закрыть</div></div></div>
     <div class="help" id="help">
-      <b>WASD</b> движение · <b>Shift</b> бег · <b>CapsLock</b> шаг · <b>Space</b> прыжок · <b>ЛКМ / F</b> удар · <b>ПКМ / V</b> перекат · <b>Q</b> способность · <b>E</b> взаимодействие · <b>I</b> инвентарь · <b>J</b> журнал · <b>M</b> карта · <b>C</b> персонаж · <b>G</b> гильдия · <b>3/4/5</b> зелья · <b>F9</b> графика · <b>F8</b> FPS · <b>O</b> звук · <b>N</b> без звука · <b>H</b> скрыть
+      <b>WASD</b> движение · <b>Shift</b> бег · <b>CapsLock</b> шаг · <b>Space</b> прыжок · <b>ЛКМ</b> удар · <b>ПКМ</b> защита · <b>Пробел / V</b> уклонение (в бою) · <b>Q / E</b> навыки · <b>R / F</b> заклинания (ЛКМ — подтвердить, ПКМ — отмена) · <b>Tab</b> сменить героиню · <b>T</b> приказ · <b>СКМ</b> цель · <b>E</b> взаимодействие / поднять · <b>I</b> инвентарь · <b>J</b> журнал · <b>M</b> карта · <b>C</b> персонаж · <b>G</b> гильдия · <b>3/4/5</b> зелья · <b>F9</b> графика · <b>F8</b> FPS · <b>O</b> звук · <b>N</b> без звука · <b>H</b> скрыть
     </div>
     <div class="flash" id="flash"></div>
     <div class="fade" id="fade"></div>

@@ -82,6 +82,10 @@ export class PoiseState {
  */
 export function applyHit(target, hit) {
   if (!target.alive) return null;
+  if (target.immune?.(hit)) {
+    target.onImmune?.(hit); // a story shield: the blow is absorbed
+    return null;
+  }
   const explosive = hit.tags?.includes('explosive');
   let wetMul = 1;
   let wetBonus = false;

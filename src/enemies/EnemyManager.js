@@ -153,8 +153,10 @@ export class EnemyManager {
     }
   }
 
-  /** Player died: everyone forgets about her. */
-  /** Attack slots: at most two enemies wind up / strike at once (bosses always may). */
+  /**
+   * Attack slots (docs/combat/04 §5): at most two melee enemies wind up / strike at once (a heavy one counts as two,
+   * bosses always may) and one ranged attacker; the others circle, flank or prepare their next try.
+   */
   takeSlot(e) {
     this.attackers = this.attackers || new Set();
     if (e.isBoss || this.attackers.has(e)) return true;
@@ -163,6 +165,15 @@ export class EnemyManager {
     for (const o of this.attackers) used += o.type.style === 'brute' ? 2 : 1;
     if (used + (e.type.style === 'brute' ? 2 : 1) > 2) return false;
     this.attackers.add(e);
+    return true;
+  }
+
+  takeRangedSlot(e) {
+    this.shooters = this.shooters || new Set();
+    if (this.shooters.has(e)) return true;
+    for (const o of this.shooters) if (!o.alive || !this.list.includes(o) || (o.state !== 'windup' && o.state !== 'strike' && o.state !== 'recover')) this.shooters.delete(o);
+    if (this.shooters.size >= 1) return false;
+    this.shooters.add(e);
     return true;
   }
 
@@ -175,6 +186,7 @@ export class EnemyManager {
 
   releaseSlot(e) {
     this.attackers?.delete(e);
+    this.shooters?.delete(e);
   }
 
   resetAggro() {

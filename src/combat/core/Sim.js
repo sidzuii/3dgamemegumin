@@ -41,6 +41,7 @@ export class Hero {
     this.guarding = false;
     this.parryHit = null;
     this.lockTarget = null; // MMB lock-on
+    this.absent = false; // not in the world yet (Roxy before she joins)
     this.out = { faceYaw: null, dash: null, moveMul: 1, speedCap: Infinity, noSprint: false };
   }
 
@@ -80,8 +81,8 @@ export class CombatSim {
   }
 
   // ---- heroes --------------------------------------------------------------------------------------------
-  addHero(id, opts) {
-    const hero = new Hero(id, new Fighter(id, opts));
+  addHero(id, opts, fighter) {
+    const hero = new Hero(id, fighter || new Fighter(id, opts));
     this.heroes[id] = hero;
     return hero;
   }
@@ -125,6 +126,7 @@ export class CombatSim {
   }
 
   _stepHero(hero, h) {
+    if (hero.absent) return;
     const f = hero.f;
     const out = hero.out;
     out.faceYaw = null;
@@ -420,6 +422,7 @@ export class CombatSim {
   switchBlock(fromId = this.active) {
     const hero = this.heroes[fromId], other = this.other(fromId);
     if (!hero || !other) return 'none';
+    if (other.absent) return 'none';
     if (!other.f.alive) return 'down';
     if (this.inCombat && this.switchCd > 0) return 'cd';
     if (hero.state === 'action' && !this.canCancel(hero)) return 'wait';
@@ -446,7 +449,7 @@ export class CombatSim {
   /** Auto-switch after the Explosion: the other heroine, only if she can fight and has finished her own action. */
   autoSwitchTarget(fromId) {
     const other = this.other(fromId);
-    if (!other || !other.f.alive) return null;
+    if (!other || other.absent || !other.f.alive) return null;
     if (other.state === 'action' || other.state === 'stun') return null;
     return other.id;
   }
@@ -468,7 +471,8 @@ export class CombatSim {
       return res;
     }
     const kind = hit.kind || 'light';
-    const front = bearingTo(hero.pos, hero.guardYaw ?? hero.yaw, hit.from);
+    // The guard faces where the player looks (camera / the companion's target); during an action, the action's facing.
+    const front = bearingTo(hero.pos, hero.state === 'action' ? (hero.guardYaw ?? hero.yaw) : hero.camYaw, hit.from);
     // Counter window of Roxy's R_E: a light physical blow from the front within 60° is turned aside.
     if (hero.state === 'action' && hero.act.spec.id === 'R_E') {
       const a = hero.act, s = a.spec;
@@ -515,6 +519,37 @@ export class CombatSim {
     }
     if (!res.blocked && !res.broken) this._flinch(hero, hit);
     return res;
+  }
+
+  /** Damage over time / scripted damage: health only, no flinch, may down her. */
+  dot(id, dmg) {
+    const hero = this.heroes[id];
+    if (!hero || hero.absent || !hero.f.alive || this.isInvulnerable(hero)) return;
+    hero.f.hp -= Math.max(1, Math.round(dmg));
+    this.emit('hurt', { hero: id, dmg, dot: true, blocked: false });
+    if (hero.f.hp <= 0) {
+      hero.f.hp = 0;
+      this._down(hero);
+    }
+  }
+
+  /** Back to a clean state (checkpoint respawn, rest). */
+  resetHero(id) {
+    const hero = this.heroes[id];
+    if (!hero) return;
+    if (hero.state === 'action') this.cancelAction(id, 'reset');
+    hero.state = 'free';
+    hero.act = null;
+    hero.aim = null;
+    hero.queue = null;
+    hero.dodge = null;
+    hero.guardHeld = false;
+    hero.guarding = false;
+    hero.combo = { next: 1, readyAt: -99 };
+    hero.f.reaction = 0;
+    hero.f.guardBreak = 0;
+    hero.f.reserved = 0;
+    hero.f.downed = false;
   }
 
   _flinch(hero, hit) {

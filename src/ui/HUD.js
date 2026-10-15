@@ -1,4 +1,21 @@
 import { damp } from '../core/math.js';
+import { SLOTS, SLOT_KEYS } from '../combat/core/specs.js';
+
+/** Slot art: one simple distinct pictogram per skill (physical = amber/steel, water = cool). */
+const ICONS = {
+  M_Q: '<path d="M8 40 L36 12" stroke="#ffd27a" stroke-width="4" stroke-linecap="round"/><path d="M28 10 H38 V20" stroke="#ffb06a" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 30 Q12 36 18 42" stroke="#9a8a7a" stroke-width="2" fill="none" opacity=".7"/>',
+  M_E: '<circle cx="24" cy="24" r="14" fill="none" stroke="#ffd27a" stroke-width="3.5" stroke-dasharray="62 26" stroke-linecap="round"/><path d="M36 10 L40 18 L31 18 Z" fill="#ffb06a"/><path d="M24 24 L36 14" stroke="#e8c090" stroke-width="2" opacity=".8"/>',
+  M_R: '<defs><radialGradient id="exg" cx="50%" cy="55%" r="55%"><stop offset="0" stop-color="#fff6c8"/><stop offset=".35" stop-color="#ffb12e"/><stop offset=".7" stop-color="#ff3d14"/><stop offset="1" stop-color="#5a0b0b"/></radialGradient></defs><circle cx="24" cy="24" r="21" fill="none" stroke="#ff7a3a" stroke-width="1.2" stroke-dasharray="3 2.4" opacity=".8"/><circle cx="24" cy="25" r="11" fill="url(#exg)"/>',
+  M_F: '<path d="M6 36 L16 30 L14 24 L26 20 L24 14 L38 10" stroke="#ff7a3a" stroke-width="3.2" fill="none" stroke-linejoin="round" stroke-linecap="round"/><path d="M6 36 L16 30 L14 24 L26 20 L24 14 L38 10" stroke="#fff0c0" stroke-width="1.1" fill="none" stroke-linejoin="round"/><circle cx="38" cy="10" r="3.2" fill="#ffd27a"/>',
+  R_Q: '<path d="M8 38 C12 18 26 34 30 18 S36 10 40 8" stroke="#8fd2ff" stroke-width="3.6" fill="none" stroke-linecap="round"/><path d="M8 38 C12 18 26 34 30 18 S36 10 40 8" stroke="#e6f6ff" stroke-width="1" fill="none"/><circle cx="41" cy="14" r="1.6" fill="#bfe8ff"/><circle cx="37" cy="5" r="1.3" fill="#bfe8ff"/>',
+  R_E: '<path d="M10 38 L34 14" stroke="#cfe6ff" stroke-width="4" stroke-linecap="round"/><path d="M30 10 L40 8 L38 18" stroke="#8fd2ff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 14 L22 24" stroke="#5ab8ff" stroke-width="2.4" stroke-linecap="round" opacity=".8"/><circle cx="14" cy="12" r="2.4" fill="#e6f6ff"/>',
+  R_R: '<g fill="#7fc8ff"><path d="M10 34 q-3 -6 0 -9 q3 3 0 9z"/><path d="M18 30 q-3 -6 0 -9 q3 3 0 9z"/><path d="M26 28 q-3 -6 0 -9 q3 3 0 9z"/><path d="M34 24 q-3 -6 0 -9 q3 3 0 9z"/><path d="M40 18 q-3 -6 0 -9 q3 3 0 9z"/></g><path d="M6 38 Q24 30 42 14" stroke="#cfeaff" stroke-width="1.2" fill="none" stroke-dasharray="2 3"/>',
+  R_F: '<path d="M24 6 C16 18 15 25 24 30 C33 25 32 18 24 6 Z" fill="#6fc0ff"/><path d="M6 36 Q12 31 18 36 T30 36 T42 36" stroke="#cfeaff" stroke-width="2.4" fill="none" stroke-linecap="round"/><path d="M10 42 Q16 38 22 42 T34 42" stroke="#8fd2ff" stroke-width="2" fill="none" opacity=".7"/>',
+};
+const SLOT_NAMES = {
+  M_Q: 'Выпад', M_E: 'Отбив', M_R: 'Explosion', M_F: 'Алый пролом',
+  R_Q: 'Хлыст', R_E: 'Встречный укол', R_R: 'Водяной залп', R_F: 'Приливный обвал',
+};
 
 /** Minimal DOM HUD. Only touches the DOM when a displayed value actually changes. */
 export class HUD {
@@ -9,7 +26,9 @@ export class HUD {
       hpFill: $('hp-fill'), hpTrail: $('hp-trail'), hpValue: $('hp-value'),
       stFill: $('st-fill'), stTrail: $('st-trail'), stValue: $('st-value'),
       stBar: document.querySelector('.bar.st'), hpBar: document.querySelector('.bar.hp'),
-      ability: $('ability'), cd: $('ability-cd'), cdText: $('ability-cd-text'),
+      slots: $('slots'), aimHint: $('aim-hint'), mpReserve: $('mp-reserve'),
+      ally: $('ally'), allyName: $('ally-name'), allyHp: $('ally-hp'), allyMp: $('ally-mp'), allyState: $('ally-state'),
+      revive: $('revive'), reviveFill: $('revive-fill'), switchWait: $('switch-wait'),
       hint: $('interact-hint'), hintName: $('interact-name'), hintText: document.querySelector('#interact-hint span'),
       toast: $('toast'), flash: $('flash'), vignette: $('vignette'),
       state: $('char-state'), stateWrap: document.querySelector('.char-state'),
@@ -44,11 +63,26 @@ export class HUD {
     document.querySelector('.char-name').textContent = C.name;
     document.querySelector('.char-sub').textContent = C.sub;
     document.querySelector('.char-portrait').innerHTML = C.portrait;
-    document.querySelector('.ability-name').innerHTML = C.ability;
-    const iconHost = document.querySelector('.ability-icon svg');
-    if (!this._explosionIcon) this._explosionIcon = iconHost.outerHTML;
-    iconHost.outerHTML = C.icon || this._explosionIcon;
-    this.el.ability.classList.toggle('water', id === 'roxy');
+    this._buildSlots(id);
+  }
+
+  /** Four skill slots (Q E R F) of the controlled heroine: cost, cooldown and the reason it cannot be used now. */
+  _buildSlots(id) {
+    this.slotHero = id;
+    const host = this.el.slots;
+    host.innerHTML = '';
+    host.classList.toggle('water', id === 'roxy');
+    this.slotEls = {};
+    for (const k of SLOT_KEYS) {
+      const sid = SLOTS[id][k];
+      const el = document.createElement('div');
+      el.className = 'slot ' + (k === 'R' || k === 'F' ? 'strong' : 'medium');
+      el.innerHTML = `<div class="slot-icon"><svg viewBox="0 0 48 48" aria-hidden="true">${ICONS[sid]}</svg><div class="slot-cd"></div><div class="slot-cdt"></div><kbd class="slot-key">${k}</kbd></div>`
+        + `<div class="slot-name">${SLOT_NAMES[sid]}</div><div class="slot-cost"></div><div class="slot-why"></div>`;
+      host.appendChild(el);
+      this.slotEls[k] = { el, cd: el.querySelector('.slot-cd'), cdt: el.querySelector('.slot-cdt'), cost: el.querySelector('.slot-cost'), why: el.querySelector('.slot-why'), key: k, sid };
+    }
+    this._cache = {};
   }
 
   /** Build compass markers: cardinal directions + icons of discovered regions. */
@@ -150,18 +184,27 @@ export class HUD {
     k.animate([{ transform: 'scale(1.25)' }, { transform: 'scale(1)' }], { duration: 180 });
   }
 
-  denyAbility() {
-    const a = this.el.ability;
-    a.classList.remove('denied');
-    void a.offsetWidth;
-    a.classList.add('denied');
+  denyAbility(key) {
+    const e = key && this.slotEls?.[key];
+    if (!e) return;
+    e.el.classList.remove('denied');
+    void e.el.offsetWidth;
+    e.el.classList.add('denied');
+  }
+
+  /** The switch to the other heroine waits for a free moment: a short clock sign. */
+  switchWait() {
+    const el = this.el.switchWait;
+    el.classList.remove('show');
+    void el.offsetWidth;
+    el.classList.add('show');
   }
 
   update(dt, game) {
     const p = game.player;
-    const ab = game.ability;
+    const combat = game.combat;
     const hp = p.hp / p.maxHp;
-    const st = p.stamina / 100;
+    const st = p.stamina / p.f.maxStamina;
     // Trailing "damage" bars catch up after a short delay.
     this.hpTrail = hp > this.hpTrail ? hp : damp(this.hpTrail, hp, 2.5, dt);
     this.stTrail = st > this.stTrail ? st : damp(this.stTrail, st, 3.5, dt);
@@ -173,20 +216,70 @@ export class HUD {
     this._set('stV', this.el.stValue, 'text', String(Math.ceil(p.stamina)));
     this.el.stBar.classList.toggle('depleted', p.staminaDepleted);
 
-    // Ability slot.
-    const cd = ab.cooldownFraction;
-    const cdStr = cd.toFixed(3);
-    if (this._cache.cd !== cdStr) {
-      this._cache.cd = cdStr;
-      this.el.cd.style.setProperty('--cd', cdStr);
+    // Skill slots.
+    if (combat && this.slotEls) {
+      if (combat.fx && !combat.fx.hud) combat.fx.hud = this;
+      if (this.slotHero !== p.character) this._buildSlots(p.character);
+      for (const k of SLOT_KEYS) {
+        const e = this.slotEls[k];
+        const info = combat.slotInfo(p.character, k);
+        const cdOn = info.cd > 0 || info.frac > 0;
+        const cls = `${info.ready ? 'ready' : ''} ${info.running ? 'casting' : ''} ${info.aiming ? 'aiming' : ''} ${!info.ready && !cdOn ? 'blocked' : ''}`;
+        if (this._cache['cls' + k] !== cls) {
+          this._cache['cls' + k] = cls;
+          e.el.classList.toggle('ready', info.ready);
+          e.el.classList.toggle('casting', info.running);
+          e.el.classList.toggle('aiming', info.aiming);
+          e.el.classList.toggle('blocked', !info.ready && !cdOn);
+        }
+        const cdStr = info.frac.toFixed(3);
+        if (this._cache['cd' + k] !== cdStr) {
+          this._cache['cd' + k] = cdStr;
+          e.cd.style.setProperty('--cd', cdStr);
+        }
+        this._set('cdt' + k, e.cdt, 'text', info.cd > 0.05 && !info.running ? Math.ceil(info.cd).toString() : '');
+        const sp = info.spec;
+        const cost = [sp.cost.stamina ? `<i class="st">${sp.cost.stamina}</i>` : '', sp.cost.mana ? `<i class="mp">${sp.cost.mana}</i>` : ''].join('');
+        if (this._cache['cost' + k] !== cost) {
+          this._cache['cost' + k] = cost;
+          e.cost.innerHTML = cost;
+        }
+        const why = info.reason && !info.reason.startsWith('Перезарядка') ? info.reason : info.note || '';
+        this._set('why' + k, e.why, 'text', why);
+      }
+      this._set('aimHint', this.el.aimHint, 'text', combat.fx.hudHint?.() || '');
     }
-    this._set('cdT', this.el.cdText, 'text', ab.cooldownLeft > 0 && !ab.casting ? Math.ceil(ab.cooldownLeft).toString() : '');
-    this.el.ability.classList.toggle('ready', ab.ready);
-    this.el.ability.classList.toggle('casting', ab.casting);
+    // Mana held by a confirmed strong spell (not spent yet).
+    {
+      const f = p.f;
+      const left = ((f.mana - f.reserved) / f.maxMana) * 100;
+      const w = (f.reserved / f.maxMana) * 100;
+      this._set('mpResL', this.el.mpReserve, 'left', left.toFixed(1) + '%');
+      this._set('mpResW', this.el.mpReserve, 'width', w.toFixed(1) + '%');
+    }
+
+    // The other heroine.
+    if (combat) {
+      const cs = p.companionSlot;
+      this.el.ally.classList.toggle('show', !!cs);
+      if (cs) {
+        const f = p.fighters[p.companionId];
+        this._set('allyN', this.el.allyName, 'text', p.companionId === 'roxy' ? 'Рокси' : 'Мегумин');
+        this._set('allyHp', this.el.allyHp, 'transform', `scaleX(${(f.hp / f.maxHp).toFixed(3)})`);
+        this._set('allyMp', this.el.allyMp, 'transform', `scaleX(${(f.mana / f.maxMana).toFixed(3)})`);
+        const ord = { near: 'рядом', hold: 'держит точку', retreat: 'отступает' }[combat.order];
+        const state = f.downed ? (f.revives >= 1 ? 'Без сил до конца боя' : 'Без сил — E (зажать), подними') : f.exhaust > 0 ? `Истощена ${Math.ceil(f.exhaust)} с` : ord;
+        this._set('allyS', this.el.allyState, 'text', state);
+        this.el.ally.classList.toggle('down', f.downed);
+      }
+      const rp = combat.reviveProgress || 0;
+      this.el.revive.classList.toggle('show', rp > 0);
+      if (rp > 0) this.el.reviveFill.style.transform = `scaleX(${Math.min(1, rp).toFixed(3)})`;
+    }
 
     // Character state.
     this._set('state', this.el.state, 'text', p.stateLabel + (!this.companion ? '' : p.character === 'roxy' ? ' · Tab — Мегумин' : ' · Tab — Рокси'));
-    this.el.stateWrap.classList.toggle('warn', p.action !== 'none' || p.hp < 30);
+    this.el.stateWrap.classList.toggle('warn', p.action !== 'none' || p.hp / p.maxHp < 0.3);
 
     // Flash & toast.
     if (this.flashV > 0.001) {

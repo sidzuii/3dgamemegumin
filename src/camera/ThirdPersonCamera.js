@@ -50,6 +50,7 @@ export class ThirdPersonCamera {
     this.extraPitchV = 0;
     this.lookAhead = new THREE.Vector3();
     this.initialized = false;
+    this.aimBlend = 0; // 0..1: aiming a strong spell (closer camera, the heroine moves to the left third)
   }
 
   addTrauma(amount) {
@@ -111,14 +112,14 @@ export class ThirdPersonCamera {
     this.getRight(_right);
 
     // Shoulder offset (checked against walls so it never pokes through).
-    const shoulderAmt = SHOULDER * clamp((this.distanceS - 1.2) / 2.5, 0.25, 1);
+    const shoulderAmt = SHOULDER * clamp((this.distanceS - 1.2) / 2.5, 0.25, 1) * (1 + this.aimBlend * 2.2);
     let shoulderDist = shoulderAmt;
     const sh = this._cast(this.pivot, _right, shoulderAmt + PROBE_RADIUS, 0);
     if (sh < shoulderAmt + PROBE_RADIUS) shoulderDist = Math.max(0, sh - PROBE_RADIUS);
     _shoulder.copy(this.pivot).addScaledVector(_right, shoulderDist);
 
     // ---- Collision ----
-    const wanted = this.distanceS;
+    const wanted = this.distanceS * (1 - 0.18 * this.aimBlend);
     const hit = this._cast(_shoulder, _offsetDir, wanted + PROBE_RADIUS, PROBE_RADIUS);
     const allowed = clamp(hit - PROBE_RADIUS, MIN_DIST, wanted);
     if (allowed < this.collisionDist) this.collisionDist = damp(this.collisionDist, allowed, 40, dt);

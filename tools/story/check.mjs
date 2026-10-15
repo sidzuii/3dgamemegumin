@@ -2,7 +2,9 @@
 // and COVERAGE — every spoken line of the scenario package must be used by some scene exactly once.
 //   node tools/story/check.mjs [--missing] [prefix...]     e.g.  node tools/story/check.mjs A      (chapters 0-4)
 import { readdirSync, readFileSync } from 'node:fs';
-import { CLIPS } from '../../src/data/story/clips.js';
+import { CLIPS as STORY_CLIPS } from '../../src/data/story/clips.js';
+import { COMBAT_CLIPS } from '../../src/data/story/combatClips.js';
+const CLIPS = { ...STORY_CLIPS, ...COMBAT_CLIPS };
 import { VARS } from '../../src/data/story/vars.js';
 import { STORY_SCENES } from '../../src/data/story/index.js';
 import { DIALOGUES } from '../../src/data/dialogues.js';

@@ -11,8 +11,6 @@ import { DUNGEON } from '../world/build/Dungeon.js';
 import { Player } from '../character/Player.js';
 import { ThirdPersonCamera } from '../camera/ThirdPersonCamera.js';
 import { VFX } from '../vfx/VFX.js';
-import { ExplosionAbility } from '../abilities/ExplosionAbility.js';
-import { WaterVolley } from '../abilities/WaterVolley.js';
 import { Interaction } from '../systems/Interaction.js';
 import { HUD } from '../ui/HUD.js';
 import { MOVE } from '../character/CharacterController.js';
@@ -166,15 +164,12 @@ export class Game {
     this.vfx = new VFX(this.scene);
     this.cameraRig = new ThirdPersonCamera(this.camera, this.world);
     this.player.finishLoad();
-    this.playerCollider = { x: 0, y: 0, z: 0, r: 0.3, h: 1.6, enabled: true };
-    this.player.controller.owner = this.playerCollider;
-    this.world.dynamicColliders.push(this.playerCollider);
 
     await step('Будим жителей…', 0.88);
-    this.combat = new Combat(this);
     this.audio = new Audio();
     this.projectiles = new Projectiles(this);
     this.enemies = new EnemyManager(this);
+    this.combat = new Combat(this); // after the enemies: the core's targets are the enemy list
     for (const s of this.world.campSpawns) this.enemies.spawn(s.type, new THREE.Vector3(s.x, s.y ?? 0, s.z), s.camp);
     this.worldUI = new WorldUI(this);
     this.inventory = new Inventory(this);
@@ -195,8 +190,6 @@ export class Game {
     this.currentLocation = null;
     this.hitStopTimer = 0;
 
-    this.abilities = { megumin: new ExplosionAbility(this), roxy: new WaterVolley(this) };
-    this.ability = this.abilities.megumin;
     this.hud.setCharacter('megumin');
 
     await step('Готовим шейдеры…', 0.95);
@@ -212,16 +205,23 @@ export class Game {
     this.world.followShadow(this._focus);
     this.dayNight.update(0, 12, 0);
     this.world.trees.update(0, this.camera, true);
-    this.abilities.megumin.prewarm(this.composer, this.camera);
-    this.scene.add(this.player.models.roxy.root);
-    this.player.models.roxy.root.position.copy(this.player.position).add(new THREE.Vector3(2, 0, 0));
+    this.combat.fx.explosion.prewarm(this.composer, this.camera);
+    const roxyIn = this.player.slots.roxy.present;
+    if (!roxyIn) {
+      this.scene.add(this.player.models.roxy.root);
+      this.player.models.roxy.root.position.copy(this.player.position).add(new THREE.Vector3(2, 0, 0));
+    }
     const tg = this.combat.telegraph(this._focus, 2, 1);
+    const tl = this.combat.telegraphLine(this._focus, this._focus.clone().add(new THREE.Vector3(2, 0, 2)), 1);
+    const tf = this.combat.telegraph(this._focus, 2, 1, { yaw: 0, arc: 150 });
     this.renderer.setRenderTarget(this.composer.readBuffer);
     this.renderer.compile(this.scene, this.camera);
     this.renderer.setRenderTarget(null);
     this.composer.render();
     tg.cancel();
-    this.scene.remove(this.player.models.roxy.root);
+    tl.cancel();
+    tf.cancel();
+    if (!roxyIn) this.scene.remove(this.player.models.roxy.root);
   }
 
   /** Apply the save (or start a new story) and run the loop. */
@@ -343,6 +343,11 @@ export class Game {
     });
   }
 
+  /** Remember where the camera looked so it can glide to the other heroine (called before the switch). */
+  beginFocusBlend() {
+    this._focusBlend = { from: (this._lastFocus || this._focus).clone(), t: 0 };
+  }
+
   /** Brief slow-motion freeze on impactful hits. */
   hitStop(t) {
     this.hitStopTimer = Math.max(this.hitStopTimer, t);
@@ -401,24 +406,16 @@ export class Game {
     if (input.wasPressed('KeyN')) this.hud.toast(this.audio.toggleMute() ? 'Звук выключен (N)' : 'Звук включён', 1.6);
     if (input.wasPressed('F9')) this.hud.toast('Графика: ' + this.quality.cycle());
     if (input.wasPressed('F8')) this._toggleFps();
-    if (this.player.companionUnlocked) {
-      if (input.wasPressed('Tab')) this.player.switchCharacter();
-      if (input.wasPressed('Digit1')) this.player.switchCharacter('megumin');
-      if (input.wasPressed('Digit2')) this.player.switchCharacter('roxy');
-    }
-    if (input.wasPressed('KeyQ')) {
-      if (this.combat.attacking || !this.ability.tryCast()) this.hud.denyAbility();
-    }
-    if (input.wasMousePressed(0) || input.wasPressed('KeyF')) this.combat.request();
-    if (input.wasMousePressed(2) || input.wasPressed('KeyV')) this.player.tryDodge();
+    // Companion appears once Roxy has joined (she stays where she is when control passes to the other heroine).
+    if (this.player.companionUnlocked && !this.player.slots.roxy.present && this.player.character === 'megumin') this.player.spawnCompanion();
 
-    // Player (controller + animation), ability timeline, combat.
+    // Combat input (keys -> core commands), the controlled heroine, then the core steps on its fixed clock.
+    this.combat.input(input);
     this._surfaceEffects(dt);
     this.player.update(dt, input, this.cameraRig);
     this.combat.update(dt);
-    for (const k in this.abilities) this.abilities[k].update(dt);
+    this.inventory.update(dt);
     const pp = this.player.position;
-    Object.assign(this.playerCollider, { x: pp.x, y: pp.y, z: pp.z, enabled: this.player.hp > 0 });
 
     // Enemies & projectiles.
     this.enemies.update(dt);
@@ -439,9 +436,18 @@ export class Game {
     const c = this.player.controller;
     this._lookAhead.set(c.velocity.x * 0.08, 0, c.velocity.z * 0.08);
     this.player.getFocus(this._focus);
+    // Switching heroine: the camera moves to where she actually stands within about 0.18 s (no teleport).
+    if (this._focusBlend) {
+      const fb = this._focusBlend;
+      fb.t += dt;
+      const k = Math.min(1, fb.t / 0.18);
+      this._focus.lerpVectors(fb.from, this._focus, k * k * (3 - 2 * k));
+      if (k >= 1) this._focusBlend = null;
+    }
+    this._lastFocus = (this._lastFocus || new THREE.Vector3()).copy(this._focus);
     const running = c.grounded && c.horizontalSpeed > MOVE.walkSpeed + 0.6;
     let fovBoost = running ? 6 : 0;
-    if (this.ability.casting) fovBoost = -4 * this.player.castCharge;
+    if (this.player.castCharge > 0) fovBoost = -4 * this.player.castCharge;
     this.cameraRig.update(dt, input, this._focus, { airborne: !c.grounded, lookAhead: this._lookAhead, fovBoost });
 
     this.interaction.update();
@@ -485,7 +491,7 @@ export class Game {
     if (surf === 'lava' && p.hp > 0 && p.action !== 'exhausted') {
       this._lavaAcc = (this._lavaAcc || 0) + 26 * dt;
       if (this._lavaAcc >= 6) {
-        p.damage(6);
+        p.damage(6); // old units: ×6.2 / ×7 in the combat scale
         this._lavaAcc -= 6;
       }
       if (Math.random() < dt * 12) this.vfx.emit('fireBurst', _tmp.copy(p.position));

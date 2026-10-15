@@ -334,3 +334,58 @@ kbd {
 .book-title { font-size: 20px; font-weight: 700; margin-bottom: 14px; }
 .book-text { font-size: 15px; line-height: 1.6; white-space: pre-line; }
 .book-hint { margin-top: 16px; font-size: 11px; opacity: 0.6; font-family: var(--font); }
+
+/* ---------- combat: four skill slots (Q E R F), reserve, ally card ---------- */
+.slots { display: flex; gap: 10px; align-items: flex-start; }
+.slot { width: 76px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.slot.strong { width: 84px; }
+.slot-icon {
+  position: relative; width: 56px; height: 56px; border-radius: 13px;
+  background: radial-gradient(circle at 50% 60%, #3a1418, #150c10 75%);
+  border: 1px solid rgba(255, 140, 80, 0.4);
+  box-shadow: 0 0 12px rgba(255, 90, 40, 0.18); overflow: hidden;
+  transition: box-shadow 0.25s, border-color 0.25s, transform 0.12s, opacity 0.2s;
+}
+.slot.strong .slot-icon { width: 64px; height: 64px; border-radius: 15px; }
+.slot-icon svg { position: absolute; inset: 5px; width: calc(100% - 10px); height: calc(100% - 10px); }
+.slots.water .slot-icon { background: radial-gradient(circle at 50% 60%, #12304a, #0a141f 75%); border-color: rgba(90, 180, 255, 0.5); box-shadow: 0 0 12px rgba(60, 150, 255, 0.2); }
+.slot.ready .slot-icon { animation: readypulse 2.4s ease-in-out infinite; }
+.slots.water .slot.ready .slot-icon { animation: readypulseW 2.4s ease-in-out infinite; }
+.slot.blocked .slot-icon { opacity: 0.45; filter: grayscale(0.55); }
+.slot.casting .slot-icon { border-color: #ffd27a; box-shadow: 0 0 24px rgba(255, 160, 60, 0.85); transform: scale(1.06); }
+.slots.water .slot.casting .slot-icon { border-color: #bfe8ff; box-shadow: 0 0 24px rgba(110, 200, 255, 0.85); }
+.slot.aiming .slot-icon { border-color: #fff; box-shadow: 0 0 22px rgba(255, 255, 255, 0.55); transform: translateY(-3px); }
+.slot.denied .slot-icon { animation: deny 0.3s; }
+.slot-cd { position: absolute; inset: 0; background: conic-gradient(rgba(8, 4, 8, 0.78) calc(var(--cd, 0) * 1turn), transparent 0); }
+.slot-cdt { position: absolute; inset: 0; display: grid; place-items: center; font: 700 18px/1 var(--font); color: #fff; text-shadow: 0 1px 3px #000; font-variant-numeric: tabular-nums; }
+.slot-key { position: absolute; right: 3px; bottom: 3px; min-width: 16px; height: 16px; font-size: 10px; padding: 0 4px; }
+.slot-name { font: 700 11px/1.1 var(--font); text-align: center; letter-spacing: 0.3px; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+.slot-cost { display: flex; gap: 4px; min-height: 13px; }
+.slot-cost i { font: 700 10px/1 var(--font); font-style: normal; padding: 2px 5px; border-radius: 6px; background: rgba(0,0,0,0.5); }
+.slot-cost i.st { color: #ffe08a; border: 1px solid rgba(240, 180, 60, 0.5); }
+.slot-cost i.mp { color: #9fd4ff; border: 1px solid rgba(100, 170, 255, 0.5); }
+.slot-why { font: 600 10px/1.15 var(--font); color: #ff9a8a; text-align: center; min-height: 12px; max-width: 92px; text-shadow: 0 1px 3px #000; }
+.aim-hint { font: 700 13px/1.2 var(--font); color: #ffb09a; text-shadow: 0 1px 4px #000; min-height: 16px; text-align: center; }
+.bar-reserve { position: absolute; top: 0; bottom: 0; left: 100%; width: 0; background: repeating-linear-gradient(45deg, rgba(255,255,255,0.55) 0 3px, rgba(120,170,255,0.4) 3px 6px); border-radius: 0 5px 5px 0; }
+.bar { position: relative; }
+
+.ally {
+  position: absolute; left: 16px; bottom: 150px; width: 168px; padding: 6px 9px 7px; border-radius: 9px;
+  background: var(--hud-bg); border: 1px solid var(--hud-border); display: none;
+}
+.ally.show { display: block; }
+.ally.down { border-color: rgba(255, 90, 70, 0.6); }
+.ally-name { font: 700 12px/1 var(--font); margin-bottom: 4px; }
+.ally-bars { display: flex; flex-direction: column; gap: 3px; }
+.ally-bars i { display: block; height: 6px; border-radius: 3px; background: rgba(255,255,255,0.12); overflow: hidden; }
+.ally-bars b { display: block; height: 100%; transform-origin: left center; width: 100%; }
+.ally-hp b { background: linear-gradient(90deg, var(--hp), var(--hp-hi)); }
+.ally-mp b { background: linear-gradient(90deg, #3a74d8, #7fb4ff); }
+.ally-state { margin-top: 4px; font: 500 10px/1.2 var(--font); color: var(--hud-dim); }
+.revive { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); display: none; text-align: center; font: 700 12px/1 var(--font); }
+.revive.show { display: block; }
+.revive-bar { width: 160px; height: 8px; border-radius: 4px; background: rgba(0,0,0,0.55); overflow: hidden; margin-bottom: 4px; border: 1px solid rgba(255,255,255,0.3); }
+.revive-bar b { display: block; height: 100%; width: 100%; transform-origin: left center; background: linear-gradient(90deg, #6fe08a, #c8ffd4); }
+.switch-wait { position: absolute; right: 232px; top: 24px; font-size: 22px; opacity: 0; filter: drop-shadow(0 2px 4px #000); }
+.switch-wait.show { animation: swwait 0.8s ease-out; }
+@keyframes swwait { 0% { opacity: 1; transform: scale(1.4); } 100% { opacity: 0; transform: scale(1); } }

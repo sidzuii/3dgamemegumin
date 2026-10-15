@@ -1,4 +1,8 @@
-import { CLIPS } from './clips.js';
+import { CLIPS as STORY_CLIPS } from './clips.js';
+import { COMBAT_CLIPS } from './combatClips.js';
+
+/** Scenario lines + the lines of the combat description (CB01_*, CB02_*, CB_M*, CB_R*). */
+const CLIPS = { ...STORY_CLIPS, ...COMBAT_CLIPS };
 
 /**
  * Story scenes of the scenario package (docs/story) as dialogue graphs.
