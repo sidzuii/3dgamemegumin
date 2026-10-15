@@ -65,6 +65,6 @@ export const CH5 = {
     ]),
     // v2.0: rank D for the confirmed crypt expedition, Edmund's request to Ilar, the sealed upper channel, the road to Olkhovka.
     $.L(901, 906),
-    $.DO([{ promote: 'D' }, { advance: 'ch5_crypt' }]),
+    $.DO([{ promote: 'D' }, { setVar: ['AXEL_TRAVEL_STABLE', true] }, { advance: 'ch5_crypt' }]),
   ]),
 };

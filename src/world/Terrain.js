@@ -1,7 +1,7 @@
 import { fbm, smoothstep, clamp } from '../core/math.js';
 import { HALF, RIVER, RIVERS, LAKES, LAVA, ROADS, FLATS, HILLS, RIDGES, REGION, BRIDGES } from './MapData.js';
 import { STREETS, RING, streetLine, ringLine, toWorld } from './AxelPlan.js';
-import { SHEET, inSheet } from './AinstreyPlan.js';
+import { SHEET, inSheet, LEDGE_CLIFFS } from './AinstreyPlan.js';
 
 /**
  * Terrain height model.
@@ -108,6 +108,43 @@ export function polygonDistance(pts, x, z) {
   return inside ? -d : d;
 }
 
+/**
+ * The cliff bands of the Stone Ledge (AinstreyPlan LEDGE_CLIFFS): a flat top and a steep face (steeper than the walkable
+ * slope of the character), so the gorge of the Postal ascent is closed and the rockfall is the only way through.
+ */
+const CLIFFS = LEDGE_CLIFFS.map((C) => {
+  const segs = [];
+  let s = 0;
+  for (let i = 0; i < C.pts.length - 1; i++) {
+    const [ax, az] = C.pts[i], [bx, bz] = C.pts[i + 1];
+    const len = Math.hypot(bx - ax, bz - az);
+    segs.push({ ax, az, bx, bz, len, s0: s });
+    s += len;
+  }
+  const xs = C.pts.map((p) => p[0]), zs = C.pts.map((p) => p[1]), m = C.top + C.face + 1;
+  return { ...C, segs, total: s, bbox: [Math.min(...xs) - m, Math.min(...zs) - m, Math.max(...xs) + m, Math.max(...zs) + m] };
+});
+
+function cliffHeight(x, z) {
+  let h = 0;
+  for (const C of CLIFFS) {
+    if (x < C.bbox[0] || x > C.bbox[2] || z < C.bbox[1] || z > C.bbox[3]) continue;
+    let best = Infinity, bs = 0;
+    for (const g of C.segs) {
+      const dx = g.bx - g.ax, dz = g.bz - g.az;
+      const t = clamp(((x - g.ax) * dx + (z - g.az) * dz) / (g.len * g.len), 0, 1);
+      const d = Math.hypot(x - (g.ax + dx * t), z - (g.az + dz * t));
+      if (d < best) { best = d; bs = g.s0 + t * g.len; }
+    }
+    if (best >= C.top + C.face) continue;
+    const k = 1 - smoothstep(C.top, C.top + C.face, best);
+    const fade = smoothstep(C.total, C.total - C.fadeEnd, bs); // the band sinks into the ground at its far end
+    const n = 0.88 + 0.24 * (fbm(x * 0.045 + 11, z * 0.045 - 5, 3) * 0.5 + 0.5);
+    h += (C.height * k * n + fbm(x * 0.16, z * 0.16, 2) * 1.6 * k * (1 - k) * 4) * fade;
+  }
+  return h;
+}
+
 function ridgeHeight(x, z) {
   let h = 0;
   for (const R of RIDGES) {
@@ -136,6 +173,7 @@ function naturalHeight(x, z) {
   if (ain) {
     const d = Math.min(x - SHEET.x0, SHEET.x1 - x, z - SHEET.z0, SHEET.z1 - z);
     if (d < 160) h += (1 - smoothstep(20, 160, d)) * 62 * (0.7 + 0.3 * fbm(x * 0.012, z * 0.012, 3));
+    h += (1 - smoothstep(6, 16, d)) * 55; // a wall at the very edge of the sheet: steeper than the walkable slope, nobody climbs out of the region
     return h;
   }
   const e = Math.max(Math.abs(x), Math.abs(z)) * 0.7 + Math.hypot(x, z) * 0.3;
@@ -253,6 +291,7 @@ function baseHeight(x, z) {
       if (wp > 0) h = Math.min(h, h * (1 - wp) + (LAVA.level - 0.9) * wp);
     }
   }
+  if (CLIFFS.length) h += cliffHeight(x, z);
   return h;
 }
 

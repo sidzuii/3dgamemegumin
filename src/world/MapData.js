@@ -164,7 +164,7 @@ export const FLATS = [
   { x: 822, z: -192, r: 13, feather: 12, level: 8.5 },
   // Ainstrey: the city on its terraces (the wall pushed out, the level from AinstreyPlan.cityLevel) and the flats of the route
   { poly: offsetPolygon(AIN.CITY_FLAT.pts.map(([u, w]) => AIN.toWorld(u, w)), AIN.CITY_FLAT.push), feather: AIN.CITY_FLAT.feather, level: (x, z) => AIN.cityLevel(x - AIN.ORIGIN.x, z - AIN.ORIGIN.z), city: true },
-  ...AIN.FLATS_LOCAL.map((f) => ({ x: AIN.ORIGIN.x + f.u, z: AIN.ORIGIN.z + f.v, r: f.r, feather: f.feather, level: f.level })),
+  ...[...AIN.FLATS_LOCAL, AIN.LEDGE_FLAT].map((f) => ({ x: AIN.ORIGIN.x + f.u, z: AIN.ORIGIN.z + f.v, r: f.r, feather: f.feather, level: f.level })),
 ];
 
 export const HILLS = [

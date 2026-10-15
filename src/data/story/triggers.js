@@ -15,6 +15,9 @@ export const TRIGGERS = [
   // C12: Marta's cart on the ledge; C14: before the directed blast.
   { id: 'C12', if: { quest: 'ch7_gorge', stage: 'ledge' }, spot: 'ledge_marta', r: 12, dialogue: 'C12' },
   { id: 'C14a', if: { quest: 'ch7_gorge', stage: 'explosion' }, spot: 'drain_wall', r: 12, say: ['C14_001', 'C14_002'] },
+  // Version 2.0: the winch route ends when the heroines are behind the poles; the first view of Ainstrey.
+  { id: 'winch_safe', if: [{ quest: 'ainstrey_road', stage: 'p_winch' }, { flag: 'winch_flow_b' }], spot: 'ledge_safe', r: 7, do: [{ setFlag: 'winch_safe' }, { setFlag: 'ledge_main_cleared' }] },
+  { id: 'D10', if: { quest: 'ainstrey_road', stage: 'view' }, spot: 'chalk_view', r: 26, dialogue: 'D10' },
   // Side stories: the night raid starts at night on the field (B10); scenes at the places of B14, B15, B18, B19, B22.
   { id: 'B10_raid', if: [{ quest: 'c_night_raid', stage: 'night' }, { hour: [21, 5] }], spot: 'night_field', r: 36, do: [{ wave: 'raid1' }] },
   { id: 'B14b', if: { quest: 's_roxy_water', stage: 'spring' }, spot: 'north_spring', r: 12, dialogue: 'B14b' },

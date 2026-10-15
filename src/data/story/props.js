@@ -128,6 +128,69 @@ export const STORY_PROPS = {
   },
   link_power: { when: AT('ch8_city', 'link'), once: 'link_power', need: { flag: 'link_socket' }, locked: 'Сначала установи модуль связи в гнездо.', toast: 'Питание подано: лампа модуля стала голубой.', vfx: 'magicPop' },
   link_check: { when: AT('ch8_city', 'link_check'), scene: 'C20', vfx: 'magicPop' },
+  // ---- version 2.0: the Stone Ledge (D01-D13). Places: world/build/AinstreyLedge.js, state: LedgeSite.sync
+  olk_brace_sack: { when: AT('ainstrey_road', 'sack'), once: 'olk_sack_taken', do: [{ give: [['road_braces', 2]] }], toast: 'Мешок креплений Гаррета: две скобы с клиньями.', vfx: 'magicPop' },
+  road_survey_water: {
+    when: AT('ainstrey_road', 'survey'), once: 'survey_water', char: 'roxy', wrong: 'Малый поток у кармана удерживает Рокси (Tab).', scene: 'D04a', vfx: 'magicPop',
+  },
+  road_survey_slab: {
+    when: AT('ainstrey_road', 'survey'), once: 'survey_slab', char: 'megumin', wrong: 'Закрытый крепёж проверяет посохом Мегумин (Tab).', scene: 'D04b', vfx: 'magicPop',
+  },
+  road_survey_winch: { when: AT('ainstrey_road', 'survey'), once: 'survey_winch', scene: 'D04c', vfx: 'magicPop' },
+  road_post_panel: {
+    when: [{ var: ['ROAD_POST_DISABLED', '==', false] }, AT('ainstrey_road', 'survey', 'drain_talk', 'p_ditch', 'p_service', 'brace', 'method')],
+    need: { item: 'road_scanner' }, locked: 'Панель не найти без прибора Эдмунда: он показывает, куда идёт кабель поста.',
+    do: [{ setVar: ['ROAD_POST_DISABLED', true] }], toast: 'Кабель снят, панель погасла: старые стражи у прохода больше не проснутся.', vfx: 'magicPop',
+  },
+  ditch_pole: { when: AT('ainstrey_road', 'p_ditch'), once: 'ditch_pole', toast: 'Сигнальный шест воткнут у входа в канаву: мельники увидят знак.', vfx: 'magicPop' },
+  ditch_fence_a: { when: AT('ainstrey_road', 'p_ditch'), once: 'ditch_fence_a', toast: 'Секция ограды стоит: выпас перекрыт.', vfx: 'magicPop' },
+  ditch_fence_b: { when: AT('ainstrey_road', 'p_ditch'), once: 'ditch_fence_b', toast: 'Вторая секция ограды стоит: стадо не выйдет к канаве.', vfx: 'magicPop' },
+  service_grate_a: {
+    when: AT('ainstrey_road', 'p_service'), once: 'service_grate_a', char: 'megumin', wrong: 'Короткий рычаг держит Мегумин (Tab).',
+    toast: 'Решётка снята: Рокси держит воду, пока лёгкий напор не идёт мимо.', vfx: 'magicPop',
+  },
+  service_grate_b: { when: AT('ainstrey_road', 'p_service'), once: 'service_grate_b', char: 'megumin', wrong: 'Короткий рычаг держит Мегумин (Tab).', toast: 'Вторая решётка снята.', vfx: 'magicPop' },
+  service_outlet: { when: AT('ainstrey_road', 'p_service'), toast: 'Выход служебного стока забит глиной. Промыть его может водяной залп Рокси (Tab, затем Q).' },
+  pocket_gate: {
+    when: AT('ainstrey_road', 'p_ditch', 'p_service'), once: 'pocket_drained', char: 'roxy', wrong: 'Слив верхнего кармана открывает Рокси (Tab).',
+    need: { any: [
+      [{ var: ['DRAIN_ROUTE', '==', 'ditch'] }, { flag: 'ditch_pole' }, { flag: 'ditch_fence_a' }, { flag: 'ditch_fence_b' }],
+      [{ var: ['DRAIN_ROUTE', '==', 'service'] }, { flag: 'service_grate_a' }, { flag: 'service_grate_b' }, { flag: 'service_flush' }],
+    ] },
+    locked: 'Слив пока нельзя открывать: сначала закончи подготовку отвода.', scene: 'D05b', vfx: 'waterSplash',
+  },
+  ledge_brace_a: {
+    when: AT('ainstrey_road', 'brace'), once: 'ledge_brace_a', need: { item: 'road_braces' }, locked: 'Нужен мешок креплений Гаррета (он остался в Ольховке).',
+    do: [{ take: [['road_braces', 1]] }], toast: 'Первая опора встала под плиту.', vfx: 'magicPop',
+  },
+  ledge_brace_b: {
+    when: AT('ainstrey_road', 'brace'), once: 'ledge_brace_b', need: { item: 'road_braces' }, locked: 'Нужен мешок креплений Гаррета (он остался в Ольховке).',
+    do: [{ take: [['road_braces', 1]] }], toast: 'Вторая опора встала рядом с первой.', vfx: 'magicPop',
+  },
+  ledge_brace_check: { when: AT('ainstrey_road', 'brace'), need: [{ flag: 'ledge_brace_a' }, { flag: 'ledge_brace_b' }], locked: 'Сначала поставь обе опоры.', scene: 'D06' },
+  ledge_rest: {
+    when: [{ var: ['ROAD_BRACED', '==', true] }, AT('ainstrey_road', 'brace', 'method', 'p_expl', 'p_winch')],
+    do: [{ heal: true }], toast: 'Передышка у костра: силы и мана восстановлены.',
+  },
+  winch_turn_a: { when: AT('ainstrey_road', 'p_winch'), once: 'winch_turn_a', char: 'megumin', wrong: 'Рукоять вращает Мегумин (Tab).', toast: 'Два оборота: цепь натянулась, плита дрогнула у шва.', vfx: 'magicPop' },
+  winch_turn_b: {
+    when: AT('ainstrey_road', 'p_winch'), once: 'winch_turn_b', char: 'megumin', wrong: 'Рукоять вращает Мегумин (Tab).',
+    need: { flag: 'winch_flow_a' }, locked: 'Рано: Рокси должна пустить воду по нижнему краю плиты (Tab, затем Q).', toast: 'Ещё два оборота: плита идёт по смоченному краю.', vfx: 'magicPop',
+  },
+  cleanup_chain: { when: AT('ainstrey_road', 'cleanup'), once: 'ledge_chain_off', toast: 'Цепь снята с валуна.', vfx: 'magicPop' },
+  cleanup_debris_a: { when: AT('ainstrey_road', 'cleanup'), once: 'ledge_debris_a', toast: 'Обломок унесён с рабочей полосы.', vfx: 'magicPop' },
+  cleanup_debris_b: { when: AT('ainstrey_road', 'cleanup'), once: 'ledge_debris_b', toast: 'Второй обломок унесён.', vfx: 'magicPop' },
+  cleanup_debris_c: { when: AT('ainstrey_road', 'cleanup'), once: 'ledge_debris_c', toast: 'Третий обломок унесён: рабочая полоса свободна.', vfx: 'magicPop' },
+  cleanup_deck: { when: AT('ainstrey_road', 'cleanup'), once: 'ledge_deck_fixed', toast: 'Настил поправлен: край держит телегу.', vfx: 'magicPop' },
+  cart_signal_empty: { when: AT('ainstrey_road', 'carts_empty'), once: 'cart_empty_sent', do: [{ cart: 'empty' }], toast: 'Бригадир принял знак: пустая телега пошла по проезду.' },
+  cart_signal_loaded: { when: AT('ainstrey_road', 'carts_loaded'), once: 'cart_loaded_sent', do: [{ cart: 'loaded' }], toast: 'Бригадир принял знак: гружёная телега пошла по проезду.' },
+  mill_lever: {
+    when: AT('ainstrey_road', 'mills_task'), once: 'wheel_stopped', char: 'megumin', wrong: 'Рычаг колеса держит Мегумин (Tab).',
+    toast: 'Колесо встало: лопасть больше не цепляет крепление.', vfx: 'magicPop',
+  },
+  mill_debris: {
+    when: AT('ainstrey_road', 'mills_task'), once: 'wheel_debris', need: { flag: 'wheel_stopped' }, locked: 'Колесо ещё крутится: сначала рычаг.', scene: 'D12b', vfx: 'magicPop',
+  },
   // ---- side stories (docs/story/04): B10, B13, B14-B23
   field_cart_a: { when: AT('c_night_raid', 'prep_carts'), once: 'field_cart_a', toast: 'Телега подкачена к проходу: грибы пойдут через сухой участок.', vfx: 'magicPop' },
   field_cart_b: { when: AT('c_night_raid', 'prep_carts'), once: 'field_cart_b', toast: 'Вторая телега встала рядом: проход перекрыт, остался сухой путь.', vfx: 'magicPop' },
@@ -205,6 +268,9 @@ export const STORY_VOLLEY = [
     do: [{ setFlag: 'relay_grate_open' }], toast: 'Защёлка сбита: решётка служебной площадки поднялась.',
   },
   { id: 'relay_trough', spot: 'relay_trough', when: AT('ch6_relay', 'lens'), flag: 'relay_trough_clean', toast: 'Желоб промыт: вода пошла к линзе.' },
+  { id: 'service_flush', spot: 'ledge_service_outlet', when: AT('ainstrey_road', 'p_service'), flag: 'service_flush', toast: 'Глина смыта: служебный сток открыт.' },
+  { id: 'winch_flow_a', spot: 'ledge_slab_edge', when: [AT('ainstrey_road', 'p_winch'), { flag: 'winch_turn_a' }], flag: 'winch_flow_a', toast: 'Поток прошёл по нижнему краю плиты.' },
+  { id: 'winch_flow_b', spot: 'ledge_slab_edge', when: [AT('ainstrey_road', 'p_winch'), { flag: 'winch_turn_b' }], flag: 'winch_flow_b', toast: 'Нижний край плиты смочен: можно уходить за шесты.' },
   { id: 'ledge_crack', spot: 'ledge_crack', when: AT('ch7_gorge', 'p12_roxy', 'p12_rope'), flag: 'ledge_crack_fixed', toast: 'Водяной заслон схватил край уступа: он держит.' },
   { id: 'drain_cool_a', spot: 'drain_cool_a', when: AT('ch7_gorge', 'cool'), flag: 'drain_cool_a', toast: 'Плита остыла.' },
   { id: 'drain_cool_b', spot: 'drain_cool_b', when: AT('ch7_gorge', 'cool'), flag: 'drain_cool_b', toast: 'Плита остыла.' },
@@ -234,6 +300,11 @@ export const STORY_WAVES = {
   veyr_guards: { spot: 'veyr_guards', camp: 'veyr_wave', enemies: [['guardian', -6, 2], ['guardian', 6, 2], ['watcher', 0, -3]], onClear: [] },
   kharz_battle: { spot: 'kharz_arena', camp: 'kharz_battle', enemies: [['archdemon', 0, 0], ['imp', -4, -3], ['imp', 4, -3]], onClear: [{ scene: 'C14b' }] },
   pump_guards: { spot: 'pump_guards', camp: 'pump_wave', enemies: [['guardian', -6, 2], ['guardian', 6, 2], ['watcher', 0, -5]], onClear: [] },
+  // version 2.0: the two old guards of the road post wake when the ledge is cleared (docs/ainstrey D08); they step onto marks first
+  road_guards: {
+    spot: 'road_guard_a', camp: 'road_guard', delay: 3.5, say: ['D08_004', 'D08_005', 'D08_006'],
+    enemies: [['guardian', 0, 0, { at: 'road_guard_a' }], ['guardian', 0, 0, { at: 'road_guard_b' }]], onClear: [{ scene: 'D08c' }],
+  },
   raid1: { spot: 'night_field', camp: 'raid_w1', enemies: [['mushroom', -6, 0], ['mushroom', 0, 5], ['mushroom', 6, 0]], onClear: [{ wave: 'raid2' }], say: [] },
   raid2: { spot: 'night_field', camp: 'raid_w2', enemies: [['mushroom', -8, 2], ['mushroom', 8, 2], ['mushroom', 0, 8], ['puglin', 0, -4]], onClear: [] },
   gate_mushrooms: { spot: 'upper_gate', camp: 'gate_mush', enemies: [['mushroom', -4, 3], ['mushroom', 4, 3], ['mushroom', 0, 6]], onClear: [] },
@@ -242,4 +313,6 @@ export const STORY_WAVES = {
 /** Directed blasts that set a flag: { spot, r, when, flag } (the explosion handler in rpg/RPG.js). */
 export const STORY_BLASTS = [
   { spot: 'spring_partition', r: 10, when: AT('s_roxy_water', 'p_blast'), flag: 'spring_blast' },
+  // version 2.0: the Explosion on the white mark of the boulder at the Stone Ledge (only in the stage of the explosion route)
+  { spot: 'ledge_white_mark', r: 8, when: AT('ainstrey_road', 'p_expl'), flag: 'ledge_main_cleared' },
 ];

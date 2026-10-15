@@ -1,4 +1,4 @@
-import { POIS } from '../../world/MapData.js';
+import { POIS, REGION } from '../../world/MapData.js';
 
 /**
  * Places and props of the side stories (docs/story/04), as DATA built by world/build/SideProps.js once every named spot exists.
@@ -30,9 +30,13 @@ export const SIDE_SPOTS = [
   { name: 'rann_pipe', spot: 'hunter_rann', dx: 34, dz: 30 },
   { name: 'pipe_ring', spot: 'hunter_rann', dx: 36, dz: 36 },
   { name: 'edmund_route', spot: 'scholar', dx: -10, dz: 6 },
+  // version 2.0 (D01): Nera waits by the well of Olkhovka; Garret's sack of braces lies by the road at the exit
+  { name: 'olkhovka_well', at: [REGION.olkhovka.center.x + 9, REGION.olkhovka.center.z + 8], yaw: Math.PI },
+  { name: 'olkhovka_sack', at: [REGION.olkhovka.center.x + 33, REGION.olkhovka.center.z - 1] },
 ];
 
 export const SIDE_PROPS = [
+  { id: 'olk_brace_sack', name: 'Мешок креплений Гаррета', prompt: 'Взять мешок креплений', spot: 'olkhovka_sack', shape: 'sack' },
   // B10 — the night raid on Boris' field
   { id: 'field_cart_a', name: 'Пустая телега', prompt: 'Подкатить телегу к проходу', spot: 'farmhouse', dx: 12, dz: 10, shape: 'crate' },
   { id: 'field_cart_b', name: 'Пустая телега', prompt: 'Подкатить телегу к проходу', spot: 'farmhouse', dx: 15, dz: 10, shape: 'crate' },

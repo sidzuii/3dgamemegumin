@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { mulberry32 } from '../../core/math.js';
 import { Frame, house, lamp, barrel, crate, wagon, bench, prop, rock } from './Kit.js';
 import { campfire, tent } from './Countryside.js';
-import { Door } from '../Interactables.js';
+import { Door, QuestProp } from '../Interactables.js';
 import { REGION } from '../MapData.js';
 import * as AIN from '../AinstreyPlan.js';
 
@@ -199,7 +199,18 @@ function whiteMills(W, rng) {
       barrel(W, F, -5.1, 1.2); barrel(W, F, -5.6, 2.0);
       F.box(2.2, 0.08, 1.2, 0, 2.5, 5.2, 'cloth', { collide: false, tint: 0xe0d6bc, rx: -0.2 });
       for (const s of [-1, 1]) F.box(0.1, 2.5, 0.1, s * 1.0, 0, 5.8, 'log', { collide: false });
-      if (i === 1) W.spot('mill_door', hs.door, rot);
+      if (i === 1) {
+        W.spot('mill_door', hs.door, rot);
+        // D12: the wheel catches its fastening. The lever (Megumin) on one side of the mill, the tongs of the loose splinter on the other.
+        const A = F.at(-5.0, 0, -1.4), B = F.at(5.0, 0, -1.4), pp = F.at(5.8, 0, -0.4);
+        W.spot('mill_wheel', new THREE.Vector3(pp.x, H(W, pp.x, pp.z), pp.z), rot - 2.0);
+        F.cyl(0.07, 1.3, -5.0, 0, -1.4, 'metal', { seg: 6, collide: false });
+        F.box(0.08, 0.08, 1.2, -5.0, 1.2, -1.0, 'metal', { collide: false, rx: -0.5 });
+        F.box(0.5, 0.35, 0.5, 5.0, 0, -1.4, 'stoneDark', { collide: false, tint: 0x8a8478 });
+        F.box(0.06, 0.06, 0.9, 5.0, 0.4, -1.4, 'metal', { collide: false, ry: 0.5 });
+        W.addInteractable(new QuestProp({ id: 'mill_lever', name: 'Рычаг мельничного колеса', prompt: 'Держать рычаг: колесо встанет', position: new THREE.Vector3(A.x, H(W, A.x, A.z) + 1.0, A.z) }));
+        W.addInteractable(new QuestProp({ id: 'mill_debris', name: 'Обломок у лопасти', prompt: 'Достать обломок щипцами', position: new THREE.Vector3(B.x, H(W, B.x, B.z) + 0.8, B.z) }));
+      }
     }, 'Мельница ' + (i + 1));
   });
   // A few cottages of the mill workers by the road (no smoke from the wheel: only from the chimneys).

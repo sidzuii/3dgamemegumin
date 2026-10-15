@@ -13,6 +13,16 @@
  */
 import { clipText } from './story/index.js';
 
+/** Stages of the road quest `ainstrey_road` in order (data/quests.js): schedules of the road crew follow them. */
+const ROAD_STAGES = ['luna', 'nera', 'edmund', 'sack', 'doren', 'survey', 'drain_talk', 'p_ditch', 'p_service', 'brace', 'method', 'p_expl', 'p_winch', 'g_off', 'g_fight', 'cleanup', 'carts_empty', 'carts_loaded', 'act', 'view', 'fork', 'mills_talk', 'mills_task', 'dam'];
+/** Where the road quest is: -1 not started, an index into ROAD_STAGES, 99 done. */
+export const roadAt = (rpg) => {
+  const st = rpg.quests.status('ainstrey_road');
+  if (st === 'done') return 99;
+  if (st !== 'active') return -1;
+  return ROAD_STAGES.indexOf(rpg.quests.stageId('ainstrey_road'));
+};
+
 const NIGHT_HOME = { time: [22, 6], hidden: true };
 const M = (parts, colors = {}, extra = {}) => ({ pack: 'm', parts, colors, ...extra });
 const F = (parts, colors = {}, extra = {}) => ({ pack: 'w', parts, colors, ...extra });
@@ -40,6 +50,73 @@ export const NPCS = [
       { if: { quest: 'a00_bags', stage: 'carry' }, bark: ['Два у заднего колеса. Потом можешь спорить.'] },
       { if: { quest: 'prologue_arrival', stage: 'marta' }, dialogue: 'A00' },
       { dialogue: 'marta_idle' },
+    ],
+  },
+  // ------------------------------------------------------------------ version 2.0: the road crew (D01-D13)
+  {
+    id: 'nera', name: 'Нэра Вальд', title: 'Дорожный инженер',
+    model: F(['Soldier_Head', 'Adventurer_Body', 'Adventurer_Legs', 'Adventurer_Feet'], { Hair_Brown: 0x3a2a22, 'Adventurer_Body:Green': 0x6a7a8a, 'Adventurer_Body:LightGreen': 0x4a5a6a, 'Adventurer_Legs:Brown': 0x4a4a52, 'Adventurer_Legs:Brown2': 0x3a3a44 }),
+    look: { skin: 0xf0d0b8, hair: 0x3a2a22, hairStyle: 'ponytail', top: 0x6a7a8a, vest: 0x8a6a3a, bottom: 0x4a4a52, hat: 'cap', hatColor: 0xb8903a, tallBoots: true, bag: 0x7a5232 },
+    schedule: (rpg) => {
+      const at = roadAt(rpg);
+      if (at >= 1 && at <= 3) return [{ time: [0, 24], spot: 'olkhovka_well', anim: 'idle' }];
+      if (at >= 4 && at <= 18) return [{ time: [0, 24], spot: 'ledge_nera', anim: 'idle' }];
+      return [{ time: [0, 24], hidden: true }]; // after the act she goes ahead to take the rest of the cargo in the city
+    },
+    talk: [
+      { if: { quest: 'ainstrey_road', stage: 'nera' }, dialogue: 'D01' },
+      { if: { quest: 'ainstrey_road', stage: 'drain_talk' }, dialogue: 'D05' },
+      { if: { quest: 'ainstrey_road', stage: 'method' }, dialogue: 'D07' },
+      { if: { quest: 'ainstrey_road', stage: 'g_off' }, dialogue: 'D08a' },
+      { if: { quest: 'ainstrey_road', stage: 'act' }, dialogue: 'D09' },
+      { if: { quest: 'ainstrey_road', stage: 'edmund' }, bark: ['Эдмунд живёт у теплицы за площадью. Прибор нужен будет на склоне: после обвала старые посты иногда включаются сами.'] },
+      { if: { quest: 'ainstrey_road', stage: 'sack' }, bark: ['Мешок креплений Гаррета лежит у выхода. Две скобы, вторую держи, пока затягиваешь.'] },
+      { if: { quest: 'ainstrey_road', stage: 'survey' }, bark: ['Три места: верхний карман, шов плиты, лебёдка. Порядок любой. Мел у меня на плане.'] },
+      { if: { quest: 'ainstrey_road', stage: 'p_ditch' }, bark: ['Шест у входа в канаву, потом ограда. Воду пускаем только после предупреждения.'] },
+      { if: { quest: 'ainstrey_road', stage: 'p_service' }, bark: ['Решётки снимает рычаг, выход промывает Рокси. Торопиться некуда.'] },
+      { if: { quest: 'ainstrey_road', stage: 'brace' }, bark: ['Опоры ставим под шов, не под край. Потом проверка под малой нагрузкой.'] },
+      { if: { any: [{ quest: 'ainstrey_road', stage: 'p_expl' }, { quest: 'ainstrey_road', stage: 'p_winch' }] }, bark: ['Рабочие за шестами. Я не снимаю людей с безопасных мест, пока вы не закончите.'] },
+      { if: { quest: 'ainstrey_road', stage: 'g_fight' }, bark: ['Стражи у отметок! Не подпускай их к отводу.'] },
+      { if: { quest: 'ainstrey_road', stage: 'cleanup' }, bark: ['Цепь, три обломка, настил. Остальное сделают люди по двое.'] },
+      { if: { any: [{ quest: 'ainstrey_road', stage: 'carts_empty' }, { quest: 'ainstrey_road', stage: 'carts_loaded' }] }, bark: ['Колокол у шестов. Сначала пустая, потом гружёная.'] },
+      { bark: ['Тракт работает. После дождя пост смотрит склон; если понадобится ремонт, дадим отдельное задание.'] },
+    ],
+  },
+  {
+    id: 'doren', name: 'Дорен Крей', title: 'Бригадир расчистки',
+    model: M(['Casual2_Head', 'Farmer_Body', 'Worker_Legs', 'Worker_Feet'], { Hair: 0x3a2a1e, Skin: 0xc89070, Skin_Darker: 0xa87050, LightBrown: 0x7a6a4a }, { scale: 1.02 }),
+    look: { skin: 0xc89070, hair: 0x3a2a1e, hairStyle: 'short', beard: true, top: 0x7a6a4a, sleeves: 'short', bottom: 0x4a3a2a, hat: 'cap', hatColor: 0xb8903a, build: 1.2, height: 1.04, tallBoots: true },
+    schedule: [{ time: [0, 24], spot: 'ledge_doren', anim: 'idle' }],
+    talk: [
+      { if: { quest: 'ainstrey_road', stage: 'doren' }, dialogue: 'D03' },
+      { if: { quest: 'ainstrey_road', stage: 'survey' }, bark: ['От шестов дальше только по плану. На верхней площадке лестница, перила держат.'] },
+      { if: { quest: 'ainstrey_road', stage: 'brace' }, bark: ['Вторую скобу держи, пока затягиваю. Бригада за шестами.'] },
+      { if: { any: [{ quest: 'ainstrey_road', stage: 'p_expl' }, { quest: 'ainstrey_road', stage: 'p_winch' }] }, bark: ['Бригада ждёт. Дам знак, как только площадка свободна.'] },
+      { if: { quest: 'ainstrey_road', stage: 'cleanup' }, bark: ['Рабочие, по двое к лебёдке. Остальные ждут у нижнего края.'] },
+      { if: { quest: 'ainstrey_road', status: 'active' }, bark: ['Делай по списку Нэры. Люди ценнее скорости.'] },
+      { bark: ['Дорога открыта. Двое моих остаются на склоне до конца работ, потом пост смотрит после дождя.'] },
+    ],
+  },
+  {
+    id: 'lissa', name: 'Лисса Рейн', title: 'Посыльная',
+    model: F(['Casual_Head', 'Adventurer_Body', 'Adventurer_Legs', 'Adventurer_Feet'], { Hair_Blond: 0xb8602a, Hair_Brown: 0xb8602a, 'Adventurer_Body:Green': 0x3a6a5a, 'Adventurer_Body:LightGreen': 0x5a8a7a, 'Adventurer_Legs:Brown': 0x4a3a2a }),
+    look: { skin: 0xf6d0b0, hair: 0xb8602a, hairStyle: 'braids', top: 0x3a6a5a, vest: 0x8a6a3a, bottom: 0x4a3a2a, hat: 'cap', hatColor: 0x3a6a5a, bag: 0x7a5232, tallBoots: true, height: 0.97 },
+    schedule: (rpg) => {
+      const at = roadAt(rpg);
+      if (at === 7) return [{ time: [0, 24], spot: 'ledge_camp', anim: 'idle' }]; // the lower camp: she will carry the warning down to the mills
+      if (at === 20) return [{ time: [0, 24], spot: 'lissa_fork', anim: 'idle' }];
+      if (at === 21 || at === 22) return [{ time: [0, 24], spot: 'mill_wheel', anim: 'idle' }];
+      if (at === 23) return [{ time: [0, 24], spot: 'dam_south', anim: 'idle' }];
+      if (at === 99) return [{ time: [7, 20], spot: 'mills_camp', anim: 'idle' }, { time: [20, 7], hidden: true }];
+      return [{ time: [0, 24], hidden: true }];
+    },
+    talk: [
+      { if: { quest: 'ainstrey_road', stage: 'fork' }, dialogue: 'D11' },
+      { if: { quest: 'ainstrey_road', stage: 'mills_talk' }, dialogue: 'D12' },
+      { if: { quest: 'ainstrey_road', stage: 'mills_task' }, bark: ['Рычаг держит один, обломок вынимает второй. Без большого заклинания.'] },
+      { if: { quest: 'ainstrey_road', stage: 'dam' }, dialogue: 'D13' },
+      { if: { quest: 'ainstrey_road', stage: 'p_ditch' }, bark: ['Я у нижнего привала. Предупреждение мельникам донесу быстрее телеги, как только вы поставите шест.'] },
+      { bark: ['Дороги покажу по заказу. Короткий путь не обязан быть хорошим.'] },
     ],
   },
   // ------------------------------------------------------------------ Axel
@@ -117,6 +194,7 @@ export const NPCS = [
     look: { skin: 0xffe8d8, hair: 0xa06a3a, hairStyle: 'long', top: 0xf2ead8, vest: 0x2f5a8a, dress: true, dressLong: true, dressColor: 0x2f3a5a, chestShape: true },
     schedule: [{ time: [8, 20], spot: 'guild_counter', anim: 'idle' }, { time: [20, 22], spot: 'tavern_table2', anim: 'sit' }, NIGHT_HOME],
     talk: [
+      { if: { quest: 'ainstrey_road', stage: 'luna' }, dialogue: 'D00' },
       { if: { quest: 'ch8_city', stage: 'hq' }, dialogue: 'C15' },
       { if: { quest: 'ch7_gorge', stage: 'luna' }, dialogue: 'C11' },
       { if: { quest: 'join_guild', stage: 'go' }, dialogue: 'A04' },
@@ -351,6 +429,7 @@ export const NPCS = [
     look: { skin: 0xf6d0b0, hair: 0xe8e8e8, hairStyle: 'short', beard: true, top: 0x3a4a7a, dress: true, dressLong: true, dressColor: 0x2a3a6a, cape: 0x2a3a6a, height: 0.97 },
     schedule: [{ time: [20, 2], spot: 'olkhovka_green', anim: 'magic' }, { time: [8, 20], spot: 'scholar', anim: 'idle' }, { time: [2, 8], hidden: true }],
     talk: [
+      { if: { quest: 'ainstrey_road', stage: 'edmund' }, dialogue: 'D02' },
       { if: { quest: 's_edmund_team', status: 'available' }, dialogue: 'B20a' },
       { if: { quest: 's_edmund_team', stage: 'sign' }, dialogue: 'B20c' },
       { if: { quest: 'ch3_lights', stage: 'edmund' }, dialogue: 'A17' },

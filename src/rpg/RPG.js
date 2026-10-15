@@ -277,6 +277,8 @@ export class RPG {
     this.game.world.drain?.sync(F);
     this.game.world.pump?.sync(F, this.state.vars);
     this.game.world.core?.sync(F);
+    const led = this.game.world.ledge;
+    if (led) { led.rpg ||= this; led.sync(F, this.state.vars || {}); }
     for (const it of this.game.world.interactables) {
       if (!it.setActive) continue;
       const sp = STORY_PROPS[it.id];
@@ -450,6 +452,7 @@ export class RPG {
       case 'say': this.say(v); break;
       case 'sayChain': this._sayChain(v); break;
       case 'wave': this._startWave(v); break;
+      case 'cart': this.game.world.ledge?.runCart(v, () => this.apply(v === 'empty' ? [{ setFlag: 'cart_empty_ok' }, { scene: 'D09a' }] : [{ setFlag: 'cart_loaded_ok' }, { scene: 'D09b' }])); break;
       case 'save': this.save(); break;
       case 'scene': setTimeout(() => { if (!this.dialogue.active) this.dialogue.start(v, null); }, 400); break;
       case 'startIfAvailable': if (this.quests.canStart(v)) this.quests.start(v); break;
@@ -766,16 +769,24 @@ export class RPG {
     if (STORY_WAVES[id].say) this._sayChain(STORY_WAVES[id].say);
   }
 
-  _spawnWave(id) {
+  _spawnWave(id, fromLoad = false) {
     const W = STORY_WAVES[id];
     const p = this.spotPos(W.spot);
     if (!p) return;
     const killed = this.state.counters['wk_' + id] || 0;
-    for (const [type, dx, dz, o] of W.enemies.slice(killed)) {
-      const e = this.game.enemies.spawn(type, new THREE.Vector3(p.x + dx, p.y, p.z + dz), W.camp);
+    const rest = W.enemies.slice(killed);
+    const put = (type, dx, dz, o) => {
+      const at = o?.at ? this.spotPos(o.at) : null; // a wave can stand on several named marks
+      const base = at || p;
+      const e = this.game.enemies.spawn(type, new THREE.Vector3(base.x + dx, base.y, base.z + dz), W.camp);
       e.noRespawn = true;
       if (o?.shield) e.shieldFlags = o.shield; // immune until these flags are set (the side posts of C24)
-    }
+    };
+    if (W.delay && !fromLoad) {
+      // The marks light up first; the enemies rise on them a moment later (never a hit from behind a tired heroine).
+      for (const [, dx, dz, o] of rest) { const b = (o?.at && this.spotPos(o.at)) || p; this.game.vfx.burst('magicPop', new THREE.Vector3(b.x + dx, b.y + 0.2, b.z + dz), 18); }
+      setTimeout(() => { for (const [type, dx, dz, o] of rest) put(type, dx, dz, o); }, W.delay * 1000);
+    } else for (const [type, dx, dz, o] of rest) put(type, dx, dz, o);
   }
 
   _waveKill(camp) {
@@ -794,7 +805,7 @@ export class RPG {
   /** Loaded in the middle of a wave: the enemies that were still alive are back. */
   _resumeWaves() {
     const F = this.state.flags;
-    for (const id of Object.keys(STORY_WAVES)) if (F['wv_' + id] && !F['wd_' + id]) this._spawnWave(id);
+    for (const id of Object.keys(STORY_WAVES)) if (F['wv_' + id] && !F['wd_' + id]) this._spawnWave(id, true);
   }
 
   /** After a load: an escort that was under way goes on from where it was saved. */

@@ -181,3 +181,86 @@ export const SIGNS_LOCAL = [
   { u: -765, v: 1668, rot: 2.3 + Math.PI / 2, lines: ['Тракт: Белые мельницы · Южная дамба · Айнстрей', 'Тропа налево: Меловые склоны (смотровая площадка)'] },
   { u: -24, v: 1356, rot: Math.PI, lines: ['Южная дамба. Отметка воды: 1,40 (старая)', 'К северу: Южные ворота Айнстрея', 'К югу: Белые мельницы · Каменный уступ'] },
 ];
+
+// ---------------------------------------------------------------------------------------------------------------
+// The Stone Ledge: a gorge that the road runs through; the rockfall fills it (the rockfall quest, D03-D09)
+// ---------------------------------------------------------------------------------------------------------------
+/** The road resampled by arclength (local u, v) with unit tangents: the axis of the gorge. The first point is the extension to the sheet edge. */
+function resample(pts, step) {
+  const out = [];
+  let carry = 0;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [ax, ay] = pts[i], [bx, by] = pts[i + 1];
+    const L = Math.hypot(bx - ax, by - ay);
+    for (let d = carry; d < L; d += step) out.push([ax + ((bx - ax) * d) / L, ay + ((by - ay) * d) / L, (bx - ax) / L, (by - ay) / L]);
+    carry = ((carry - L) % step + step) % step;
+    if (i === pts.length - 2) out.push([bx, by, (bx - ax) / L, (by - ay) / L]);
+  }
+  return out;
+}
+const ROAD_EXT = [[-1700, 2379], ...TRAKT.slice(0, 13)];
+const ROAD_RS = resample(ROAD_EXT, 8).map((p, i, a) => {
+  // smooth the tangent over neighbours (no kinks in the walls)
+  let tx = 0, ty = 0;
+  for (let k = Math.max(0, i - 2); k <= Math.min(a.length - 1, i + 2); k++) { tx += a[k][2]; ty += a[k][3]; }
+  const L = Math.hypot(tx, ty) || 1;
+  return { u: p[0], v: p[1], tu: tx / L, tv: ty / L };
+});
+// arclength (metres) along the resampled road, 0 at the sheet edge
+let _acc = 0;
+ROAD_RS.forEach((p, i) => { if (i) _acc += Math.hypot(p.u - ROAD_RS[i - 1].u, p.v - ROAD_RS[i - 1].v); p.s = _acc; });
+
+/** Where the rockfall sits: the middle of the road between TRAKT[5] and TRAKT[6]. */
+const RF0 = [(TRAKT[5][0] + TRAKT[6][0]) / 2, (TRAKT[5][1] + TRAKT[6][1]) / 2];
+const _rfT = (() => { const dx = TRAKT[6][0] - TRAKT[5][0], dz = TRAKT[6][1] - TRAKT[5][1], L = Math.hypot(dx, dz); return [dx / L, dz / L]; })();
+const S_RF = (() => {
+  let best = 0, bd = Infinity;
+  ROAD_RS.forEach((p, i) => { const d = Math.hypot(p.u - RF0[0], p.v - RF0[1]); if (d < bd) { bd = d; best = i; } });
+  return ROAD_RS[best].s;
+})();
+
+/**
+ * Frame of the rockfall: origin on the road, f = along the road towards the capital, l = to the left (north-west, the high wall),
+ * yaw = the yaw of a three.js Frame whose local +z is f and +x is l.
+ */
+export const LEDGE = {
+  u: RF0[0], v: RF0[1],
+  fu: _rfT[0], fv: _rfT[1], // forward, local (u, v)
+  yaw: Math.atan2(_rfT[0], _rfT[1]),
+  /** local (f, l) -> world (x, z) in the straight frame at the rockfall (valid for |f| < 70) */
+  at(f, l) {
+    const lu = _rfT[1], lv = -_rfT[0]; // left of forward (north-west when going north-east)
+    return toWorld(this.u + this.fu * f + lu * l, this.v + this.fv * f + lv * l);
+  },
+};
+// check the left normal really points north-west (decreasing v for a south-to-north road): lu < 0, lv < 0 for fu > 0, fv < 0
+
+/** Half-widths of the gorge floor by f (metres along the road from the rockfall): [f, north, south]. The south wall steps back at the bay. */
+const FLOOR = [
+  [-420, 46, 46], [-300, 40, 40], [-210, 31, 30], [-140, 22, 22], [-80, 17, 17], [-36, 15, 15], [-8, 15, 16], [2, 15, 31], [30, 15, 31], [44, 16, 17],
+  [72, 17, 17], [110, 24, 24], [160, 34, 34],
+];
+const lerpTable = (f, k) => {
+  if (f <= FLOOR[0][0]) return FLOOR[0][k];
+  for (let i = 1; i < FLOOR.length; i++) if (f <= FLOOR[i][0]) { const a = FLOOR[i - 1], b = FLOOR[i]; return a[k] + ((b[k] - a[k]) * (f - a[0])) / (b[0] - a[0]); }
+  return FLOOR[FLOOR.length - 1][k];
+};
+export const LEDGE_WALLS = { top: 5.5, face: 5, north: 16, south: 15, fadeEnd: 50 };
+/** Half-widths [north, south] of the gorge floor at f (metres along the road from the rockfall). */
+export const ledgeFloor = (f) => [lerpTable(f, 1), lerpTable(f, 2)];
+/** The two cliff bands (world x, z polylines): they close the valley of the Postal ascent, the rockfall is the only way through. */
+export const LEDGE_CLIFFS = ['north', 'south'].map((side, si) => {
+  const sgn = side === 'north' ? 1 : -1;
+  const pts = [];
+  for (const p of ROAD_RS) {
+    const f = p.s - S_RF;
+    if (f > 165) break;
+    const off = lerpTable(f, si + 1) + LEDGE_WALLS.top + LEDGE_WALLS.face;
+    // left of the direction of travel in (u, v): (tv, -tu)
+    pts.push(toWorld(p.u + p.tv * sgn * off, p.v - p.tu * sgn * off));
+  }
+  return { side, pts, top: LEDGE_WALLS.top, face: LEDGE_WALLS.face, height: LEDGE_WALLS[side], fadeEnd: LEDGE_WALLS.fadeEnd };
+});
+
+/** The floor of the gorge around the rockfall is levelled (the quest area is built on one level); merged into the flats by MapData. */
+export const LEDGE_FLAT = { u: LEDGE.u, v: LEDGE.v, r: 50, feather: 16, level: 'auto' };

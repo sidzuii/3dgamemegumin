@@ -330,6 +330,57 @@ export const QUESTS = Object.fromEntries([
       { id: 'report', text: 'Поднимись подъёмником и доложи в гильдии: Луна, Клара и Эдмунд ждут.', target: 'npc:luna', objectives: [{ type: 'talk', label: 'Доклад в гильдии' }] },
     ],
     rewards: { eris: 150, xp: 300, flags: ['crypt_done'] },
+    next: 'ainstrey_road',
+  }),
+
+  // =====================================================================================
+  // CHAPTER 6 (version 2.0) — the Stone Ledge: the road to Ainstrey (docs/ainstrey/06_Глава_Айнстрея.md, D00-D13)
+  // =====================================================================================
+  Q('ainstrey_road', {
+    title: 'Проход к Айнстрею', category: 'story', chapter: 6, giver: 'luna', noAuto: true, requires: { quest: 'ch5_crypt', status: 'done' },
+    summary: 'Столица прислала бригаду расчистить обвал на тракте у Каменного уступа и попросила мага воды и человека, который умеет выбрать точку разрушения. Луна даёт письмо для Селии Морн; дорогу открывают вместе с бригадой Нэры Вальд.',
+    stages: [
+      { id: 'luna', text: 'Зайди к Луне: письмо для Селии Морн в столичной гильдии и задание от бригады.', target: 'npc:luna', objectives: [{ type: 'talk', label: 'Поговорить с Луной' }] },
+      { id: 'nera', text: 'Тобиас идёт до Ольховки. Найди у колодца Нэру Вальд: она ведёт бригаду, которая восстанавливает тракт.', target: 'npc:nera', objectives: [{ type: 'talk', label: 'Поговорить с Нэрой' }] },
+      { id: 'edmund', text: 'Эдмунд передаст запрос архивисту столицы и прибор для дороги.', target: 'npc:edmund', objectives: [{ type: 'talk', label: 'Поговорить с Эдмундом' }] },
+      { id: 'sack', text: 'У выхода из Ольховки лежит мешок креплений Гаррета. Забери его.', target: 'spot:olkhovka_sack', objectives: [{ type: 'flag', flag: 'olk_sack_taken', label: 'Взять мешок креплений' }] },
+      { id: 'doren', text: 'Перевальные ворота за Ольховкой (дорога на восток, мимо Восточного поста) ведут на столичный тракт. Дойди до Каменного уступа и поговори с бригадиром Дореном.', target: 'npc:doren',
+        objectives: [{ type: 'talk', label: 'Поговорить с Дореном' }],
+        hint: 'Ворота перевала стоят справа от ущелья у поста. За сигнальными шестами без знака бригадира не ходи.' },
+      { id: 'survey', manual: true, text: 'Осмотри три места у завала (в любом порядке): верхний карман, шов опорной плиты, зажатую лебёдку. Дополнительно, пока не начал основное: найди на лестнице панель старого поста и отключи её прибором Эдмунда.', target: 'spot:ledge_slab_edge',
+        objectives: [{ type: 'flag', flag: 'survey_water', label: 'Верхний карман (Рокси)' }, { type: 'flag', flag: 'survey_slab', label: 'Опорная плита (Мегумин)' }, { type: 'flag', flag: 'survey_winch', label: 'Лебёдка' }],
+        hint: 'Tab меняет героиню: малый поток у кармана держит Рокси, закрытый крепёж проверяет посохом Мегумин. Лестница на верхнюю площадку идёт вдоль северной стены.' },
+      { id: 'drain_talk', text: 'Поговори с Нэрой: куда отвести воду верхнего кармана.', target: 'npc:nera', objectives: [{ type: 'talk', label: 'Поговорить с Нэрой' }] },
+      { id: 'p_ditch', skipIf: { not: { var: ['DRAIN_ROUTE', '==', 'ditch'] } }, text: 'Сухая канава: поставь сигнальный шест, перенеси две секции ограды на верхней площадке, затем Рокси откроет слив кармана.', target: 'spot:ledge_pocket_gate',
+        objectives: [{ type: 'flag', flag: 'ditch_pole', label: 'Сигнальный шест' }, { type: 'flag', flag: 'ditch_fence_a', label: 'Первая секция ограды' }, { type: 'flag', flag: 'ditch_fence_b', label: 'Вторая секция ограды' }, { type: 'flag', flag: 'pocket_drained', label: 'Слив кармана (Рокси)' }] },
+      { id: 'p_service', skipIf: { not: { var: ['DRAIN_ROUTE', '==', 'service'] } }, text: 'Служебный сток: сними две решётки на нижней площадке (рычаг у Мегумина), Рокси промоет глину из выхода, затем откроет слив кармана.', target: 'spot:ledge_service_outlet',
+        objectives: [{ type: 'flag', flag: 'service_grate_a', label: 'Первая решётка' }, { type: 'flag', flag: 'service_grate_b', label: 'Вторая решётка' }, { type: 'flag', flag: 'service_flush', label: 'Промыть выход (Рокси: Tab, Q)' }, { type: 'flag', flag: 'pocket_drained', label: 'Слив кармана (Рокси)' }] },
+      { id: 'brace', text: 'Поставь две опоры под косую плиту (крепления Гаррета), затем проверь их под малой нагрузкой.', target: 'spot:ledge_slab_edge',
+        objectives: [{ type: 'flag', flag: 'ledge_brace_a', label: 'Первая опора' }, { type: 'flag', flag: 'ledge_brace_b', label: 'Вторая опора' }, { type: 'flag', flag: 'D06_DONE', label: 'Проверка под нагрузкой' }],
+        hint: 'После проверки у костра рабочей площадки можно передохнуть: силы восстановятся.' },
+      { id: 'method', text: 'Рабочие вышли за шесты. Передохни у костра, если нужно, и поговори с Нэрой: выберите способ расчистки.', target: 'npc:nera', objectives: [{ type: 'talk', label: 'Поговорить с Нэрой' }] },
+      { id: 'p_expl', skipIf: { not: { var: ['CLEARING_METHOD', '==', 'explosion'] } }, text: 'Взрыв: Рокси держит отвод. Встань в подготовленной зоне и ударь Взрывом (Мегумин, Q) по валуну с белой отметкой.', target: 'spot:ledge_white_mark',
+        objectives: [{ type: 'flag', flag: 'ledge_main_cleared', label: 'Взрыв по белой отметке' }],
+        hint: 'Неподготовленный удар по склону дорогу не откроет. Взрыв (Q) берёт обычную ману и вызывает истощение.' },
+      { id: 'p_winch', skipIf: { not: { var: ['CLEARING_METHOD', '==', 'winch'] } }, text: 'Лебёдка: чередуй обороты рукояти (Мегумин) и водяной поток по нижнему краю плиты (Рокси, Tab, Q), затем уходи за шесты.', target: 'spot:ledge_slab_edge',
+        objectives: [{ type: 'flag', flag: 'winch_turn_a', label: 'Два оборота рукояти' }, { type: 'flag', flag: 'winch_flow_a', label: 'Поток по краю плиты (Рокси)' }, { type: 'flag', flag: 'winch_turn_b', label: 'Ещё два оборота' }, { type: 'flag', flag: 'winch_flow_b', label: 'Поток по краю плиты (Рокси)' }, { type: 'flag', flag: 'winch_safe', label: 'Отойти за шесты' }] },
+      { id: 'g_off', skipIf: { not: { v: 'ROAD_POST_DISABLED' } }, manual: true, text: 'Пост отключён: стражи стоят. Поговори с Нэрой.', target: 'npc:nera', objectives: [{ type: 'talk', label: 'Поговорить с Нэрой' }], onStart: [{ scene: 'D08a' }] },
+      { id: 'g_fight', skipIf: { v: 'ROAD_POST_DISABLED' }, manual: true, text: 'Старый пост проснулся: двое каменных стражей выходят к отметкам в проходе. Останови их, не отходя от отвода.', target: 'spot:road_guard_a',
+        objectives: [{ type: 'flag', flag: 'wd_road_guards', label: 'Каменные стражи' }], onStart: [{ wave: 'road_guards' }],
+        hint: 'При истощении Мегумин вступает Рокси (Tab меняет героиню вручную). Стражи сначала встают на отметки и поднимают руки.' },
+      { id: 'cleanup', text: 'Помоги бригаде убрать остатки: сними цепь с валуна, перенеси три отмеченных обломка с рабочей полосы, поправь настил у края.', target: 'spot:ledge_pass',
+        objectives: [{ type: 'flag', flag: 'ledge_chain_off', label: 'Снять цепь' }, { type: 'flag', flag: 'ledge_debris_a', label: 'Первый обломок' }, { type: 'flag', flag: 'ledge_debris_b', label: 'Второй обломок' }, { type: 'flag', flag: 'ledge_debris_c', label: 'Третий обломок' }, { type: 'flag', flag: 'ledge_deck_fixed', label: 'Поправить настил' }] },
+      { id: 'carts_empty', text: 'Дай знак колоколом у шестов: пустая телега проверит проход.', target: 'spot:ledge_safe', objectives: [{ type: 'flag', flag: 'cart_empty_ok', label: 'Пустая телега прошла' }], onStart: [{ setFlag: 'ledge_barrier_open' }] },
+      { id: 'carts_loaded', text: 'Теперь гружёная телега: дай знак и посмотри, как она пройдёт.', target: 'spot:ledge_safe', objectives: [{ type: 'flag', flag: 'cart_loaded_ok', label: 'Гружёная телега прошла' }] },
+      { id: 'act', text: 'Поговори с Нэрой: акт открытия дороги и награда отряду.', target: 'npc:nera', objectives: [{ type: 'talk', label: 'Получить акт' }], onDone: [{ eris: 200 }, { notify: 'Дорога к Айнстрею открыта. Награда отряду: 200 эрис. Путь назад остаётся свободным.' }] },
+      { id: 'view', manual: true, text: 'Иди по тракту к Меловым склонам: с обзорной площадки видно стены столицы.', target: 'spot:chalk_view', objectives: [{ type: 'reach', spot: 'chalk_view', r: 26, label: 'Дойти до обзорной площадки' }] },
+      { id: 'fork', text: 'У развилки на тракте Лисса Рейн ждёт путников. Поговори с ней.', target: 'npc:lissa', objectives: [{ type: 'talk', label: 'Поговорить с Лиссой' }] },
+      { id: 'mills_talk', text: 'Белые мельницы: Лисса просит помочь остановить колесо на минуту.', target: 'npc:lissa', objectives: [{ type: 'talk', label: 'Поговорить с Лиссой' }] },
+      { id: 'mills_task', text: 'Держи рычаг колеса (Мегумин), затем достань обломок щипцами.', target: 'spot:mill_wheel',
+        objectives: [{ type: 'flag', flag: 'wheel_stopped', label: 'Остановить колесо (рычаг)' }, { type: 'flag', flag: 'wheel_debris', label: 'Достать обломок' }] },
+      { id: 'dam', text: 'Южная дамба: Лисса ждёт у моста перед постом.', target: 'npc:lissa', objectives: [{ type: 'talk', label: 'Поговорить с Лиссой' }] },
+    ],
+    rewards: { xp: 400, flags: ['ainstrey_road_done'] },
     next: 'ch6_relay',
   }),
 
@@ -337,7 +388,7 @@ export const QUESTS = Object.fromEntries([
   // CHAPTER 6 — beyond the ridge
   // =====================================================================================
   Q('ch6_relay', {
-    title: 'По другую сторону хребта', category: 'story', chapter: 6, giver: 'tobias', requires: { quest: 'ch5_crypt', status: 'done' },
+    title: 'По другую сторону хребта', category: 'story', chapter: 6, giver: 'tobias', requires: { quest: 'ainstrey_road', status: 'done' },
     summary: 'Вейр отправил за отчётом на восток. Тобиас знает дорогу к восточному посту Астрариума. На посту остались двое работников.',
     stages: [
       { id: 'tobias', text: 'Поговори с Тобиасом о восточной дороге и перевале.', target: 'npc:tobias', objectives: [{ type: 'talk', label: 'Поговорить с Тобиасом' }] },

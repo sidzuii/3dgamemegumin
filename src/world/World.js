@@ -15,6 +15,7 @@ import { makeNoiseTexture, makePavingTextures } from './textures.js';
 import { buildTown } from './build/Town.js';
 import { buildCountryside } from './build/Countryside.js';
 import { buildAinstrey } from './build/Ainstrey.js';
+import { buildLedge } from './build/AinstreyLedge.js';
 import { buildDungeon, DUNGEON } from './build/Dungeon.js';
 import { buildCrypt } from './build/Crypt.js';
 import { buildRelay } from './build/Relay.js';
@@ -92,6 +93,7 @@ export class World {
     this.dummies = [];
     this.updatables = [];
     this.footprints = []; // for the map: { x, z, w, d, rot, kind }
+    this.keepClear = []; // no plants here (the Stone Ledge work area): { x, z, r }
     this.lightSources = []; // { pos, color, intensity, distance, night, flicker }
     this.chimneys = [];
     this.gatherNodes = []; // filled by the gathering system
@@ -300,6 +302,7 @@ export class World {
     buildTown(this);
     buildCountryside(this);
     buildAinstrey(this);
+    buildLedge(this);
     buildDungeon(this);
     buildCrypt(this);
     buildRelay(this);
@@ -780,6 +783,7 @@ export class World {
     for (const R of REGIONS) {
       if (R.keepClear && Math.hypot(x - R.center.x, z - R.center.z) < R.keepClear) return false;
     }
+    for (const K of this.keepClear) if (Math.hypot(x - K.x, z - K.z) < K.r + pad) return false;
     return true;
   }
 
