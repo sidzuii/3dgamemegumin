@@ -209,7 +209,7 @@ export class ExplosionFX {
   }
 
   _rate(type, p, rate, dt, opts) {
-    let a = (this._acc[type] || 0) + rate * dt;
+    let a = (this._acc[type] || 0) + rate * dt * this.game.vfx.density;
     while (a >= 1) {
       a -= 1;
       this.game.vfx.emit(type, p, opts);

@@ -99,7 +99,7 @@ export class BreachFX {
 
   _rate(type, p, rate, dt, opts) {
     const k = type + (opts ? '1' : '');
-    let a = (this._acc[k] || 0) + rate * dt;
+    let a = (this._acc[k] || 0) + rate * dt * this.game.vfx.density;
     while (a >= 1) {
       a -= 1;
       this.game.vfx.emit(type, p, opts);
