@@ -211,7 +211,7 @@ export class MeguminModel {
    */
   setupAnimation(lib) {
     const scene = this.model;
-    this.animator = new CharacterAnimator({ mixerRoot: scene, rigRoot: scene, anim: this.anim, retarget: 'rest', uniforms: this.uniforms, setWind: (a) => this.setWind(a), setCapeWind: (w) => this.setCapeWind(w), holdStaff: (w, dt) => this.holdStaff(w, dt) }, lib, 'mixamo');
+    this.animator = new CharacterAnimator({ mixerRoot: scene, rigRoot: scene, anim: this.anim, retarget: 'rest', uniforms: this.uniforms, setWind: (a) => this.setWind(a), setCapeWind: (w) => this.setCapeWind(w), holdStaff: (w, dt, guard) => this.holdStaff(w, dt, guard) }, lib, 'mixamo');
     // Idle pose at t=0 as the reference for props.
     this.animator.update(1 / 60, { speed: 0, localVel: new THREE.Vector3(), localAccel: new THREE.Vector3(), turnRate: 0, grounded: true });
     scene.updateMatrixWorld(true);
