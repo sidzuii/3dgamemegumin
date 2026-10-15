@@ -1,0 +1,610 @@
+{
+  "version": "0.1",
+  "status": "untested_design_prototype",
+  "camera": "third_person_3d",
+  "units": {
+    "time": "seconds",
+    "distance": "meters",
+    "angles": "degrees",
+    "A": "physical_staff_power",
+    "S": "spell_power"
+  },
+  "baseline": {
+    "A": 100,
+    "S": 100,
+    "megumin_hp": 620,
+    "roxy_hp": 700,
+    "mana_per_hero": 100,
+    "stamina_per_hero": 100
+  },
+  "resource_regeneration": {
+    "active_mana": 2,
+    "inactive_mana": 1,
+    "out_of_combat_mana": 8,
+    "mana_delay": 1,
+    "active_stamina": 24,
+    "inactive_stamina": 12,
+    "stamina_delay": 0.7,
+    "regen_during_guard": false,
+    "regen_during_cast": false
+  },
+  "defense": {
+    "guard_arc": 120,
+    "melee_block_reduction": 0.65,
+    "projectile_block_reduction": 0.4,
+    "light_stamina": 12,
+    "medium_stamina": 25,
+    "guard_break_lock": 0.7,
+    "guard_break_damage_fraction": 0.7
+  },
+  "dodge": {
+    "stamina": 22,
+    "total": 0.62,
+    "distance": 2.8,
+    "invulnerability": [
+      0.1,
+      0.28
+    ],
+    "movement_cancel": 0.42,
+    "next_dodge": 0.62
+  },
+  "movement": {
+    "walk": 4.2,
+    "sprint": 6.2,
+    "sprint_stamina_per_second": 12,
+    "lock_target_range": 22,
+    "melee_aim_assist_max": 25
+  },
+  "switching": {
+    "cooldown_from_success": 1.2,
+    "camera_transition": 0.18,
+    "teleport": false,
+    "invulnerability": false,
+    "reset_resources": false,
+    "reset_cooldowns": false
+  },
+  "strong_cast": {
+    "reserve_on_confirm": true,
+    "spend_on_release": true,
+    "refund_before_release": true,
+    "retry_delay_on_cancel": 1.5,
+    "retry_delay_scope": "cancelled_ability"
+  },
+  "wet": {
+    "duration": 6,
+    "stacks": false,
+    "refresh": true,
+    "next_explosive_damage_multiplier": 1.1,
+    "consume_on_explosive_hit": true,
+    "secondary_explosion": false
+  },
+  "stagger": {
+    "thresholds": {
+      "light": 60,
+      "medium": 120,
+      "heavy": 200,
+      "boss": 300
+    },
+    "reactions": {
+      "light": 0.65,
+      "medium": 1,
+      "heavy": 1.2,
+      "boss": 1.6
+    },
+    "immunity_after_reaction": 3,
+    "regen_delay": 3,
+    "regen": 20
+  },
+  "exhaustion": {
+    "owner": "megumin",
+    "trigger": "M_R",
+    "duration_from_release": 12,
+    "recovery_lock": 0.8,
+    "movement": 2.5,
+    "physical_damage_multiplier": 0.7,
+    "mana_regen": false,
+    "medium_skills": false,
+    "strong_spells": false,
+    "auto_switch": true
+  },
+  "attacks": [
+    {
+      "id": "M_L1",
+      "owner": "megumin",
+      "category": "basic_melee",
+      "startup": 0.18,
+      "active": 0.08,
+      "recovery": 0.2,
+      "total": 0.46,
+      "damage": {
+        "A": 0.28,
+        "S": 0
+      },
+      "cost": {
+        "mana": 0,
+        "stamina": 6
+      },
+      "poise": 10,
+      "range": 1.8,
+      "arc": 100,
+      "cancel_at": 0.3,
+      "backstep": 0,
+      "cost_at": "start",
+      "hit_at": "weapon_contact",
+      "once_per_target": true
+    },
+    {
+      "id": "M_L2",
+      "owner": "megumin",
+      "category": "basic_melee",
+      "startup": 0.2,
+      "active": 0.1,
+      "recovery": 0.22,
+      "total": 0.52,
+      "damage": {
+        "A": 0.34,
+        "S": 0
+      },
+      "cost": {
+        "mana": 0,
+        "stamina": 7
+      },
+      "poise": 12,
+      "range": 1.8,
+      "arc": 120,
+      "cancel_at": 0.34,
+      "backstep": 0,
+      "cost_at": "start",
+      "hit_at": "weapon_contact",
+      "once_per_target": true
+    },
+    {
+      "id": "M_L3",
+      "owner": "megumin",
+      "category": "basic_melee",
+      "startup": 0.28,
+      "active": 0.12,
+      "recovery": 0.32,
+      "total": 0.72,
+      "damage": {
+        "A": 0.48,
+        "S": 0
+      },
+      "cost": {
+        "mana": 0,
+        "stamina": 10
+      },
+      "poise": 18,
+      "range": 1.8,
+      "arc": 40,
+      "cancel_at": 0.48,
+      "backstep": 0,
+      "cost_at": "start",
+      "hit_at": "weapon_contact",
+      "once_per_target": true
+    },
+    {
+      "id": "R_L1",
+      "owner": "roxy",
+      "category": "basic_melee",
+      "startup": 0.17,
+      "active": 0.07,
+      "recovery": 0.16,
+      "total": 0.4,
+      "damage": {
+        "A": 0.24,
+        "S": 0
+      },
+      "cost": {
+        "mana": 0,
+        "stamina": 5
+      },
+      "poise": 8,
+      "range": 1.7,
+      "arc": 90,
+      "cancel_at": 0.28,
+      "backstep": 0,
+      "cost_at": "start",
+      "hit_at": "weapon_contact",
+      "once_per_target": true
+    },
+    {
+      "id": "R_L2",
+      "owner": "roxy",
+      "category": "basic_melee",
+      "startup": 0.18,
+      "active": 0.08,
+      "recovery": 0.2,
+      "total": 0.46,
+      "damage": {
+        "A": 0.28,
+        "S": 0
+      },
+      "cost": {
+        "mana": 0,
+        "stamina": 6
+      },
+      "poise": 10,
+      "range": 1.7,
+      "arc": 100,
+      "cancel_at": 0.31,
+      "backstep": 0,
+      "cost_at": "start",
+      "hit_at": "weapon_contact",
+      "once_per_target": true
+    },
+    {
+      "id": "R_L3",
+      "owner": "roxy",
+      "category": "basic_melee",
+      "startup": 0.22,
+      "active": 0.1,
+      "recovery": 0.22,
+      "total": 0.54,
+      "damage": {
+        "A": 0.36,
+        "S": 0
+      },
+      "cost": {
+        "mana": 0,
+        "stamina": 8
+      },
+      "poise": 14,
+      "range": 1.7,
+      "arc": 35,
+      "cancel_at": 0.4,
+      "backstep": 0.35,
+      "cost_at": "start",
+      "hit_at": "weapon_contact",
+      "once_per_target": true
+    }
+  ],
+  "abilities": [
+    {
+      "id": "M_Q",
+      "owner": "megumin",
+      "name": "Проламывающий выпад",
+      "category": "medium",
+      "cost": {
+        "mana": 0,
+        "stamina": 22
+      },
+      "cost_at": "start",
+      "cooldown": 7,
+      "cooldown_at": "start",
+      "startup": 0.34,
+      "active": 0.12,
+      "recovery": 0.36,
+      "total": 0.82,
+      "cancel_early_until": 0.18,
+      "cancel_recovery_at": 0.62,
+      "damage": {
+        "A": 1.5,
+        "S": 0
+      },
+      "poise": 70,
+      "advance": 2.4,
+      "range_from_start": 4.2,
+      "arc": 35,
+      "hit_at": "weapon_contact",
+      "once_per_target": true,
+      "tags": [
+        "physical",
+        "melee"
+      ]
+    },
+    {
+      "id": "M_E",
+      "owner": "megumin",
+      "name": "Круговой отбив",
+      "category": "medium",
+      "cost": {
+        "mana": 0,
+        "stamina": 26
+      },
+      "cost_at": "start",
+      "cooldown": 9,
+      "cooldown_at": "start",
+      "startup": 0.3,
+      "active": 0.22,
+      "recovery": 0.43,
+      "total": 0.95,
+      "cancel_early_until": 0.16,
+      "cancel_recovery_at": 0.74,
+      "damage": {
+        "A": 1.15,
+        "S": 0
+      },
+      "poise": 55,
+      "range": 2.2,
+      "arc": 240,
+      "displacement": {
+        "light": 1.5,
+        "medium": 0.5,
+        "heavy": 0,
+        "boss": 0
+      },
+      "hit_at": "weapon_contact",
+      "once_per_target": true,
+      "tags": [
+        "physical",
+        "melee"
+      ]
+    },
+    {
+      "id": "M_R",
+      "owner": "megumin",
+      "name": "Explosion / Взрыв",
+      "category": "strong",
+      "cost": {
+        "mana": 100,
+        "stamina": 0
+      },
+      "minimum_mana": 100,
+      "cost_at": "release",
+      "cooldown": 60,
+      "cooldown_at": "release",
+      "startup": 2.4,
+      "release_at": 2.4,
+      "recovery": 0.8,
+      "total": 3.2,
+      "aim_move_until": 2,
+      "aim_point_speed": 4,
+      "caster_move_multiplier": 0,
+      "range_min": 8,
+      "range_max": 25,
+      "zones": [
+        {
+          "radius": 2.5,
+          "damage": {
+            "A": 0,
+            "S": 10
+          },
+          "poise": 240
+        },
+        {
+          "radius": 5.5,
+          "damage": {
+            "A": 0,
+            "S": 7
+          },
+          "poise": 160
+        }
+      ],
+      "zone_overlap": "highest_once",
+      "hit_at": "instant_burst_at_release",
+      "exhaustion": 12,
+      "once_per_target": true,
+      "tags": [
+        "magic",
+        "explosive",
+        "large_blast",
+        "story_demolition"
+      ]
+    },
+    {
+      "id": "M_F",
+      "owner": "megumin",
+      "name": "Алый пролом",
+      "category": "strong",
+      "cost": {
+        "mana": 45,
+        "stamina": 0
+      },
+      "cost_at": "release",
+      "cooldown": 18,
+      "cooldown_at": "release",
+      "startup": 1.1,
+      "release_at": 1.1,
+      "recovery": 0.45,
+      "total": 1.55,
+      "cancel_recovery_at": 1.3,
+      "aim_lock_at": 0.8,
+      "aim_rotation_speed": 60,
+      "caster_move_multiplier": 0.35,
+      "damage": {
+        "A": 0,
+        "S": 4.2
+      },
+      "poise": 120,
+      "length": 10,
+      "width": 1.8,
+      "wave_speed": 16,
+      "max_slope": 35,
+      "max_step": 0.6,
+      "hit_at": "wave_contact",
+      "once_per_target": true,
+      "tags": [
+        "magic",
+        "explosive",
+        "ground_wave"
+      ]
+    },
+    {
+      "id": "R_Q",
+      "owner": "roxy",
+      "name": "Водяной хлыст",
+      "category": "medium",
+      "cost": {
+        "mana": 8,
+        "stamina": 14
+      },
+      "cost_at": "start",
+      "cooldown": 7,
+      "cooldown_at": "start",
+      "startup": 0.3,
+      "active": 0.5,
+      "recovery": 0.25,
+      "total": 1.05,
+      "cancel_early_until": 0.16,
+      "cancel_recovery_at": 0.9,
+      "damage": {
+        "A": 0,
+        "S": 1.3
+      },
+      "poise": 40,
+      "range": 7,
+      "arc": 90,
+      "tip_max_speed": 20,
+      "pull_primary_target_only": true,
+      "pull": {
+        "light": 1,
+        "medium": 0.5,
+        "heavy": 0,
+        "boss": 0
+      },
+      "wet": 6,
+      "hit_at": "whip_contact",
+      "once_per_target": true,
+      "tags": [
+        "magic",
+        "water"
+      ]
+    },
+    {
+      "id": "R_E",
+      "owner": "roxy",
+      "name": "Встречный укол",
+      "category": "medium",
+      "cost": {
+        "mana": 4,
+        "stamina": 26
+      },
+      "cost_at": "start",
+      "cooldown": 6,
+      "cooldown_at": "start",
+      "startup": 0.38,
+      "active": 0.08,
+      "recovery": 0.34,
+      "total": 0.8,
+      "cancel_early_until": 0.08,
+      "cancel_recovery_at": 0.58,
+      "damage": {
+        "A": 0.75,
+        "S": 0.35
+      },
+      "counter_damage": {
+        "A": 1.2,
+        "S": 0.35
+      },
+      "poise": 35,
+      "counter_poise": 65,
+      "range": 2,
+      "arc": 35,
+      "parry_window": [
+        0.1,
+        0.24
+      ],
+      "parry_arc": 60,
+      "parry_target_types": [
+        "light_frontal_physical"
+      ],
+      "physical_fallback_when_mana_below": 4,
+      "fallback_mana_cost": 0,
+      "fallback_magic_damage": 0,
+      "wet_only_with_mana": 6,
+      "hit_at": "weapon_contact",
+      "once_per_target": true,
+      "tags": [
+        "physical",
+        "water_if_funded",
+        "counter"
+      ]
+    },
+    {
+      "id": "R_R",
+      "owner": "roxy",
+      "name": "Water Volley / Водяной залп",
+      "category": "strong",
+      "cost": {
+        "mana": 35,
+        "stamina": 0
+      },
+      "cost_at": "first_release",
+      "cooldown": 10,
+      "cooldown_at": "first_release",
+      "startup": 0.55,
+      "release_at": 0.55,
+      "emissions": [
+        0.55,
+        0.65,
+        0.75,
+        0.85,
+        0.95
+      ],
+      "recovery_after_last": 0.4,
+      "total": 1.35,
+      "cancel_recovery_at": 1.1,
+      "caster_move_multiplier": 0.35,
+      "projectiles": 5,
+      "damage_each": {
+        "A": 0,
+        "S": 0.65
+      },
+      "poise_each": 12,
+      "projectile_speed": 20,
+      "selection_range": 22,
+      "projectile_max_path": 24,
+      "projectile_life": 1.2,
+      "turn_speed": 100,
+      "retarget_on_death": false,
+      "wet": 6,
+      "hit_at": "projectile_collision",
+      "once_per_target_per_projectile": true,
+      "tags": [
+        "magic",
+        "water",
+        "homing"
+      ]
+    },
+    {
+      "id": "R_F",
+      "owner": "roxy",
+      "name": "Приливный обвал",
+      "category": "strong",
+      "cost": {
+        "mana": 55,
+        "stamina": 0
+      },
+      "cost_at": "release",
+      "cooldown": 24,
+      "cooldown_at": "release",
+      "startup": 1.35,
+      "release_at": 1.35,
+      "recovery": 0.5,
+      "total": 1.85,
+      "cancel_recovery_at": 1.7,
+      "caster_move_multiplier": 0.2,
+      "aim_lock_at": 1,
+      "aim_point_speed": 3,
+      "range": 14,
+      "radius": 4.5,
+      "damage": {
+        "A": 0,
+        "S": 4.6
+      },
+      "poise": 160,
+      "travel_formula": {
+        "base": 0.45,
+        "distance_divisor": 40
+      },
+      "wet": 6,
+      "displacement": {
+        "light": 1,
+        "medium": 0.4,
+        "heavy": 0,
+        "boss": 0
+      },
+      "decorative_wet_ground_life": 4,
+      "ground_dot": false,
+      "hit_at": "payload_arrival",
+      "once_per_target": true,
+      "tags": [
+        "magic",
+        "water",
+        "area"
+      ]
+    }
+  ],
+  "note": "Числа для ручного переноса в прототип. Файл не является готовой реализацией игры."
+}
