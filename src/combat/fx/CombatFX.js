@@ -78,7 +78,11 @@ export class CombatFX {
     on('tidal', (e) => this.water.onTidal(e, sim.heroes[e.hero]));
     on('tidal:impact', (e) => this.water.onTidalImpact(e));
     on('parry:window', (e) => this.water.onParryWindow(sim.heroes[e.hero], e.open, e.countered));
-    on('parry', (e) => this.water.onParry(e.hero, e.hit));
+    on('parry', (e) => {
+      this.water.onParry(e.hero, e.hit);
+      g.rpg?.events.emit('custom', { name: 'parry' });
+      g.rpg?.combatBark?.('CB_R004', e.hero);
+    });
 
     on('dodge', (e) => {
       const slot = this._slot(e.hero);
@@ -288,6 +292,12 @@ export class CombatFX {
     if (this._recoil && sim.time >= this._recoil.at) {
       this._slot(this._recoil.hero).anim.set('Slump', true);
       this._recoil = null;
+    }
+    // Guard pose flags for both heroines.
+    for (const id of ['megumin', 'roxy']) {
+      const h = sim.heroes[id];
+      const slot = this._slot(id);
+      if (slot?.present) slot.anim.ctx.guard = h.guarding && h.state === 'free' ? 1 : 0;
     }
     // Aim contours and the camera that closes in while aiming.
     this.aim.update(this.combat);

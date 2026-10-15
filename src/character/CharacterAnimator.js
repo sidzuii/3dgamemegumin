@@ -358,7 +358,9 @@ export class CharacterAnimator {
       else if (this.base === 'Loco') w = 1 - 0.2 * (tl.Walk || 0) - 0.3 * clamp((this.speed - 2.5) / 3, 0, 1);
       else if (this.base === 'JumpStart' || this.base === 'Fall' || this.base === 'Land') w = 0.85;
       else w = 0;
-      this.model.holdStaff(w, dt);
+      // Guard (RMB): the staff across the chest in both hands; the combat layer sets ctx.guard.
+      this.guardW = damp(this.guardW || 0, this.ctx.guard || 0, 14, dt);
+      this.model.holdStaff(w, dt, this.guardW);
     }
     this._levelHead(dt);
 

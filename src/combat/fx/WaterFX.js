@@ -198,7 +198,7 @@ export class WaterFX {
       _pts[i].y = origin.y + Math.sin(sN * Math.PI) * 0.22 * (1 - u * 0.6) - sN * 0.15;
       // Variable thickness: thin at the hand, a thick belly in the last third, a ragged tip.
       const belly = Math.sin(clamp((sN - 0.2) / 0.8, 0, 1) * Math.PI);
-      _wid[i] = (0.05 + 0.26 * belly * (0.75 + 0.25 * Math.sin(i * 2.7 + this.game.time * 30))) * fall;
+      _wid[i] = (0.1 + 0.4 * belly * (0.75 + 0.25 * Math.sin(i * 2.7 + this.game.time * 30))) * fall;
       _fade[i] = smoothstep(0, 0.12, sN) * fall;
     }
     this.ribbon.set(_pts, _wid, cam, _fade);
@@ -250,7 +250,8 @@ export class WaterFX {
       const rad = 0.25 + k * 0.85;
       this.prepR = rad;
       o.position.set(_p.x, _p.y + 1.55 + rad * 0.6, _p.z);
-      o.scale.set(rad, rad * (0.85 + 0.12 * Math.sin(this.game.time * 9)), rad);
+      const w = this.game.time * 7;
+      o.scale.set(rad * (1 + 0.1 * Math.sin(w)), rad * (0.82 + 0.1 * Math.sin(w * 1.3 + 1)), rad * (1 + 0.1 * Math.cos(w * 0.9)));
       // Several streams of different thickness flow into the mass.
       this._rate('waterTrail', _q.set(_p.x + (Math.random() - 0.5) * 3, _p.y - 0.8 + Math.random() * 1.5, _p.z + (Math.random() - 0.5) * 3), 40 + 160 * k, dt);
       this._rate('waterSplash', _q.set(o.position.x, o.position.y - rad * 0.8, o.position.z), 8 * k, dt, { scale: 0.4 });
@@ -267,7 +268,7 @@ export class WaterFX {
       if (a.hist.length > 14) a.hist.pop();
       a.head.position.set(pr.pos.x, pr.pos.y, pr.pos.z);
       a.head.lookAt(_p.set(pr.pos.x + pr.dir.x, pr.pos.y + pr.dir.y, pr.pos.z + pr.dir.z));
-      a.head.scale.set(0.11, 0.11, 0.3); // a thickened head
+      a.head.scale.set(0.15, 0.15, 0.44); // a thickened head
       for (let i = 0; i < a.tail.length; i++) {
         const h = a.hist[Math.min(a.hist.length - 1, (i + 1) * 2)];
         const t = a.tail[i];
@@ -275,9 +276,9 @@ export class WaterFX {
         t.visible = true;
         // A ragged short trail: drops that drift apart sideways and fall behind.
         t.position.set(h.x + Math.sin(i * 3.1 + pr.uid) * 0.05 * i, h.y - i * 0.01, h.z + Math.cos(i * 2.3 + pr.uid) * 0.05 * i);
-        t.scale.setScalar(0.075 * (1 - i / (a.tail.length + 1)));
+        t.scale.setScalar(0.105 * (1 - i / (a.tail.length + 1)));
       }
-      this._rate('waterTrail', a.head.position, 140, dt);
+      this._rate('waterTrail', a.head.position, 220, dt);
     }
     for (const [uid, a] of this.arrows) if (!live.has(uid)) this._free(a, uid);
   }
@@ -313,7 +314,8 @@ export class WaterFX {
       b.mesh.position.lerpVectors(b.from, b.to, smoothstep(0, 1, k)).setY(THREE.MathUtils.lerp(b.from.y + 1.5, b.to.y + 0.4, k) + arc);
       const stretch = 1 + 0.5 * k;
       const r = b.r0 * (1 - 0.15 * k);
-      b.mesh.scale.set(r / Math.sqrt(stretch), r * stretch, r / Math.sqrt(stretch));
+      const wob = 1 + 0.09 * Math.sin(b.t * 14);
+      b.mesh.scale.set((r / Math.sqrt(stretch)) * wob, r * stretch, (r / Math.sqrt(stretch)) / wob);
       this._rate('waterTrail', b.mesh.position, 120, dt);
       if (k >= 1) {
         b.mesh.visible = false;

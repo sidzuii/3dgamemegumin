@@ -274,6 +274,8 @@ export class CombatSim {
   availability(id, slot) {
     const hero = this.heroes[id];
     const spec = SPEC[SLOTS[id][slot]];
+    const locked = this.env.locked?.(id, spec.id);
+    if (locked) return locked;
     let why = hero.f.unavailable(spec.id, id === 'roxy' && spec.id === 'R_E' ? { manaCostOverride: 0 } : {});
     if (!why && spec.kind === 'medium' && spec.id === 'R_Q' && hero.f.freeMana < spec.cost.mana) why = `Нужно ${spec.cost.mana} маны`;
     if (!why && spec.tags.includes('explosive')) {

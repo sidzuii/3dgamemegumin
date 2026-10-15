@@ -254,6 +254,7 @@ export class MeguminModel {
     this.staff = staff;
     this.hold = new StaffHold(this.root, {
       arm: scene.getObjectByName('mixamorigRightArm'), fore: scene.getObjectByName('mixamorigRightForeArm'), hand,
+      left: { arm: scene.getObjectByName('mixamorigLeftArm'), fore: scene.getObjectByName('mixamorigLeftForeArm'), hand: scene.getObjectByName('mixamorigLeftHand') },
     }, grip);
     // The gem glows through the source's emissive mask; intensity is driven by spells.
     const wand = staff.material;
@@ -268,8 +269,8 @@ export class MeguminModel {
   }
 
   /** Staff-holding arm pose, weight 0..1 driven by the animator (0 during attacks). */
-  holdStaff(weight, dt) {
-    this.hold?.update(weight, dt);
+  holdStaff(weight, dt, guard = 0) {
+    this.hold?.update(weight, dt, guard);
   }
 
   /** Wind-blown blend shapes: 0 = hanging, 1 = fully blown back. */

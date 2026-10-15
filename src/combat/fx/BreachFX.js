@@ -61,11 +61,11 @@ export class BreachFX {
     const g = this.game;
     const slot = g.player.slots[ev.hero];
     slot.model.getGemWorldPosition(_p);
-    g.vfx.burst('sparks', _p, 30, { scale: 0.5 });
-    g.vfx.burst('fire', _p, 8, { scale: 0.3 });
-    this.light.intensity = 10 * this.fx.flashK;
-    this.fx.shake(0.18);
-    this.fx.flash(0.15, 0.2);
+    g.vfx.burst('sparks', _p, 16, { scale: 0.35 });
+    g.vfx.burst('fire', _p, 6, { scale: 0.28 });
+    this.light.intensity = 6 * this.fx.flashK;
+    this.fx.shake(0.16);
+    this.fx.flash(0.08, 0.2);
     g.audio?.play('explosion', { dist: 18, vol: 0.45 });
     this.prep = null;
     // A hit on a short line still reads: mark the stop point.
@@ -78,10 +78,12 @@ export class BreachFX {
     const pos = ev.pos;
     const y = g.world.groundAt(pos.x, pos.z, pos.y + 2);
     _p.set(pos.x + (Math.random() - 0.5) * 0.5, y + 0.1, pos.z + (Math.random() - 0.5) * 0.5);
-    g.vfx.add(new GroundFlash(g.world, _p, 1.3 + Math.random() * 0.4, 0.32, [2.8, 1.0, 0.25], 0.09));
-    g.vfx.burst('groundDust', _p, 5, { scale: 0.45 });
-    g.vfx.burst('fire', _p, 4, { scale: 0.32 });
-    g.vfx.burst('sparks', _p, 7, { scale: 0.3 });
+    // The first metres stay modest: they are right in front of the camera behind the shoulder.
+    const near = g.player.position.distanceTo(_p) < 2.4;
+    g.vfx.add(new GroundFlash(g.world, _p, near ? 0.9 : 1.2 + Math.random() * 0.4, 0.28, near ? [1.4, 0.55, 0.14] : [2.0, 0.75, 0.2], 0.09));
+    g.vfx.burst('groundDust', _p, near ? 3 : 5, { scale: 0.4 });
+    g.vfx.burst('fire', _p, near ? 1 : 3, { scale: 0.3 });
+    g.vfx.burst('sparks', _p, near ? 2 : 4, { scale: 0.22 });
     if (ev.dist % 3 === 0) g.vfx.burst('ember', _q.copy(_p).setY(y + 0.5), 3);
     if (ev.dist % 2 === 0) g.audio?.play('slam', { dist: g.player.position.distanceTo(_p), vol: 0.35 });
     this.fx.shake(0.015);
@@ -90,9 +92,9 @@ export class BreachFX {
   onHit(ev) {
     const g = this.game;
     ev.target.chest ? ev.target.chest(_p) : _p.set(ev.target.pos.x, ev.target.pos.y + 1, ev.target.pos.z);
-    g.vfx.burst('fire', _p, 16, { scale: 0.45 });
-    g.vfx.burst('sparks', _p, 22, { scale: 0.45 });
-    g.vfx.burst('smoke', _p, 4, { scale: 0.5 });
+    g.vfx.burst('fire', _p, 10, { scale: 0.4 });
+    g.vfx.burst('sparks', _p, 10, { scale: 0.3 });
+    g.vfx.burst('smoke', _p, 3, { scale: 0.45 });
   }
 
   _rate(type, p, rate, dt, opts) {

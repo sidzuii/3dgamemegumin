@@ -121,7 +121,7 @@ export class RoxyModel {
   setupAnimation(lib) {
     this.animator = new CharacterAnimator({
       mixerRoot: this.model, rigRoot: this.wrap, anim: this.anim, uniforms: this.uniforms,
-      holdStaff: (w, dt) => this.hold?.update(w, dt),
+      holdStaff: (w, dt, guard) => this.hold?.update(w, dt, guard),
     }, lib, 'cc');
     this.animator.update(1 / 60, { speed: 0, localVel: new THREE.Vector3(), localAccel: new THREE.Vector3(), turnRate: 0, grounded: true });
     this.wrap.updateMatrixWorld(true);
@@ -140,6 +140,7 @@ export class RoxyModel {
       this.staff = staff;
       this.hold = new StaffHold(this.root, {
         arm: m.getObjectByName('CC_Base_R_Upperarm'), fore: m.getObjectByName('CC_Base_R_Forearm'), hand,
+        left: { arm: m.getObjectByName('CC_Base_L_Upperarm'), fore: m.getObjectByName('CC_Base_L_Forearm'), hand: m.getObjectByName('CC_Base_L_Hand') },
       }, grip);
       staff.material = staff.material.clone();
       staff.material.emissive = new THREE.Color(0.2, 0.6, 1.4);

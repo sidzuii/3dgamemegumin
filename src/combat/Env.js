@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { lockedReason } from './unlocks.js';
 
 /**
  * The combat core's window to the game world (see the env contract in core/Sim.js): hostile targets, line of
@@ -37,8 +38,19 @@ class DummyTarget {
     this.hp = this.maxHp;
     const hit = res.hit;
     const big = hit.push?.blast || res.dmg >= 120;
-    this.d.blast({ x: hit.from?.x ?? this.pos.x, z: hit.from?.z ?? this.pos.z + 1 }, big ? (hit.push?.blast ? 10 : 2.2) : 0.9, big ? 14 : 8);
-    if (!hit.push?.blast) this.game?.rpg?.events.emit('custom', { name: 'dummy_hit' });
+    const fx = hit.from?.x ?? this.pos.x, fz = hit.from?.z ?? this.pos.z + 1;
+    if (big && !hit.push?.blast) {
+      // A strong hit knocks the dummy over: the blast centre sits just behind it, on the line from the attacker.
+      const dx = this.pos.x - fx, dz = this.pos.z - fz, l = Math.hypot(dx, dz) || 1;
+      this.d.blast({ x: this.pos.x - (dx / l) * 0.7, z: this.pos.z - (dz / l) * 0.7 }, 2.2, 14);
+    } else this.d.blast({ x: fx, z: fz }, big ? 10 : 0.9, big ? 14 : 8);
+    const ev = this.game?.rpg?.events;
+    if (!hit.push?.blast) ev?.emit('custom', { name: 'dummy_hit' });
+    // The lessons of Bran and Roxy count real hits of the right skill on the right dummies.
+    if (hit.id === 'M_F' && this.d.tag === 'lane') ev?.emit('custom', { name: 'breach_lane' });
+    if (hit.id === 'M_E') ev?.emit('custom', { name: 'sweep_dummy' });
+    if (hit.id === 'R_Q') ev?.emit('custom', { name: 'whip_dummy' });
+    if (hit.id === 'R_F') ev?.emit('custom', { name: 'tidal_dummy' });
   }
 }
 
@@ -128,6 +140,11 @@ export class GameEnv {
       prev = gy;
     }
     return { len: Math.max(0, len), reason };
+  }
+
+  /** A skill the story has not opened yet (Megumin's Выпад / Отбив / Алый пролом): the reason, or ''. */
+  locked(heroId, specId) {
+    return lockedReason(this.game.rpg, heroId, specId);
   }
 
   /** Story / zone rules for a spell (explosive tags). */

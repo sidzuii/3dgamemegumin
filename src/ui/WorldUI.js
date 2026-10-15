@@ -15,9 +15,13 @@ export class WorldUI {
     for (let i = 0; i < 14; i++) {
       const el = document.createElement('div');
       el.className = 'ehp';
-      el.innerHTML = '<div class="ehp-trail"></div><div class="ehp-fill"></div>';
+      // Health (with the damage trail), a thin stability bar under it, and small status marks: wet, protected, heavy.
+      el.innerHTML = '<div class="ehp-track"><div class="ehp-trail"></div><div class="ehp-fill"></div></div><div class="ehp-poise"><i></i></div><span class="ehp-icons"></span>';
       this.root.appendChild(el);
-      this.bars.push({ el, fill: el.lastChild, trail: el.firstChild, enemy: null, trailV: 1 });
+      this.bars.push({
+        el, fill: el.querySelector('.ehp-fill'), trail: el.querySelector('.ehp-trail'), poise: el.querySelector('.ehp-poise i'),
+        poiseWrap: el.querySelector('.ehp-poise'), icons: el.querySelector('.ehp-icons'), enemy: null, trailV: 1, iconText: '',
+      });
     }
     this.numbers = [];
     for (let i = 0; i < 28; i++) {
@@ -112,6 +116,17 @@ export class WorldUI {
       b.el.style.transform = `translate(${s.x}px, ${s.y}px) translate(-50%, -100%) scale(${scale.toFixed(2)})`;
       b.fill.style.transform = `scaleX(${f.toFixed(3)})`;
       b.trail.style.transform = `scaleX(${b.trailV.toFixed(3)})`;
+      // Stability: fills back up; protected after a break (the shield mark); a gold flash while staggered.
+      const po = e.poise;
+      if (po) {
+        b.poise.style.transform = `scaleX(${(po.reacting ? 1 : po.protected ? 0 : po.fraction).toFixed(3)})`;
+        b.poiseWrap.className = 'ehp-poise' + (po.reacting ? ' broken' : po.protected ? ' prot' : '');
+      }
+      const icons = (e.wet > 0 ? '💧' : '') + (po?.protected && !po.reacting ? '🛡' : '') + (e.tier === 'heavy' || e.tier === 'boss' ? '▲' : e.tier === 'medium' ? '◆' : '');
+      if (icons !== b.iconText) {
+        b.iconText = icons;
+        b.icons.textContent = icons;
+      }
     }
     // --- damage numbers ---
     for (const n of this.numbers) {

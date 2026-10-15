@@ -29,6 +29,7 @@ export class QuestManager {
     ev.on('buy', (e) => this._count('buy', (o) => (!o.shop || o.shop === e.shop) && (!o.item || o.item === e.item)));
     ev.on('region', (e) => this._count('reach', (o) => o.region === e.id));
     ev.on('explosion', (e) => this._count('explosion', (o) => {
+      if (!e.tags?.includes('story_demolition')) return false; // only the Explosion counts; Crimson Breach does not replace it
       const s = rpg.spotPos(o.spot);
       return s && Math.hypot(e.pos.x - s.x, e.pos.z - s.z) < (o.r ?? 12);
     }));

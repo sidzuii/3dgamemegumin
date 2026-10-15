@@ -137,11 +137,12 @@ export class ExplosionFX {
     this.active = null;
     const R = ev.radius;
     g.audio?.play('explosion', { dist: g.player.position.distanceTo(T) * 0.5 });
-    vfx.add(new CoreFlash(_v.copy(T).add(_v2.set(0, 1.5, 0)).clone(), R * 1.2));
-    vfx.add(new Fireball(T.clone(), R * 1.3));
-    this.shock = vfx.add(new Shockwave(T, 24, 1.0));
-    vfx.add(new Shockwave(T, 12, 0.6, [2.2, 1.3, 0.55]));
-    vfx.add(new DustWall(T, 18, 1.5));
+    const dist = g.player.position.distanceTo(T);
+    vfx.add(new CoreFlash(_v.copy(T).add(_v2.set(0, 1.5, 0)).clone(), R * 0.95));
+    vfx.add(new Fireball(T.clone(), R * 1.12));
+    this.shock = vfx.add(new Shockwave(T, 20, 0.9));
+    vfx.add(new Shockwave(T, 10, 0.55, [2.2, 1.3, 0.55]));
+    vfx.add(new DustWall(T, 15, 1.4));
     vfx.add(new Scorch(g.world, T, R * 1.5));
     vfx.add(new Debris(g.world, T, 24));
     vfx.burst('fire', T, 90, { scale: 1 });
@@ -149,7 +150,8 @@ export class ExplosionFX {
     vfx.burst('smoke', T, 60, { scale: 1 });
     vfx.burst('energyRing', T, 60);
     vfx.burst('groundDust', T, 60);
-    this.fx.flash(0.8, 0.5);
+    // Bright flash, but short and weaker when the blast is close to the camera (no long white-out).
+    this.fx.flash(0.25 + 0.5 * clamp((dist - 8) / 14, 0, 1), 0.5);
     const d = g.camera.position.distanceTo(T);
     this.fx.shake(clamp(1.1 - d / 60, 0.4, 0.9));
     g.world.grass.triggerBlast(T.x, T.z);

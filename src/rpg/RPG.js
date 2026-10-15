@@ -70,9 +70,17 @@ export class RPG {
         else this.setFlag('ritual_sector_hit');
       }
     });
+    // The first delivered contract opens the sweep (the short exercise at Bran's dummies).
+    this.events.on('custom', (e) => {
+      if (e.name === 'contract_done' && !this.state.flags.skill_M_E) {
+        this.setFlag('skill_M_E');
+        this.notify('info', 'Открыт Круговой отбив (E): широкая дуга 240°, 26 выносливости. Потренируйся на манекенах у Брана.');
+      }
+    });
     this.events.on('volley', (e) => { this._volleyStory(e); this._combatBark('V02_001', 0.35, 6); });
-    this.events.on('explosion', () => this._combatBark('V01_003', 0.5, 8));
+    this.events.on('explosion', (e) => { if (e.kind === 'explosion') this._combatBark('V01_003', 0.5, 8); });
     this.events.on('explosion', (e) => {
+      if (!e.tags?.includes('story_demolition')) return; // directed story blasts need the big Explosion
       for (const t of STORY_BLASTS) {
         const s = this.spotPos(t.spot);
         if (s && !this.state.flags[t.flag] && check(this, t.when) && Math.hypot(e.pos.x - s.x, e.pos.z - s.z) <= t.r) this.setFlag(t.flag);

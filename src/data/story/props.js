@@ -274,6 +274,8 @@ export const STORY_VOLLEY = [
 ];
 
 export const STORY_WAVES = {
+  // CB02: a training goblin with a readable light blow for the counter poke.
+  cb02_goblin: { spot: 'training_center', camp: 'cb02_goblin', enemies: [['goblin', 7, 3]], onClear: [] },
   relay_watch: { spot: 'relay_watch', camp: 'relay_watch', enemies: [['watcher', 0, 0]], onClear: [{ setFlag: 'relay_watch_dead' }] },
   relay_panel: {
     spot: 'relay_panel', camp: 'relay_wave_c6', enemies: [['guardian', -6, 2], ['guardian', 6, 2], ['watcher', 0, -4]],

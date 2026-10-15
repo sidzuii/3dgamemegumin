@@ -190,11 +190,26 @@ export class StaffHold {
     this.axisLocal = grip.axisLocal.clone();
     this.palmLocal = grip.palmLocal.clone();
     this.weight = 0;
+    this.leftBones = bones.left || null; // the other arm (guard: both hands on the staff)
+    this.guardW = 0;
     // Hand target relative to the shoulder (outward, down, forward) in arm lengths.
-    this.offset = new THREE.Vector3(-0.36, -0.64, 0.34);
-    this.up = new THREE.Vector3(-0.04, 1, 0.06).normalize(); // staff direction (model space)
-    this.palmDir = new THREE.Vector3(1, 0, 0.25).normalize(); // palm faces the body
-    this.pole = new THREE.Vector3(-0.35, -0.6, -1).normalize(); // elbow back and out
+    this.carry = {
+      offset: new THREE.Vector3(-0.36, -0.64, 0.34),
+      up: new THREE.Vector3(-0.04, 1, 0.06).normalize(), // staff direction (model space)
+      palmDir: new THREE.Vector3(1, 0, 0.25).normalize(), // palm faces the body
+      pole: new THREE.Vector3(-0.35, -0.6, -1).normalize(), // elbow back and out
+    };
+    // Guard: the staff lies across the chest in front of the body, tilted a little, held low-and-wide in both hands.
+    this.guard = {
+      offset: new THREE.Vector3(0.12, -0.36, 0.62),
+      up: new THREE.Vector3(0.93, 0.34, 0.14).normalize(),
+      palmDir: new THREE.Vector3(0, -0.5, 1).normalize(),
+      pole: new THREE.Vector3(-0.6, -0.5, -0.4).normalize(),
+    };
+    this.offset = this.carry.offset.clone();
+    this.up = this.carry.up.clone();
+    this.palmDir = this.carry.palmDir.clone();
+    this.pole = this.carry.pole.clone();
     this._t = new THREE.Vector3();
     this._e = new THREE.Vector3();
     this._rootQ = new THREE.Quaternion();
@@ -204,7 +219,14 @@ export class StaffHold {
   }
 
   /** Damp the blend weight towards `target` and apply. Call right after the mixer update. */
-  update(target, dt) {
+  update(target, dt, guard = 0) {
+    this.guardW += (guard - this.guardW) * (1 - Math.exp(-12 * dt));
+    const gw = this.guardW;
+    this.offset.lerpVectors(this.carry.offset, this.guard.offset, gw);
+    this.up.lerpVectors(this.carry.up, this.guard.up, gw).normalize();
+    this.palmDir.lerpVectors(this.carry.palmDir, this.guard.palmDir, gw).normalize();
+    this.pole.lerpVectors(this.carry.pole, this.guard.pole, gw).normalize();
+    target = Math.max(target, gw);
     this.weight += (target - this.weight) * (1 - Math.exp(-10 * dt));
     const w = this.weight;
     if (w < 0.01) return;
@@ -253,6 +275,16 @@ export class StaffHold {
     setWorld(arm, armW0.slerp(armW, w));
     setWorld(fore, foreW0.slerp(foreW, w));
     setWorld(hand, handW0.slerp(handW, w));
+    // Guard: the free hand takes the staff a little further along it (both hands keep their grip).
+    if (gw > 0.02 && this.leftBones) {
+      hand.updateWorldMatrix(true, false);
+      const axisW = _v1.copy(this.up).applyQuaternion(rootQ);
+      const hp = worldPos(hand, new THREE.Vector3());
+      const tgt = hp.addScaledVector(axisW, 0.46 * L / 0.62);
+      const polo = _v2.set(0.55, -0.55, -0.5).applyQuaternion(rootQ).normalize();
+      const lb = this.leftBones;
+      solveTwoBone(lb.arm, lb.fore, lb.hand, tgt, polo, gw);
+    }
   }
 }
 

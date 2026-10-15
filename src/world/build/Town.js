@@ -985,7 +985,30 @@ function trainingFieldBody(c) {
     W.scene.add(d.root);
     W.updatables.push(d);
   }
+  // Lesson lanes (docs/combat/04 §1-2): a straight lane of two dummies for Crimson Breach (the side posts stay), and
+  // a tight cluster of three for Tidal Collapse. `tag` tells the combat which exercise a hit counts for.
+  const lane = [[cx - 14, cz + 6], [cx - 14, cz + 2]];
+  for (const [x, z] of lane) {
+    const d = new TrainingDummy(W, W.xf(new THREE.Vector3(x, W.heightAt(x, z), z)));
+    d.tag = 'lane';
+    W.dummies.push(d);
+    W.dynamicColliders.push(d.collider);
+    W.scene.add(d.root);
+    W.updatables.push(d);
+    for (const s of [-1, 1]) new Frame(W, x + s * 2.3, W.heightAt(x + s * 2.3, z), z, 0).cyl(0.1, 1.5, 0, 0.75, 0, 'wood', { seg: 8, collide: false, tint: 0x6a4428, castShadow: false });
+  }
+  const cluster = [[cx + 15.2, cz + 5.5], [cx + 17.2, cz + 4.2], [cx + 14.6, cz + 3.4]];
+  for (const [x, z] of cluster) {
+    const d = new TrainingDummy(W, W.xf(new THREE.Vector3(x, W.heightAt(x, z), z)));
+    d.tag = 'cluster';
+    W.dummies.push(d);
+    W.dynamicColliders.push(d.collider);
+    W.scene.add(d.root);
+    W.updatables.push(d);
+  }
   new Frame(W, cx + 2, y, cz - 7, 0).cyl(6, 0.05, 0, -0.02, 0, 'stoneDark', { seg: 16, collide: false, castShadow: false, tint: 0x5a5048 });
+  W.spot('training_lane', new THREE.Vector3(cx - 14, W.heightAt(cx - 14, cz + 10.5), cz + 10.5), Math.PI);
+  W.spot('training_cluster', new THREE.Vector3(cx + 16, W.heightAt(cx + 16, cz + 4.4), cz + 4.4), 0);
   W.spot('training_field', new THREE.Vector3(cx - 6, y, cz + 10), Math.PI);
   W.trainingTarget = W.xf(new THREE.Vector3(cx + 2, y, cz - 7));
   W.spot('training_center', W.trainingTarget, 0);

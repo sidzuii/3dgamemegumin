@@ -225,7 +225,8 @@ export const ROUTES = [
 /** Enemy camps: { type, x, z, camp }. Spawned by the EnemyManager. */
 export const CAMPS = [
   // Forest edge on the glade trail — the first guild hunt.
-  ...[[-556, -24], [-562, -12], [-552, -6], [-566, -20]].map(([x, z]) => ({ type: 'goblin', x, z, camp: 'forest_scouts' })),
+  // The guild board hunt: two blade goblins and two throwers (docs/combat/04 §6).
+  ...[[-556, -24, 'goblin'], [-562, -12, 'goblin'], [-552, -6, 'goblin_thrower'], [-566, -20, 'goblin_thrower']].map(([x, z, type]) => ({ type, x, z, camp: 'forest_scouts' })),
   // Goblin den.
   ...[[-585, 222], [-595, 236], [-581, 238], [-599, 224], [-589, 214], [-575, 230], [-605, 242]].map(([x, z]) => ({ type: 'goblin', x, z, camp: 'goblin_den' })),
   ...[[-591, 228], [-601, 216]].map(([x, z]) => ({ type: 'puglin', x, z, camp: 'goblin_den' })),

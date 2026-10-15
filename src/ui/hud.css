@@ -220,12 +220,15 @@ kbd {
 
 /* ---------- world-anchored overlays ---------- */
 .world-ui { position: absolute; inset: 0; overflow: hidden; }
-.ehp {
-  position: absolute; left: 0; top: 0; display: none;
-  width: 64px; height: 6px; border-radius: 3px; overflow: hidden;
+.ehp { position: absolute; left: 0; top: 0; display: none; width: 64px; will-change: transform; }
+.ehp-track {
+  position: relative; width: 64px; height: 6px; border-radius: 3px; overflow: hidden;
   background: rgba(10, 6, 8, 0.7); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6);
-  will-change: transform;
 }
+.ehp-poise { margin-top: 2px; width: 64px; height: 3px; border-radius: 2px; overflow: hidden; background: rgba(10, 6, 8, 0.55); }
+.ehp-poise i { display: block; height: 100%; width: 100%; transform-origin: left center; background: linear-gradient(90deg, #9ab8d8, #e6f0ff); }
+.ehp-poise.broken i { background: #ffd24a; box-shadow: 0 0 6px #ffd24a; }
+.ehp-icons { position: absolute; left: 68px; top: -4px; font: 700 11px/1 var(--font); color: #e6d6b0; text-shadow: 0 1px 2px #000; white-space: nowrap; }
 .ehp-fill, .ehp-trail { position: absolute; inset: 0; transform-origin: left center; }
 .ehp-trail { background: rgba(255, 230, 200, 0.7); }
 .ehp-fill { background: linear-gradient(90deg, #d8323f, #ff6a5f); }
