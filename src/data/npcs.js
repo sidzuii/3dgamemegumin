@@ -12,6 +12,7 @@
  *  appear    condition for being in the world at all
  */
 import { clipText } from './story/index.js';
+import { CITIZENS } from './citizens.js';
 
 /** Stages of the road quest `ainstrey_road` in order (data/quests.js): schedules of the road crew follow them. */
 const ROAD_STAGES = ['luna', 'nera', 'edmund', 'sack', 'doren', 'survey', 'drain_talk', 'p_ditch', 'p_service', 'brace', 'method', 'p_expl', 'p_winch', 'g_off', 'g_fight', 'cleanup', 'carts_empty', 'carts_loaded', 'act', 'view', 'fork', 'mills_talk', 'mills_task', 'dam'];
@@ -706,4 +707,6 @@ export const NPCS = [
       { dialogue: 'roxy_waiting' },
     ],
   },
+  // ------------------------------------------------------------------ version 2.0: the people of the capital (ambient, data/citizens.js)
+  ...CITIZENS,
 ];

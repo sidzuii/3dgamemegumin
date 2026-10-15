@@ -7,6 +7,7 @@ import { pumpHouse } from './AinstreyPump.js';
 import { cityPlan, CLASS, PIERS, BRIDGES, GARDEN_ALLEYS, eastWallU, nearStreet, rectCorners, polyDist } from '../AinstreyCityPlan.js';
 import { buildPort } from './AinstreyPort.js';
 import { QuestProp } from '../Interactables.js';
+import { CITIZEN_SPOTS } from '../../data/citizens.js';
 import * as AIN from '../AinstreyPlan.js';
 
 /**
@@ -382,6 +383,16 @@ function capitalSpots(W, P) {
     stopAt('stop_market', -365, 700); stopAt('stop_steps', -33, 412); stopAt('stop_academy', 306, -470); stopAt('stop_port', 735, 246); stopAt('stop_garden', -33, -750);
     sp('stop_gate', -20, 1062, Math.PI);
     for (const [name, id] of [['stop_guild', 'guild_hall'], ['stop_archive', 'archive']]) { const k = kg(id); const [u, v] = lotFront(k, 6, 4.5); sp(name, u, v, k.rot + Math.PI); }
+  }
+  { // the ambient people: a point at each place that is not on a street (shifted along u until it is clear)
+    const byId = Object.fromEntries(P.squares.map((q) => [q.id, q]));
+    CITIZEN_SPOTS.forEach(([sq, du, dv], i) => {
+      const q = byId[sq];
+      if (!q) return;
+      let u = q.u + du, v = q.v + dv;
+      for (let k = 0; k < 6 && nearStreet(u, v, 3.5); k++) u += 5;
+      sp('ain_cit_' + (i + 1), u, v, (i * 1.7) % 6.28);
+    });
   }
   { // N02: the chimney of the inn from the yard
     const k = kg('inn_tavia'), c = Math.cos(k.rot), sn = Math.sin(k.rot), lx = k.w / 2 + 2.4, lz = -4;
