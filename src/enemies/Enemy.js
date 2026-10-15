@@ -76,6 +76,9 @@ export const TYPES = {
     name: 'Каменный страж', model: 'demon', scale: 0.9, hp: 900, defP: 40, defM: 35, tier: 'heavy', speed: 2.6, walk: 1.1, radius: 0.58, height: 2.1,
     aggro: 14, attackRange: 2.2, atk: A('heavy', 1.25, 0.22, 1.0, 200, { aoe: 2.4 }), lunge: 2,
     knock: 0.4, style: 'brute', tint: [0.55, 0.68, 0.85], hitRadius: 0.75, xp: 22,
+    // The armoured joint opens after a heavy swing and during a stagger (an amber glow): this is how the staff alone
+    // can take a guardian down (the ritual, docs/combat/04 §5): the defence drops and the blows land harder.
+    joint: { defP: 8, defM: 8, mul: 1.8 },
   },
   // The relay post's second kind of guard (chapter 6): lighter and quicker than the guardian — a rush and an open recovery.
   watcher: {
@@ -136,8 +139,8 @@ export class Enemy {
     this.wet = 0; // seconds of «Намокание» left
     this.staggerTime = 0;
     this.staggerKind = '';
-    this.defP = this.type.defP ?? 0;
-    this.defM = this.type.defM ?? 0;
+    this.baseDefP = this.type.defP ?? 0;
+    this.baseDefM = this.type.defM ?? 0;
     this.tier = this.type.tier || 'light';
     this.altAttack = false;
     this.windupTime = this.type.windup;
@@ -240,6 +243,21 @@ export class Enemy {
     return target.copy(this.position).add(_v2.set(0, this.type.height + 0.25, 0));
   }
 
+  /** An enemy with an armoured joint is open for the recovery of its swing and while it is staggered. */
+  get jointOpen() {
+    return !!this.type.joint && this.alive && (this.state === 'recover' || this.state === 'stagger' || this.poise?.reacting);
+  }
+  get defP() {
+    return this.jointOpen ? Math.min(this.baseDefP, this.type.joint.defP) : this.baseDefP;
+  }
+  get defM() {
+    return this.jointOpen ? Math.min(this.baseDefM, this.type.joint.defM) : this.baseDefM;
+  }
+  /** Damage multiplier read by the combat core at the moment of contact. */
+  get vulnMul() {
+    return this.jointOpen ? this.type.joint.mul : 1;
+  }
+
   setState(s) {
     // Leaving the attack (or being interrupted) frees the attack slot for the next enemy.
     if (s !== 'windup' && s !== 'strike' && s !== 'recover') this.game.enemies.releaseSlot?.(this);
@@ -259,6 +277,14 @@ export class Enemy {
     if (this.state === 'windup') {
       const k = this.stateTime / this.windupTime;
       this.flash = Math.max(this.flash, 0.15 + 0.6 * k + 0.12 * Math.sin(this.stateTime * 40));
+    }
+    if (this.type.joint && this.jointOpen) {
+      this.flash = Math.max(this.flash, 0.2 + 0.05 * Math.sin(this.stateTime * 14));
+      this.uniforms.uFlashColor.value.setRGB(1.0, 0.62, 0.2);
+      this._jointGlow = true;
+    } else if (this._jointGlow) {
+      this._jointGlow = false;
+      if (this.state !== 'windup') this.uniforms.uFlashColor.value.setRGB(1, 1, 1);
     }
     this.uniforms.uFlash.value = this.flash;
     if (this.wet > 0 && Math.random() < dt * 7) g.vfx.emit('waterTrail', this.chest(_v));

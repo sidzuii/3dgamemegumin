@@ -5,7 +5,7 @@ import { NUM } from './specs.js';
  *   damage = coefficient × (A or S) × 100 / (100 + defence) × element multiplier, physical and magical parts
  *   are computed apart, summed and rounded once; a successful positive hit deals at least 1.
  * A target is any object with: alive, hp, defP, defM, tier ('light'|'medium'|'heavy'|'boss'), poise (PoiseState),
- * wet (seconds left), elem (optional { water, fire }) and `onHit(result)`.
+ * wet (seconds left), elem (optional { water, fire }), vulnMul (optional: an open weak spot) and `onHit(result)`.
  */
 
 export const defenceFactor = (def) => 100 / (100 + (def || 0));
@@ -96,7 +96,7 @@ export function applyHit(target, hit) {
   }
   const dmg = computeHealth({
     coefA: hit.coefA, coefS: hit.coefS, A: hit.A, S: hit.S,
-    defP: target.defP, defM: target.defM, elem: target.elem?.[hit.element] ?? 1, wetMul, physMul: hit.physMul ?? 1,
+    defP: target.defP, defM: target.defM, elem: (target.elem?.[hit.element] ?? 1) * (target.vulnMul ?? 1), wetMul, physMul: hit.physMul ?? 1,
   });
   const dealt = Math.min(dmg, Math.max(0, target.hp));
   target.hp -= dmg;

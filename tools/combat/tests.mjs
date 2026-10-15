@@ -457,6 +457,19 @@ test('BT15 stability: protection after a break prevents an endless chain of stun
   near(q.value, 40, 1, '20/s after the delay');
 });
 
+test('BT19 guardian joint: an open joint (defence 8, ×1.8) lets the staff alone win the ritual', () => {
+  // Numbers of the Enemy type `guardian` (900 hp, 40 / 35 defence, joint { defP: 8, defM: 8, mul: 1.8 }).
+  const series = (defP, mul) => ['M_L1', 'M_L2', 'M_L3'].reduce((a, id) => a + computeHealth({ coefA: SPEC[id].coefA, A: 100, defP, elem: mul }), 0);
+  const closed = series(40, 1), open = series(8, 1.8);
+  ok(open > closed * 2.2, `open ${open} vs closed ${closed}`);
+  // A heavy swing leaves ~1.0 s open: two staff contacts (+ a lunge). Four guardians must fall in a reasonable number of windows.
+  const window = computeHealth({ coefA: SPEC.M_L1.coefA, A: 100, defP: 8, elem: 1.8 }) + computeHealth({ coefA: SPEC.M_L2.coefA, A: 100, defP: 8, elem: 1.8 }) + computeHealth({ coefA: SPEC.M_Q.coefA, A: 100, defP: 8, elem: 1.8 });
+  const windowsPer = Math.ceil(900 / window);
+  ok(windowsPer <= 6, `${windowsPer} open windows per guardian`);
+  // The stability still regenerates and reactions work the same on an armoured target (heavy tier: 200).
+  eq(new PoiseState('heavy').max, 200);
+});
+
 test('dodge: 22 stamina, 2.8 m, i-frames 0.10–0.28 s, next dodge only after 0.62 s', () => {
   const { sim, m } = world({ roxy: false });
   const h = 1 / 120;
