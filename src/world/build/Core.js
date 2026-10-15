@@ -177,6 +177,28 @@ export function buildCore(world) {
   const tm = new Frame(W, 4, 0, 2254.4, 0);
   tm.box(1.5, 1.5, 0.5, 0, 0, 0, 'stoneDark', { tint: TN.trim });
   tm.box(1.1, 0.7, 0.1, 0, 0.7, -0.3, 'rune', { collide: false });
+  // ---- chapter 10: the final operation — a second link console use, the two inflows, the limiter, the bypass, the exit lift
+  P('core_link2', 'Консоль связи', 'Назвать цель и проверить готовность', -3, 1.2, 2203.6);
+  P('core_ready_c', 'Консоль связи', 'Сообщить о готовности (разбор)', -3, 1.2, 2205);
+  P('core_ready_r', 'Консоль связи', 'Сообщить о готовности (малый контур)', -2.2, 1.2, 2205);
+  P('fpost_l', 'Левый боковой пост', 'Отключить питание поста', -14, 1.1, 2248.6);
+  P('fpost_r', 'Правый боковой пост', 'Отключить питание поста', 14, 1.1, 2248.6);
+  wheel(-14, 2210); wheel(14, 2210);
+  P('inflow_a', 'Внешний приток', 'Закрыть внешний приток (Рокси)', -14, 1.0, 2210);
+  P('inflow_b', 'Внешний приток', 'Закрыть внешний приток (Рокси)', 14, 1.0, 2210);
+  const lp = new Frame(W, 14.4, 0, 2226, 0);
+  lp.box(0.6, 1.6, 1.6, 0, 0, 0, 'stoneDark', { tint: TN.trim });
+  lp.box(0.1, 0.5, 0.9, -0.3, 1.0, 0, 'rune', { collide: false });
+  P('limiter_panel', 'Боковая панель', 'Поставить ограничитель Эдмунда (Мегумин)', 13.6, 1.1, 2226);
+  wheel(14, 2231);
+  P('bypass_valve', 'Обводной вентиль', 'Направить воду в обход усилителя (Рокси)', 14, 1.0, 2231);
+  const ep = new Frame(W, 6, 0, 2201, 0);
+  ep.cyl(1.2, 0.18, 0, 0, 0, 'stoneDark', { seg: 14, collide: false, tint: TN.trim });
+  ep.cyl(0.8, 0.1, 0, 0.18, 0, 'rune', { seg: 14, collide: false });
+  P('exit_shield', 'Заслон у подъёмника', 'Поставить водяной заслон (Рокси)', 4.4, 1.0, 2201);
+  P('exit_lift', 'Подъёмник', 'Подняться в город', 6, 0.8, 2201);
+  W.spot('core_white', new THREE.Vector3(0, 0, 2252), Math.PI);
+  W.spot('core_amp', new THREE.Vector3(14.6, 0, 2214), -Math.PI / 2);
   for (const [x, z] of [[-13, 2206], [13, 2206], [-13, 2232], [13, 2232], [-13, 2256], [13, 2256]]) sconce(W, x, z, TN.trim);
   for (const [x, z] of [[11, 2112], [11, 2132], [11, 2156], [11, 2176], [11, 2204], [-8, 2214], [8, 2214], [-8, 2238], [8, 2238], [0, 2250]]) W.addLightSource(new THREE.Vector3(x, 3.8, z), { color: 0xa8c8ff, intensity: 7, distance: 22, always: true });
 
@@ -192,7 +214,7 @@ export function buildCore(world) {
     }
     core.ampMat.emissive.set(F.core_hot && !F.core_cable_cut ? 0xff5a30 : 0x6fe0ff);
     core.ampMat.emissiveIntensity = F.core_amp ? 1.4 : 0.4;
-    for (const l of core.lamps) { const off = F['post_' + l.k + '_off']; l.mat.emissive.set(off ? 0x2a3a4a : 0xff7a30); l.mat.emissiveIntensity = off ? 0.2 : 1.2; }
+    for (const l of core.lamps) { const off = F['fpost_' + l.k + '_off'] || (F['post_' + l.k + '_off'] && !F.ch9_done); l.mat.emissive.set(off ? 0x2a3a4a : 0xff7a30); l.mat.emissiveIntensity = off ? 0.2 : 1.2; }
     core.capsule.visible = !F.capsule_open;
     core.body.visible = !F.veyr_out;
     core.projection.visible = !!F.core_projection && !F.capsule_open;

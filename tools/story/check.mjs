@@ -15,7 +15,7 @@ const args = process.argv.slice(2);
 const showMissing = args.includes('--missing');
 const prefixes = args.filter((a) => !a.startsWith('--'));
 const COND = new Set(['flag', 'notFlag', 'quest', 'status', 'stage', 'member', 'rank', 'item', 'n', 'eris', 'level', 'hour', 'rel', 'met', 'any', 'not', 'counter', 'roxy', 'day', 'canPromote', 'var', 'v', 'nv', 'seen']);
-const FX = new Set(['say', 'sayChain', 'ritualWave', 'wave', 'scene', 'startIfAvailable', 'setFlag', 'clearFlag', 'setVar', 'addVar', 'give', 'take', 'eris', 'xp', 'rel', 'startQuest', 'advance', 'completeQuest', 'openShop', 'openCraft', 'openBoard', 'joinGuild', 'promote', 'sleep', 'toast', 'notify', 'travel', 'spawn', 'met', 'counter', 'event', 'follow', 'escort', 'heal', 'readItem', 'read', 'refreshNPCs', 'unlockRoxy']);
+const FX = new Set(['say', 'sayChain', 'ritualWave', 'wave', 'scene', 'save', 'credits', 'startIfAvailable', 'setFlag', 'clearFlag', 'setVar', 'addVar', 'give', 'take', 'eris', 'xp', 'rel', 'startQuest', 'advance', 'completeQuest', 'openShop', 'openCraft', 'openBoard', 'joinGuild', 'promote', 'sleep', 'toast', 'notify', 'travel', 'spawn', 'met', 'counter', 'event', 'follow', 'escort', 'heal', 'readItem', 'read', 'refreshNPCs', 'unlockRoxy']);
 const errors = [];
 const err = (m) => errors.push(m);
 const used = new Map(); // clip id -> scene

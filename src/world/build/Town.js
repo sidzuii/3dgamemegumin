@@ -683,6 +683,13 @@ const centroid = (pts) => [pts.reduce((s, p) => s + p[0], 0) / pts.length, pts.r
 
 function places(rng) {
   W.group('square', { x: AXEL.x, z: AXEL.z }, (r) => fountainSquare(r), 'Площадь Фонтана');
+  // Chapter 10 (C33): the signpost outside the north gate where Megumin and Roxy decide to go on together.
+  W.group('north_sign', { x: P(-14, -119)[0], z: P(-14, -119)[1] }, () => {
+    const ns = G(-14, -119);
+    W.spot('north_sign', ns, 0);
+    W.addSign(ns, 0.3, ['Север: Астрариум и горы', 'Юг: Аксель']);
+    W.addInteractable(new QuestProp({ id: 'north_sign', name: 'Указатель северной дороги', prompt: 'Постоять у указателя', position: new THREE.Vector3(ns.x + 1.4, ns.y + 1.0, ns.z), shape: 'none' }));
+  }, 'Указатель у северных ворот');
   W.group('market_square', { x: P(56, 30)[0], z: P(56, 30)[1] }, (r) => marketSquare(r), 'Рыночная площадь');
   W.group('town_well', { x: P(58, -61)[0], z: P(58, -61)[1] }, (r) => {
     well(W, ...P(58, -61));
@@ -694,6 +701,24 @@ function places(rng) {
     H0.cyl(0.14, 0.12, 0.5, 0.2, 0, 'metal', { seg: 8, collide: false });
     W.spot('pump_gate_out', G(62.5, -55), Math.PI);
     W.addInteractable(new Door({ id: 'pump_gate', name: 'Люк цистерны', prompt: 'Спуститься к насосной', position: G(62.5, -57, 0.1), target: 'pump_in', shape: 'none' }));
+    // The pump yard after the final operation (chapter 10): two new hand pumps (the installation taken apart) or a sealed
+    // slab with an operator's booth (the small circuit kept). Shown by `world.pumpYard.sync` from ENDING once epilogue_on is set.
+    const yard = { closure: new THREE.Group(), rebuild: new THREE.Group() };
+    const mat = (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.8 });
+    const put = (grp, geo, c, p, y = 0) => { const m = new THREE.Mesh(geo, mat(c)); m.position.set(p.x, p.y + y, p.z); m.castShadow = true; grp.add(m); return m; };
+    for (const [u, v] of [[59.4, -53.6], [65.6, -53.6]]) {
+      const p = G(u, v);
+      put(yard.closure, new THREE.BoxGeometry(0.3, 1.1, 0.3), 0x3a4650, p, 0.55);
+      put(yard.closure, new THREE.BoxGeometry(0.9, 0.12, 0.12), 0x3a4650, new THREE.Vector3(p.x + 0.3, p.y, p.z), 1.0);
+    }
+    put(yard.rebuild, new THREE.BoxGeometry(4.4, 0.3, 3.4), 0xc8c2b4, G(62.5, -57), 0.12);
+    put(yard.rebuild, new THREE.BoxGeometry(2.2, 2.4, 2.0), 0x8a7458, G(67.5, -57), 1.2);
+    put(yard.rebuild, new THREE.BoxGeometry(2.6, 0.2, 2.4), 0x5a4a3a, G(67.5, -57), 2.5);
+    yard.closure.visible = yard.rebuild.visible = false;
+    W.addObject(yard.closure);
+    W.addObject(yard.rebuild);
+    W.pumpYard = { sync: (F, vars) => { yard.closure.visible = !!F.epilogue_on && vars.ENDING === 'closure'; yard.rebuild.visible = !!F.epilogue_on && vars.ENDING === 'rebuild'; } };
+    W.addSign(G(62.5, -50), Math.PI, ['Насосный двор: работы по плану гильдии. Вход со стороны колодца.']);
     tree(W, ...P(64, -66), 1.25, r, 'oak'); // the old linden (landmark)
     bench(W, F0(52, -56, 0.4), 0, 0, 0);
   }, 'Колодезная площадь');

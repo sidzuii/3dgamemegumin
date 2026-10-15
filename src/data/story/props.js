@@ -157,6 +157,19 @@ export const STORY_PROPS = {
     once: 'capsule_lock', scene: 'C25', vfx: 'magicPop',
   },
   core_terminal: { when: AT('ch9_capsule', 'decision'), scene: 'C26' },
+  // ---- chapter 10: the final operation, the epilogue, the north signpost
+  core_link2: { when: AT('ch10_finale', 'prep'), scene: 'C27' },
+  inflow_a: { when: AT('ch10_finale', 'c_inflow'), once: 'inflow_a', char: 'roxy', wrong: 'Притоки закрывает Рокси (Tab).', toast: 'Внешний приток закрыт: вода держится в желобе.', vfx: 'magicPop' },
+  inflow_b: { when: AT('ch10_finale', 'c_inflow'), once: 'inflow_b', char: 'roxy', wrong: 'Притоки закрывает Рокси (Tab).', toast: 'Второй внешний приток закрыт.', vfx: 'magicPop' },
+  limiter_panel: { when: AT('ch10_finale', 'r_limiter'), once: 'limiter_set', char: 'megumin', wrong: 'Ограничитель ставит Мегумин (Tab).', toast: 'Ограничитель Эдмунда встал в боковую панель: малая линия держит значение.', vfx: 'magicPop' },
+  bypass_valve: { when: AT('ch10_finale', 'r_bypass'), once: 'bypass_set', char: 'roxy', wrong: 'Обводной вентиль открывает Рокси (Tab).', toast: 'Вода направлена в обход усилителя: за аркой только проверочный насос.', vfx: 'magicPop' },
+  fpost_l: { when: AT('ch10_finale', 'f_wave'), once: 'fpost_l_off', toast: 'Питание левого поста снято: щит стража слабеет.', vfx: 'magicPop' },
+  fpost_r: { when: AT('ch10_finale', 'f_wave'), once: 'fpost_r_off', toast: 'Питание правого поста снято: щит стража слабеет.', vfx: 'magicPop' },
+  core_ready_c: { when: [AT('ch10_finale', 'f_ready'), { var: ['ENDING', '==', 'closure'] }], scene: 'C28a' },
+  core_ready_r: { when: [AT('ch10_finale', 'f_ready'), { var: ['ENDING', '==', 'rebuild'] }], scene: 'C29a' },
+  exit_shield: { when: AT('ch10_finale', 'f_exit'), once: 'exit_shield', char: 'roxy', wrong: 'Заслон ставит Рокси (Tab).', toast: 'Рокси держит водяной заслон: подъёмник свободен.', vfx: 'magicPop' },
+  exit_lift: { when: AT('ch10_finale', 'f_exit'), need: { flag: 'exit_shield' }, locked: 'Подъёмник закрыт: Рокси должна поставить водяной заслон (Tab).', once: 'exit_lift', do: [{ travel: 'pump_gate_out' }] },
+  north_sign: { when: AT('ch10_finale', 'finale'), scene: 'C33' },
 };
 
 export const STORY_VOLLEY = [
@@ -188,4 +201,5 @@ export const STORY_WAVES = {
   amp_guards: { spot: 'core_rack', camp: 'amp_wave', enemies: [['guardian', 4, 3], ['guardian', 4, -3]], onClear: [] },
   ctrl_wave1: { spot: 'core_arena', camp: 'ctrl_w1', enemies: [['guardian', -6, 0], ['watcher', 6, 2], ['imp', 0, -5]], onClear: [{ scene: 'C24b' }] },
   ctrl_wave2: { spot: 'core_arena', camp: 'ctrl_w2', enemies: [['guardian', 0, 5, { shield: ['post_l_off', 'post_r_off'] }], ['watcher', -6, -2]], onClear: [{ scene: 'C24c' }] },
+  final_wave: { spot: 'core_arena', camp: 'final_w', enemies: [['guardian', -5, 3, { shield: ['fpost_l_off', 'fpost_r_off'] }], ['guardian', 5, 3, { shield: ['fpost_l_off', 'fpost_r_off'] }], ['watcher', 0, -5]], onClear: [] },
 };

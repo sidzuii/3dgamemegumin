@@ -73,6 +73,7 @@ export const NPCS = [
     look: { skin: 0xffe0c8, hair: 0xe8d8a0, hairStyle: 'ponytail', top: 0xd88a6a, dress: true, dressLong: true, dressColor: 0x6a4a3a, apron: 0xf4f0e8, chestShape: true, height: 0.95 },
     schedule: [{ time: [0, 24], spot: 'shelter_lina', anim: 'idle', if: { any: [{ quest: 'ch8_city', stage: 'shelter' }, { quest: 'ch8_city', stage: 'route_res' }, { quest: 'ch8_city', stage: 'route_rep' }, { quest: 'ch8_city', stage: 'pump_talk' }, { quest: 'ch8_city', stage: 'pump_key' }, { quest: 'ch8_city', stage: 'p17_shield' }, { quest: 'ch8_city', stage: 'p17_hold' }, { quest: 'ch8_city', stage: 'p17_flow' }, { quest: 'ch8_city', stage: 'pump_out' }, { quest: 'ch8_city', stage: 'veyr' }, { quest: 'ch8_city', stage: 'deep' }, { quest: 'ch8_city', stage: 'p19_lever' }, { quest: 'ch8_city', stage: 'p19_latch' }, { quest: 'ch8_city', stage: 'p19_breaker' }, { quest: 'ch8_city', stage: 'deep_out' }, { quest: 'ch8_city', stage: 'link' }, { quest: 'ch8_city', stage: 'link_check' }] } }, { time: [6, 18], spot: 'bakery_counter', anim: 'shop' }, { time: [18, 21], spot: 'square_west', anim: 'idle' }, { time: [21, 6], hidden: true }],
     talk: [
+      { if: { quest: 'ch10_finale', stage: 'epilogue', notFlag: 'C32_DONE' }, dialogue: 'C32' },
       { if: { quest: 'ch8_city', stage: 'shelter' }, dialogue: 'C16' },
       { if: { quest: 'ch8_city', status: 'active', flag: 'C16_DONE' }, bark: ['Пока все не получат воду, я здесь. Хлеб вечером будет холодный.'] },
       { if: { quest: 'prologue_arrival', stage: 'lina', flag: 'A02_LATER' }, dialogue: 'A02b' },
@@ -105,6 +106,7 @@ export const NPCS = [
     look: { skin: 0xffe8d8, hair: 0xa06a3a, hairStyle: 'long', top: 0xf2ead8, vest: 0x2f5a8a, dress: true, dressLong: true, dressColor: 0x2f3a5a, chestShape: true },
     schedule: [{ time: [8, 20], spot: 'guild_counter', anim: 'idle' }, { time: [20, 22], spot: 'tavern_table2', anim: 'sit' }, NIGHT_HOME],
     talk: [
+      { if: { quest: 'ch10_finale', stage: 'epilogue', notFlag: 'C30_DONE' }, dialogue: 'C30' },
       { if: { quest: 'ch8_city', stage: 'hq' }, dialogue: 'C15' },
       { if: { quest: 'ch7_gorge', stage: 'luna' }, dialogue: 'C11' },
       { if: { quest: 'join_guild', stage: 'go' }, dialogue: 'A04' },
@@ -200,6 +202,7 @@ export const NPCS = [
       ? [{ time: [0, 24], spot: 'crypt_door', anim: 'idle' }]
       : [{ time: [7, 21], spot: 'temple_altar', anim: 'idle' }, NIGHT_HOME]),
     talk: [
+      { if: { quest: 'ch10_finale', stage: 'epilogue', notFlag: 'C31_DONE' }, dialogue: 'C31' },
       { if: { quest: 'ch5_crypt', stage: 'rest' }, bark: ['Водяной знак у шва не потемнел. Отдыхайте. Крипту я открою, когда мы подготовимся.'] },
       { if: { quest: 'ch5_crypt', stage: 'clara' }, dialogue: 'C00' },
       { if: { quest: 'ch5_crypt', stage: 'prep' }, bark: ['Гаррет проверит лестницу. Луна выделит лампы. Нижнюю комнату я прошу осмотреть вас.'] },
