@@ -5,7 +5,7 @@ import { fbm, mulberry32, smoothstep, clamp } from '../core/math.js';
 import { createSky } from './Sky.js';
 import { createGrass } from './Grass.js';
 import { Signpost, ModelChest } from './Interactables.js';
-import { CITY_WALL as AIN_WALL, toWorld as AIN_TO_WORLD, SHEET as AIN_SHEET, TRAKT as AIN_TRAKT } from './AinstreyPlan.js';
+import { CITY_WALL as AIN_WALL, toWorld as AIN_TO_WORLD, SHEET as AIN_SHEET, TRAKT as AIN_TRAKT, ORIGIN as AIN_ORIGIN } from './AinstreyPlan.js';
 import { HALF, REGIONS, REGION, RIVERS, LAKES, LAVA, CAMPS, SIGNS, FORESTS, regionContains } from './MapData.js';
 import { Heightfield, GRID_N, GRID_STEP, roadInfo, riverDistance, surfaceAt, polygonDistance } from './Terrain.js';
 import { WALL, toWorld } from './AxelPlan.js';
@@ -16,6 +16,7 @@ import { buildTown } from './build/Town.js';
 import { buildCountryside } from './build/Countryside.js';
 import { buildAinstrey } from './build/Ainstrey.js';
 import { buildLedge } from './build/AinstreyLedge.js';
+import { buildCity } from './build/AinstreyCity.js';
 import { buildDungeon, DUNGEON } from './build/Dungeon.js';
 import { buildCrypt } from './build/Crypt.js';
 import { buildRelay } from './build/Relay.js';
@@ -293,33 +294,32 @@ export class World {
   }
 
   build() {
-    this._setupSkyAndLights();
-    this._buildMaterials();
-    Object.assign(this.mats, this.kits.materials);
-    this.heightfield = new Heightfield();
-    this._buildTerrain();
-    this._buildWater();
-    buildTown(this);
-    buildCountryside(this);
-    buildAinstrey(this);
-    buildLedge(this);
-    buildDungeon(this);
-    buildCrypt(this);
-    buildRelay(this);
-    buildDrain(this);
-    buildPump(this);
-    buildCore(this);
-    buildSideProps(this);
-    for (const a of this.layout.added || []) buildPlacement(this, a);
-    SIGNS.forEach(([x, z, rot, lines], i) => this.group('sign_' + i, { x, z, rot }, () => this.addSign(new THREE.Vector3(x, 0, z), rot, lines), 'Указатель: ' + lines[0].slice(0, 34)));
-    for (const c of CAMPS) this.camp(c.type, c.x, c.z, c.camp);
-    this._buildVegetation();
-    this._realizeVegetation();
-    this._flushVisualBatches();
-    this.trees.build(this.scene);
-    this._buildCollider();
-    this._buildGrass();
-    this._buildLightPool();
+    // build times of the big steps (ms), for the load-time report: window.__game.world.buildTimes
+    const times = (this.buildTimes = {});
+    const T = (name, fn) => { const t = performance.now(); fn(); times[name] = Math.round(performance.now() - t); };
+    T('sky', () => this._setupSkyAndLights());
+    T('materials', () => { this._buildMaterials(); Object.assign(this.mats, this.kits.materials); });
+    T('heightfield', () => { this.heightfield = new Heightfield(); });
+    T('terrain', () => this._buildTerrain());
+    T('water', () => this._buildWater());
+    T('town', () => buildTown(this));
+    T('countryside', () => buildCountryside(this));
+    T('ainstrey', () => buildAinstrey(this));
+    T('ledge', () => buildLedge(this));
+    T('city', () => buildCity(this));
+    T('dungeon', () => { buildDungeon(this); buildCrypt(this); buildRelay(this); buildDrain(this); buildPump(this); buildCore(this); });
+    T('props', () => {
+      buildSideProps(this);
+      for (const a of this.layout.added || []) buildPlacement(this, a);
+      SIGNS.forEach(([x, z, rot, lines], i) => this.group('sign_' + i, { x, z, rot }, () => this.addSign(new THREE.Vector3(x, 0, z), rot, lines), 'Указатель: ' + lines[0].slice(0, 34)));
+      for (const c of CAMPS) this.camp(c.type, c.x, c.z, c.camp);
+    });
+    T('vegetation', () => { this._buildVegetation(); this._realizeVegetation(); });
+    T('flush', () => this._flushVisualBatches());
+    T('trees', () => this.trees.build(this.scene));
+    T('collider', () => this._buildCollider());
+    T('grass', () => this._buildGrass());
+    T('lights', () => this._buildLightPool());
     return this;
   }
 
@@ -481,7 +481,7 @@ export class World {
       dirt: new THREE.Color(0x8d7454), trail: new THREE.Color(0x9a8a62), rock: new THREE.Color(0x857d70),
       snow: new THREE.Color(0xe8eef2), scorch: new THREE.Color(0x3b2a24), mud: new THREE.Color(0x6e5e44),
       sand: new THREE.Color(0xb9a77e), town: new THREE.Color(0x8e8a64), ruin: new THREE.Color(0x9a9a86),
-      chalk: new THREE.Color(0xc9c4b0), stone: new THREE.Color(0xa59d88), dry: new THREE.Color(0x9aa35a),
+      chalk: new THREE.Color(0xc9c4b0), stone: new THREE.Color(0xa59d88), dry: new THREE.Color(0x9aa35a), gravel: new THREE.Color(0x9c927c), earth: new THREE.Color(0x7e7258), patch: new THREE.Color(0x6d8c46),
     };
     const farms = REGION.farms.center;
     const gorge = REGION.crimson_gorge.center, astra = REGION.astrarium.center;
@@ -503,7 +503,18 @@ export class World {
       }
       c.lerp(T.meadow, smoothstep(0.62, 0.8, big) * 0.35);
       const dt = cityDistance(x, z);
-      if (dt < 6) c.lerp(main ? T.town : T.stone, (1 - smoothstep(-6, 6, dt)) * (main ? 0.55 : 0.7));
+      if (dt < 6) c.lerp(main ? T.town : T.stone, (1 - smoothstep(-6, 6, dt)) * (main ? 0.55 : 0.92));
+      if (!main && dt < -10) {
+        // Ainstrey: the garden of the Council stays green (lawns), everything else inside the walls is trodden earth and gravel
+        const gu = x - AIN_ORIGIN.x, gv = z - AIN_ORIGIN.z;
+        if (gu > -310 && gu < 410 && gv < -690 && gv > -910) c.lerp(T.grassB, 0.8);
+        else {
+          const w = 1 - smoothstep(-40, -10, dt), g2 = fbm(x * 0.05 + 9, z * 0.05 - 4, 3) * 0.5 + 0.5;
+          c.lerp(T.gravel, (0.55 + 0.3 * n) * w);
+          c.lerp(T.earth, smoothstep(0.38, 0.62, g2) * 0.5 * w);
+          c.lerp(T.patch, smoothstep(0.62, 0.78, g2) * 0.65 * w); // grass in the yards
+        }
+      }
       const rd = riverDistance(x, z);
       c.lerp(T.mud, (1 - smoothstep(-1, 4, rd)) * 0.9);
       c.lerp(T.sand, (1 - smoothstep(2, 7, rd)) * smoothstep(-1, 2, rd) * 0.45);
@@ -783,7 +794,9 @@ export class World {
     for (const R of REGIONS) {
       if (R.keepClear && Math.hypot(x - R.center.x, z - R.center.z) < R.keepClear) return false;
     }
-    for (const K of this.keepClear) if (Math.hypot(x - K.x, z - K.z) < K.r + pad) return false;
+    for (const K of this.keepClear) {
+      if (K.poly) { if (polygonDistance(K.poly, x, z) < (K.margin ?? 0) + pad) return false; } else if (Math.hypot(x - K.x, z - K.z) < K.r + pad) return false;
+    }
     return true;
   }
 
