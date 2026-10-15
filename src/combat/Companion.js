@@ -68,7 +68,9 @@ export class Companion {
       this._steer(dt, hero, slot, cmd, order);
     }
     c.update(dt, cmd);
-    if (c.position.y < -40) p.placeCompanion();
+    // Fell under the map, or left far behind (a ride, a long run): back at a checked free point beside the player, out of the fight only
+    const far = Math.hypot(c.position.x - p.position.x, c.position.z - p.position.z) > 45 && !g.enemies.list.some((e) => e.alive && e.aggroed && e.position.distanceTo(p.position) < 30);
+    if (c.position.y < -40 || far) p.placeCompanion();
 
     const speed = c.horizontalSpeed;
     const st = hero.state;

@@ -207,9 +207,20 @@ export class Player {
     if (!s) return;
     const p = this.position;
     const yaw = this.controller.yaw;
-    const a = yaw + Math.PI * 0.75;
-    const x = p.x + Math.sin(a) * 2.4, z = p.z + Math.cos(a) * 2.4;
-    const y = this.game.world.groundAt(x, z, p.y + 2) + 0.05;
+    const W = this.game.world;
+    // A checked free point beside / behind the player: the line from her chest is clear (no wall between) and the ground there is
+    // at about the same height (not on a roof, not down a pit). Otherwise she stands where the player stands.
+    let x = p.x, z = p.z, y = p.y + 0.05;
+    const head = new THREE.Vector3(p.x, p.y + 1.2, p.z), dir = new THREE.Vector3();
+    for (const da of [0.75, -0.75, 1, -1, 0.5, -0.5]) {
+      const a = yaw + Math.PI * da, cx = p.x + Math.sin(a) * 2.4, cz = p.z + Math.cos(a) * 2.4;
+      dir.set(Math.sin(a), 0, Math.cos(a));
+      if (W.raycast(head, dir, 2.8)) continue;
+      const cy = W.groundAt(cx, cz, p.y + 2);
+      if (Math.abs(cy - p.y) > 0.9) continue;
+      x = cx; z = cz; y = cy + 0.05;
+      break;
+    }
     s.controller.teleport(new THREE.Vector3(x, y, z), yaw);
     s.model.root.position.set(x, y, z);
     s.anim.set('Idle', true);
