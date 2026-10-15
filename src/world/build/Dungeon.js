@@ -19,7 +19,7 @@ export const RELAY_ZONE = { minX: -45, maxX: 45, minZ: 1406, maxZ: 1610 };
 /** The outer drain channel under the Crimson Gorge (build/Drain.js, chapter 7). */
 export const DRAIN_ZONE = { minX: -45, maxX: 45, minZ: 1636, maxZ: 1850 };
 /** The pump station and the deep shaft under Axel (build/Pump.js, chapter 8). */
-export const PUMP_ZONE = { minX: -45, maxX: 45, minZ: 1876, maxZ: 2130 };
+export const PUMP_ZONE = { minX: -45, maxX: 45, minZ: 1876, maxZ: 2300 }; // also the service galleries and the central hall (build/Core.js)
 const ZONES = [CRYPT_ZONE, RELAY_ZONE, DRAIN_ZONE, PUMP_ZONE];
 
 export const DUNGEON = {

@@ -414,6 +414,38 @@ export const QUESTS = Object.fromEntries([
       { id: 'link_check', text: 'Проверь связь на контрольной панели: Эдмунд и Луна на линии.', target: 'spot:deep_hall', objectives: [{ type: 'talk', label: 'Проверить связь' }] },
     ],
     rewards: { eris: 300, xp: 500, flags: ['ch8_done'] },
+    next: 'ch9_capsule',
+  }),
+
+  // =====================================================================================
+  // CHAPTER 9 — the one who called
+  // =====================================================================================
+  Q('ch9_capsule', {
+    title: 'Тот, кто позвал', category: 'story', chapter: 9, giver: 'luna', requires: { quest: 'ch8_city', status: 'done' },
+    summary: 'Сервисный ход открыт. В центральном зале установки ждёт Вейр: его тело лежит в капсуле тридцать лет. Малая проба, бой за управление, выход Вейра и решение об установке.',
+    stages: [
+      { id: 'gallery', text: 'Пройди сервисные галереи (северо-восточный выход глубокой шахты) до центрального зала. Стражи обслуживания охраняют ход.', target: 'spot:core_hall',
+        objectives: [{ type: 'reach', spot: 'core_hall', r: 6, label: 'Дойти до центрального зала' }] },
+      { id: 'veyr', text: 'Подойди к панели Вейра на северной стене зала.', target: 'spot:veyr_panel', objectives: [{ type: 'talk', label: 'Панель Вейра' }] },
+      { id: 'rules', text: 'Включи консоль связи слева у входа: Эдмунд и Луна обсудят правила малой пробы.', target: 'spot:core_hall', objectives: [{ type: 'talk', label: 'Консоль связи' }] },
+      { id: 'mark', text: 'Осмотри и отметь выключатель (слева), нижний кабель (левая стойка) и усилитель старого канала (правая стена).', target: 'spot:core_rack',
+        objectives: [{ type: 'flag', flag: 'core_switch', label: 'Выключатель' }, { type: 'flag', flag: 'core_cable_marked', label: 'Кабель' }, { type: 'flag', flag: 'core_amp', label: 'Усилитель' }] },
+      { id: 'holders', text: 'Поставь три регулятора (осколка) во временные держатели. Они остаются у отряда.', target: 'spot:core_arena',
+        objectives: [{ type: 'flag', flag: 'holder_1', label: 'Первый держатель' }, { type: 'flag', flag: 'holder_2', label: 'Второй держатель' }, { type: 'flag', flag: 'holder_3', label: 'Третий держатель' }] },
+      { id: 'probe', text: 'Проверь малый поток по двум мерным столбам у южной части зала.', target: 'spot:core_arena',
+        objectives: [{ type: 'flag', flag: 'core_gauge_1', label: 'Левый столб' }, { type: 'flag', flag: 'core_gauge_2', label: 'Правый столб' }], onDone: [{ setFlag: 'core_hot' }, { scene: 'C23a' }] },
+      { id: 'breach', manual: true, text: 'Вейр включил старый канал: отбей стражей усилителя, Рокси охлаждает два верхних шва, Мегумин размыкает кабель посохом.', target: 'spot:core_rack',
+        objectives: [{ type: 'flag', flag: 'wd_amp_guards', label: 'Отбить стражей усилителя' }, { type: 'flag', flag: 'core_seam_a', label: 'Левый шов (Рокси)' }, { type: 'flag', flag: 'core_seam_b', label: 'Правый шов (Рокси)' }, { type: 'flag', flag: 'core_cable_cut', label: 'Разомкнуть кабель (Мегумин)' }] },
+      { id: 'battle1', manual: true, text: 'Бой за управление: сервисные стражи держат старую команду. Отбей первую волну.', target: 'spot:core_arena',
+        onStart: [{ wave: 'ctrl_wave1' }, { sayChain: ['C24_001', 'C24_002'] }], objectives: [{ type: 'flag', flag: 'wd_ctrl_wave1', label: 'Первая волна' }] },
+      { id: 'valve', skipIf: { var: ['VEYR_HELP', '==', true] }, text: 'Рокси держит шов: открой клапан под лестницей (левый угол у входа).', target: 'spot:core_hall', objectives: [{ type: 'flag', flag: 'core_valve', label: 'Клапан под лестницей' }] },
+      { id: 'battle2', manual: true, text: 'Последний страж питается от двух боковых постов: сними питание обоих и победи его.', target: 'spot:core_arena',
+        onStart: [{ wave: 'ctrl_wave2' }], objectives: [{ type: 'flag', flag: 'post_l_off', label: 'Левый пост' }, { type: 'flag', flag: 'post_r_off', label: 'Правый пост' }, { type: 'flag', flag: 'wd_ctrl_wave2', label: 'Победить стража' }] },
+      { id: 'capsule', text: 'Выведи Вейра: сбрось давление клапаном справа от капсулы, затем поверни нижнюю ручку.', target: 'spot:core_capsule',
+        objectives: [{ type: 'talk', label: 'Открыть капсулу (клапан, затем нижняя ручка)' }] },
+      { id: 'decision', text: 'Реши судьбу установки: панель отчётов у северной стены справа. Можно осмотреть схему и вернуться к решению.', target: 'spot:veyr_panel', objectives: [{ type: 'talk', label: 'Панель отчётов' }] },
+    ],
+    rewards: { eris: 400, xp: 600, flags: ['ch9_done'] },
   }),
 
   // =====================================================================================

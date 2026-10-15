@@ -26,6 +26,7 @@ export const VARS = {
   C12_PLAN: ['cargo', 'roxy', 'rope'], // how Marta's cart was saved (C12.1)
   C17_PLAN: ['shield', 'hold', 'flow'], // how the pump was repaired (C17.1)
   C19_PLAN: ['lever', 'latch', 'breaker'], // how Osa was brought out (C19.1)
+  C22_PLAN: ['roxy_switch', 'megumin_switch', 'cable'], // who holds the switch in the small test (C22.1)
   C08_CHOICE: ['copies', 'council', 'orin'], // what was done with the documents (C08.1)
   KHARZ_ROUTE: ['treaty', 'battle'],
   WATER_FIRST: ['residents', 'repair'],

@@ -445,6 +445,12 @@ export class Enemy {
   /** Damage from the player. Returns true if it killed the enemy. */
   takeHit(damage, from, knock = 4, heavy = false) {
     if (!this.alive || this.state === 'dead') return false;
+    if (this.shieldFlags && !this.shieldFlags.every((f) => this.game.rpg.state.flags[f])) {
+      // A shielded enemy of the story (chapter 9): the side posts must be cut first.
+      this.flash = 0.5;
+      if (this.game.time - (this._shieldMsg ?? -99) > 4) { this._shieldMsg = this.game.time; this.game.hud?.toast('Щит держит: сними питание обоих боковых постов.', 3); }
+      return false;
+    }
     this.hp -= damage;
     this.flash = 1;
     this.lastHitTime = this.game.time;

@@ -239,6 +239,7 @@ export class RPG {
     this.game.world.relay?.sync(F);
     this.game.world.drain?.sync(F);
     this.game.world.pump?.sync(F, this.state.vars);
+    this.game.world.core?.sync(F);
     for (const it of this.game.world.interactables) {
       if (!it.setActive) continue;
       const sp = STORY_PROPS[it.id];
@@ -681,9 +682,10 @@ export class RPG {
     const p = this.spotPos(W.spot);
     if (!p) return;
     const killed = this.state.counters['wk_' + id] || 0;
-    for (const [type, dx, dz] of W.enemies.slice(killed)) {
+    for (const [type, dx, dz, o] of W.enemies.slice(killed)) {
       const e = this.game.enemies.spawn(type, new THREE.Vector3(p.x + dx, p.y, p.z + dz), W.camp);
       e.noRespawn = true;
+      if (o?.shield) e.shieldFlags = o.shield; // immune until these flags are set (the side posts of C24)
     }
   }
 

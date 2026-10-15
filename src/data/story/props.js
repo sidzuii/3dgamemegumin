@@ -121,6 +121,42 @@ export const STORY_PROPS = {
   },
   link_power: { when: AT('ch8_city', 'link'), once: 'link_power', need: { flag: 'link_socket' }, locked: 'Сначала установи модуль связи в гнездо.', toast: 'Питание подано: лампа модуля стала голубой.', vfx: 'magicPop' },
   link_check: { when: AT('ch8_city', 'link_check'), scene: 'C20', vfx: 'magicPop' },
+  // ---- chapter 9: the central hall
+  veyr_panel: { when: AT('ch9_capsule', 'veyr'), once: 'C21_seen', scene: 'C21' },
+  core_scale: { when: { quest: 'ch9_capsule' }, toast: 'Шкала лет: тридцать насечек, последние стёрты чаще остальных: по ним считали дни.' },
+  core_log: {
+    when: { quest: 'ch9_capsule' },
+    do: [{ read: { icon: '📖', title: 'Журнал смен', text: 'Смена за сменой, почерк один и тот же.\n\n«День 1. Поток принят. Нижний отсек не отвечает.»\n«День 2. Я остался один. Подпись под протоколом моя.»\n…\n«Год 12. Слышу службу в храме через вентиляцию. Хор поёт ровно.»\n«Год 23. Со стены пришло изображение: дети у фонтана.»\n«Год 30. Подняли первый регулятор из дерева. Отклик есть.»' } }],
+  },
+  core_names: {
+    when: { quest: 'ch9_capsule' },
+    do: [{ read: { icon: '🪦', title: 'Плита с именами', text: 'Орин Селл — нижний отсек.\nМайя Торн — нижний отсек.\nДес Валь — нижний отсек.\n\nИ ещё семь имён сотрудников. Под плитой выбито: «Приказ отдан до их выхода».' } }],
+  },
+  core_link: { when: AT('ch9_capsule', 'rules'), once: 'C22_seen', scene: 'C22' },
+  core_switch: { when: AT('ch9_capsule', 'mark'), once: 'core_switch', toast: 'Ручной выключатель осмотрен и отмечен.', vfx: 'magicPop' },
+  core_cable: { when: AT('ch9_capsule', 'mark'), once: 'core_cable_marked', toast: 'Нижний кабель на левой стойке отмечен: его размыкание отключит удалённое управление.', vfx: 'magicPop' },
+  core_amp: { when: AT('ch9_capsule', 'mark'), once: 'core_amp', toast: 'Усилитель старого канала осмотрен: он перекрывается при малой пробе.', vfx: 'magicPop' },
+  holder_1: { when: AT('ch9_capsule', 'holders'), once: 'holder_1', need: { item: 'star_shard', n: 3 }, locked: 'Нужны все три регулятора: они в футлярах отряда.', toast: 'Регулятор встал в держатель. Права отряда на предмет сохранены.', vfx: 'magicPop' },
+  holder_2: { when: AT('ch9_capsule', 'holders'), once: 'holder_2', need: { item: 'star_shard', n: 3 }, locked: 'Нужны все три регулятора: они в футлярах отряда.', toast: 'Второй регулятор встал в держатель.', vfx: 'magicPop' },
+  holder_3: { when: AT('ch9_capsule', 'holders'), once: 'holder_3', need: { item: 'star_shard', n: 3 }, locked: 'Нужны все три регулятора: они в футлярах отряда.', toast: 'Третий регулятор встал в держатель. Малая подача вращает насос.', vfx: 'magicPop' },
+  core_gauge_1: { when: AT('ch9_capsule', 'probe'), once: 'core_gauge_1', toast: 'Левый мерный столб: нагрузка в норме.', vfx: 'magicPop' },
+  core_gauge_2: { when: AT('ch9_capsule', 'probe'), once: 'core_gauge_2', toast: 'Правый мерный столб: нагрузка в норме.', vfx: 'magicPop' },
+  core_seam_a: { when: AT('ch9_capsule', 'breach'), toast: 'Шов греется! Охладить его может водяной залп Рокси (Tab, затем Q).' },
+  core_seam_b: { when: AT('ch9_capsule', 'breach'), toast: 'Шов греется! Охладить его может водяной залп Рокси (Tab, затем Q).' },
+  core_cable_cut: {
+    when: AT('ch9_capsule', 'breach'), once: 'core_cable_cut', char: 'megumin', wrong: 'Кабель размыкает Мегумин посохом (Tab).',
+    need: [{ flag: 'core_seam_a' }, { flag: 'core_seam_b' }, { flag: 'wd_amp_guards' }], locked: 'К стойке не пройти: отбей стражей усилителя и охлади оба верхних шва (Рокси).',
+    scene: 'C23b', vfx: 'magicPop',
+  },
+  post_l: { when: AT('ch9_capsule', 'battle2'), once: 'post_l_off', toast: 'Питание левого поста снято.', vfx: 'magicPop' },
+  post_r: { when: AT('ch9_capsule', 'battle2'), once: 'post_r_off', toast: 'Питание правого поста снято.', vfx: 'magicPop' },
+  core_valve: { when: AT('ch9_capsule', 'valve'), once: 'core_valve', toast: 'Клапан под лестницей открыт: нижняя труба на малом расходе.', vfx: 'magicPop' },
+  capsule_pressure: { when: AT('ch9_capsule', 'capsule'), once: 'capsule_pressure', toast: 'Давление в капсуле сброшено.', vfx: 'magicPop' },
+  capsule_lock: {
+    when: AT('ch9_capsule', 'capsule'), need: { flag: 'capsule_pressure' }, locked: 'Нижняя ручка стоит: сначала сбрось давление клапаном справа.',
+    once: 'capsule_lock', scene: 'C25', vfx: 'magicPop',
+  },
+  core_terminal: { when: AT('ch9_capsule', 'decision'), scene: 'C26' },
 };
 
 export const STORY_VOLLEY = [
@@ -135,6 +171,8 @@ export const STORY_VOLLEY = [
   { id: 'kharz_shield_a', spot: 'kharz_shield_a', when: AT('ch7_gorge', 'b_shields'), flag: 'kharz_shield_a', toast: 'Внешний щит разбит.' },
   { id: 'kharz_shield_b', spot: 'kharz_shield_b', when: AT('ch7_gorge', 'b_shields'), flag: 'kharz_shield_b', toast: 'Внешний щит разбит.' },
   { id: 'deep_latch', spot: 'deep_latch', when: AT('ch8_city', 'p19_lever', 'p19_latch'), flag: 'deep_latch_hit', do: [{ setFlag: 'deep_grate_open' }], toast: 'Защёлка сбита: решётка у нижнего шва поднялась.' },
+  { id: 'core_seam_a', spot: 'core_seam_a', when: AT('ch9_capsule', 'breach'), flag: 'core_seam_a', toast: 'Левый шов охлаждён.' },
+  { id: 'core_seam_b', spot: 'core_seam_b', when: AT('ch9_capsule', 'breach'), flag: 'core_seam_b', toast: 'Правый шов охлаждён.' },
 ];
 
 export const STORY_WAVES = {
@@ -147,4 +185,7 @@ export const STORY_WAVES = {
   veyr_guards: { spot: 'veyr_guards', camp: 'veyr_wave', enemies: [['guardian', -6, 2], ['guardian', 6, 2], ['watcher', 0, -3]], onClear: [] },
   kharz_battle: { spot: 'kharz_arena', camp: 'kharz_battle', enemies: [['archdemon', 0, 0], ['imp', -4, -3], ['imp', 4, -3]], onClear: [{ scene: 'C14b' }] },
   pump_guards: { spot: 'pump_guards', camp: 'pump_wave', enemies: [['guardian', -6, 2], ['guardian', 6, 2], ['watcher', 0, -5]], onClear: [] },
+  amp_guards: { spot: 'core_rack', camp: 'amp_wave', enemies: [['guardian', 4, 3], ['guardian', 4, -3]], onClear: [] },
+  ctrl_wave1: { spot: 'core_arena', camp: 'ctrl_w1', enemies: [['guardian', -6, 0], ['watcher', 6, 2], ['imp', 0, -5]], onClear: [{ scene: 'C24b' }] },
+  ctrl_wave2: { spot: 'core_arena', camp: 'ctrl_w2', enemies: [['guardian', 0, 5, { shield: ['post_l_off', 'post_r_off'] }], ['watcher', -6, -2]], onClear: [{ scene: 'C24c' }] },
 };

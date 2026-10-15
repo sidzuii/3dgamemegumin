@@ -48,6 +48,7 @@ export const REGIONS = [
   { id: 'thicket', name: 'Чаща', sub: 'Тёмная часть леса', center: v(-585, 360), r: 46, icon: '♠', tier: 2, spawn: v(-560, 330), spawnYaw: -Math.PI / 2 },
   { id: 'dungeon', name: 'Старая шахта', sub: 'Подземелье', center: v(0, 1160), r: 70, icon: '◒', tier: 0, interior: true },
   { id: 'crypt', name: 'Крипта Эрис', sub: 'Нижние помещения храма', center: v(0, 1306), r: 86, icon: '◒', tier: 0, interior: true },
+  { id: 'core', name: 'Центральный зал', sub: 'Сердце установки', center: v(0, 2235), r: 60, icon: '◒', tier: 0, interior: true },
   { id: 'pump', name: 'Насосная станция', sub: 'Под городом', center: v(0, 2000), r: 130, icon: '◒', tier: 0, interior: true },
   { id: 'drain', name: 'Внешний отвод', sub: 'Под Багровым ущельем', center: v(0, 1740), r: 110, icon: '◒', tier: 0, interior: true },
   { id: 'relay', name: 'Ретранслятор', sub: 'Восточный пост Астрариума', center: v(0, 1508), r: 100, icon: '◒', tier: 0, interior: true },

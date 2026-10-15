@@ -32,7 +32,7 @@ export function buildPump(world) {
   passage(W, 8, 1990, 8, 2002, 4, TN);
   hall(W, rng, -14, 14, 2002, 2040, [{ side: 's', c: -8, w: 4 }, { side: 's', c: 8, w: 4 }, { side: 'n', c: 0, w: 4 }], 8, TN); // pump room
   passage(W, 0, 2040, 0, 2052, 4, TN);
-  hall(W, rng, -14, 14, 2052, 2096, [{ side: 's', c: 0, w: 4 }, { side: 'w', c: 2085, w: 4 }, { side: 'e', c: 2070, w: 4 }], 9, TN); // deep shaft
+  hall(W, rng, -14, 14, 2052, 2096, [{ side: 's', c: 0, w: 4 }, { side: 'w', c: 2085, w: 4 }, { side: 'e', c: 2070, w: 4 }, { side: 'n', c: 11, w: 4 }], 9, TN); // deep shaft (the north-east exit leads to the service galleries, Core.js)
   passage(W, -14, 2085, -18, 2085, 4, TN);
   hall(W, rng, -30, -18, 2074, 2096, [{ side: 'e', c: 2085, w: 4 }], 6, TN); // the lower seam
   passage(W, 14, 2070, 18, 2070, 4, TN);
