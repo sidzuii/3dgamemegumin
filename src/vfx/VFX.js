@@ -23,6 +23,7 @@ export class VFX {
     this.sparks = new SparkPool(700);
     scene.add(this.smoke.points, this.glow.points, this.sparks.mesh);
     this.effects = [];
+    this.density = 1; // 0..1: share of the particles of a burst that is emitted (Quality preset)
     this._v = new THREE.Vector3();
     this.ambientCenter = new THREE.Vector3();
     this._ambientAcc = 0;
@@ -40,6 +41,7 @@ export class VFX {
   }
 
   burst(type, p, n, opts) {
+    if (this.density < 1 && n > 1) n = Math.max(1, Math.round(n * this.density));
     for (let i = 0; i < n; i++) this.emit(type, p, opts);
   }
 

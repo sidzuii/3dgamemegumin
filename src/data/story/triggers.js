@@ -4,6 +4,11 @@
  *   { id, if, spot, r, say: [clip ids], do: effects }
  */
 export const TRIGGERS = [
+  // Combat training (docs/combat/04): Bran offers the directed-force lesson after rank E; Roxy proposes the pair exercise.
+  { id: 'CB01_offer', if: [{ quest: 'ch1_name', status: 'done' }, { not: { flag: 'cb01_done' } }], spot: 'training_field', r: 40, do: [{ startQuest: 'cb01_breach' }] },
+  { id: 'CB02_offer', if: [{ flag: 'roxy_companion' }, { not: { flag: 'cb02_done' } }], spot: 'training_field', r: 40, do: [{ startQuest: 'cb02_pair' }] },
+  { id: 'CB02_talk', if: { quest: 'cb02_pair', stage: 'talk' }, spot: 'training_center', r: 24, dialogue: 'CB02' },
+  { id: 'CB02_end', if: { quest: 'cb02_pair', stage: 'report' }, spot: 'training_center', r: 24, dialogue: 'CB02_done' },
   // B09: the children sing the ballad at the Fountain square.
   // C03: the flooded passage in the crypt: who does what.
   { id: 'C03', if: { quest: 'ch5_crypt', stage: 'water' }, spot: 'crypt_water', r: 8, dialogue: 'C03' },

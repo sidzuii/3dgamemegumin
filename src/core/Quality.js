@@ -6,9 +6,9 @@
  * ~26 ms (and climbs back when there is headroom), so a weak GPU keeps a playable frame rate.
  */
 export const PRESETS = {
-  low: { label: 'Низкое', pixelRatio: 0.85, msaa: 0, shadows: false, shadowSize: 1024, bloom: false, treeNear: 20, treeMid: 36, treeFar: 200, detail: 45, lod: 80 },
-  medium: { label: 'Среднее', pixelRatio: 1, msaa: 2, shadows: true, shadowSize: 1024, bloom: true, treeNear: 28, treeMid: 52, treeFar: 260, detail: 65, lod: 105 },
-  high: { label: 'Высокое', pixelRatio: 1.5, msaa: 4, shadows: true, shadowSize: 2048, bloom: true, treeNear: 42, treeMid: 75, treeFar: 330, detail: 90, lod: 140 },
+  low: { label: 'Низкое', pixelRatio: 0.85, msaa: 0, shadows: false, shadowSize: 1024, bloom: false, treeNear: 20, treeMid: 36, treeFar: 200, detail: 45, lod: 80, fx: 0.6 },
+  medium: { label: 'Среднее', pixelRatio: 1, msaa: 2, shadows: true, shadowSize: 1024, bloom: true, treeNear: 28, treeMid: 52, treeFar: 260, detail: 65, lod: 105, fx: 0.85 },
+  high: { label: 'Высокое', pixelRatio: 1.5, msaa: 4, shadows: true, shadowSize: 2048, bloom: true, treeNear: 42, treeMid: 75, treeFar: 330, detail: 90, lod: 140, fx: 1 },
 };
 const ORDER = ['low', 'medium', 'high'];
 const KEY = 'megumin-quality';
@@ -51,6 +51,7 @@ export class Quality {
       }
     }
     g.bloom.enabled = p.bloom;
+    if (g.vfx) g.vfx.density = p.fx; // particle bursts thin out on weaker presets (the shapes and signals stay)
     const sun = g.world?.sun;
     if (sun) {
       sun.castShadow = p.shadows;

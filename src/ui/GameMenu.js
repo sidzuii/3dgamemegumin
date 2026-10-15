@@ -5,6 +5,7 @@ import { RANK_TITLES } from '../rpg/Guild.js';
 import { RANK_POINTS } from '../rpg/State.js';
 import { XP_TABLE } from '../rpg/RPG.js';
 import { NPCS } from '../data/npcs.js';
+import { lockedReason } from '../combat/unlocks.js';
 
 /**
  * The game menu (game paused while open): Inventory (I), Journal (J), Map (M),
@@ -16,6 +17,7 @@ const TABS = [
   { id: 'map', label: 'Карта', key: 'M' },
   { id: 'char', label: 'Персонаж', key: 'C' },
   { id: 'guild', label: 'Гильдия', key: 'G' },
+  { id: 'combat', label: 'Бой', key: 'K' },
   { id: 'sound', label: 'Звук', key: 'O' },
 ];
 const CAT = { story: 'Сюжет', contract: 'Заказ гильдии', side: 'Поручение' };
@@ -92,7 +94,74 @@ export class GameMenu {
     }
     if (this.tab === 'char') this._char(body);
     if (this.tab === 'guild') this._guild(body);
+    if (this.tab === 'combat') this._combat(body);
     if (this.tab === 'sound') this._sound(body);
+  }
+
+  // --------------------------------------------------------------------------- combat
+  /** Combat settings (shake, flashes, auto-switch, companion tactics) and a reference of both skill sets. */
+  _combat(body) {
+    const C = this.game.combat, S = C.settings;
+    const wrap = div('col');
+    wrap.style.cssText = 'overflow:auto;width:100%;padding-right:6px';
+    wrap.appendChild(h('Бой'));
+    const set = (key, val) => { S[key] = val; C.saveSettings(); };
+    const slider = (label, key, hint) => {
+      const row = div('row');
+      row.style.cssText = 'display:flex;align-items:center;gap:12px;margin:8px 0';
+      const l = document.createElement('span');
+      l.style.minWidth = '190px';
+      l.textContent = label;
+      const r = document.createElement('input');
+      r.type = 'range'; r.min = 0; r.max = 100; r.value = Math.round(S[key] * 100);
+      const v = document.createElement('span');
+      v.textContent = r.value + '%';
+      r.addEventListener('input', () => { set(key, r.value / 100); v.textContent = r.value + '%'; });
+      row.append(l, r, v);
+      if (hint) { const sm = document.createElement('small'); sm.style.opacity = 0.7; sm.textContent = hint; row.appendChild(sm); }
+      return row;
+    };
+    const check = (label, key, hint) => {
+      const row = document.createElement('label');
+      row.style.cssText = 'display:flex;align-items:center;gap:10px;margin:8px 0;cursor:pointer';
+      const c = document.createElement('input');
+      c.type = 'checkbox'; c.checked = !!S[key];
+      c.addEventListener('change', () => set(key, c.checked));
+      const t = document.createElement('span');
+      t.textContent = label;
+      row.append(c, t);
+      if (hint) { const sm = document.createElement('small'); sm.style.opacity = 0.7; sm.textContent = hint; row.appendChild(sm); }
+      return row;
+    };
+    wrap.append(
+      slider('Тряска камеры', 'shake', 'на механику не влияет'),
+      slider('Яркие вспышки', 'flash', '0 — без вспышек'),
+      check('Переключаться на напарницу после Explosion', 'autoSwitch', 'Мегумин после заклинания обессилена на 12 с'),
+      check('Напарница сама применяет средние навыки', 'skillsInTactics', 'сильные заклинания она не использует никогда'),
+    );
+    const order = document.createElement('p');
+    order.style.opacity = 0.8;
+    order.textContent = 'Приказ напарнице (T): рядом · держать точку · отступить. Tab — сменить героиню (боевая пауза 1,2 с).';
+    wrap.appendChild(order);
+    for (const [hid, title] of [['megumin', 'Мегумин'], ['roxy', 'Рокси']]) {
+      const hh = h(title + (hid === 'roxy' && !this.game.player.companionUnlocked ? ' (ещё не с нами)' : ''));
+      wrap.appendChild(hh);
+      const grid = div('combat-cards');
+      grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px';
+      for (const key of ['Q', 'E', 'R', 'F']) {
+        const info = C.slotInfo(hid, key);
+        const sp = info.spec;
+        const lock = lockedReason(this.rpg, hid, sp.id);
+        const card = div('combat-card');
+        card.style.cssText = 'border:1px solid var(--panel-line);border-radius:8px;padding:8px 10px;background:rgba(255,255,255,0.03)';
+        const cost = [sp.cost.mana ? sp.cost.mana + ' маны' : '', sp.cost.stamina ? sp.cost.stamina + ' выносл.' : '', sp.cooldown ? 'перезарядка ' + sp.cooldown + ' с' : ''].filter(Boolean).join(' · ');
+        card.innerHTML = `<b>${sp.name.replace(/ \/ .*/, '')}</b> <kbd>${key}</kbd><br><small style="opacity:.75">${cost}</small>`
+          + (lock ? `<br><small style="color:#ff8f7a">${lock}</small>` : '');
+        grid.appendChild(card);
+      }
+      wrap.appendChild(grid);
+    }
+    body.appendChild(wrap);
   }
 
   // --------------------------------------------------------------------------- sound

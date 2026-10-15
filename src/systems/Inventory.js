@@ -101,7 +101,43 @@ export class Inventory {
     if (it.slot) return this.equip(id);
     if (it.kind !== 'consumable' && it.kind !== 'food') return false;
     if (this.game.player.hp <= 0) return false;
+    // Potions (docs/combat/01 §12): a shared party cooldown of 20 s after drinking; in a fight drinking takes 0.9 s
+    // and is interrupted by damage (the potion is kept).
+    const potion = it.kind === 'consumable' && /potion/.test(id);
+    if (potion) {
+      if (this.potionCd > 0) {
+        this.game.hud.toast(`Зелья отряда на задержке: ${Math.ceil(this.potionCd)} с`, 1.6);
+        return false;
+      }
+      if (this.drinking) return false;
+      if (this.game.combat?.inCombat) {
+        this.drinking = { id, t: 0, hp: this.game.player.hp, who: this.game.player.character };
+        this.game.hud.toast(`${it.icon} Пьёт… (удар прервёт)`, 1.1);
+        return true;
+      }
+    }
+    return this._consume(id, it, potion);
+  }
+
+  /** Drinking timer and the shared potion cooldown (the game clock: both freeze on pause). */
+  update(dt) {
+    this.potionCd = Math.max(0, (this.potionCd || 0) - dt);
+    const d = this.drinking;
+    if (!d) return;
+    d.t += dt;
+    const p = this.game.player;
+    if (p.character !== d.who || p.hp < d.hp - 0.5 || p.hp <= 0) {
+      this.drinking = null;
+      this.game.hud.toast('Питьё прервано — предмет сохранён.', 1.8);
+    } else if (d.t >= 0.9) {
+      this.drinking = null;
+      if (this.items.some((s) => s.id === d.id)) this._consume(d.id, ITEMS[d.id], true);
+    }
+  }
+
+  _consume(id, it, potion) {
     it.use(this.game);
+    if (potion) this.potionCd = 20;
     this.remove(id, 1);
     const p = this.game.player.position;
     this.game.vfx.burst(it.tint === 'st' ? 'gold' : it.tint === 'mana' ? 'magicPop' : 'heal', p.clone().setY(p.y + 1), 24);

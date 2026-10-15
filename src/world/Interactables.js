@@ -116,12 +116,11 @@ export class HealingCrystal extends Interactable {
   interact(game) {
     if (this.cooldown > 0) return;
     this.cooldown = 10;
-    game.player.heal(100);
-    game.player.restoreStamina(100);
+    game.player.restoreParty(false);
     const p = this.crystal.getWorldPosition(_tmp);
     game.vfx.burst('heal', p, 70);
     game.vfx.burst('healRing', game.player.position.clone().add(new THREE.Vector3(0, 0.1, 0)), 40);
-    game.hud.toast('HP и выносливость восстановлены');
+    game.hud.toast('Здоровье, мана и выносливость отряда восстановлены');
   }
 
   update(dt, ctx) {

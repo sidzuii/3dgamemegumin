@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { CharacterController } from '../character/CharacterController.js';
 import { damp, clamp, rand } from '../core/math.js';
 import { isLavaXZ } from '../world/Terrain.js';
+import { PoiseState } from '../combat/core/Damage.js';
 
 /**
  * Hostile NPC.
@@ -15,73 +16,111 @@ import { isLavaXZ } from '../world/Terrain.js';
  * lean / squash). Rigged enemies (Roxy) override `animate()`.
  */
 
+/**
+ * Combat numbers follow docs/combat/04 §4 (health, physical / magical defence, stability tier) and the attack
+ * templates: `atk.kind` decides how the blow is read and answered —
+ *   light  — short frontal swing, blockable (12 stamina), can be turned aside by Roxy's counter poke;
+ *   medium — blockable (25 stamina), not parryable;
+ *   wide   — broad red swing, cannot be blocked or parried: leave the area;
+ *   heavy  — red mark, cannot be blocked or parried, big damage;
+ *   throw  — a visible projectile (blockable at 40%).
+ */
+const A = (kind, windup, strike, recover, damage, extra = {}) => ({ kind, windup, strike, recover, damage, ...extra });
+
 export const TYPES = {
   goblin: {
-    name: 'Гоблин-капюшонник', model: 'goblin', hp: 45, speed: 4.4, walk: 1.5, radius: 0.42, height: 1.15,
-    aggro: 13, attackRange: 1.6, damage: 8, windup: 0.42, strike: 0.2, recover: 0.65, lunge: 4.5,
-    poise: 6, knock: 1.25, style: 'hop', hitRadius: 0.55, xp: 8,
+    name: 'Гоблин-капюшонник', model: 'goblin', hp: 240, defP: 15, defM: 10, tier: 'light', speed: 4.4, walk: 1.5, radius: 0.42, height: 1.15,
+    aggro: 13, attackRange: 1.6, atk: A('light', 0.55, 0.12, 0.6, 65), lunge: 4.5,
+    knock: 1.25, style: 'hop', hitRadius: 0.55, xp: 8,
+  },
+  // A goblin that keeps its distance and throws: a visible trajectory (0.8 s of preparation).
+  goblin_thrower: {
+    name: 'Гоблин-метатель', model: 'goblin', hp: 200, defP: 10, defM: 10, tier: 'light', speed: 4.6, walk: 1.6, radius: 0.42, height: 1.15,
+    aggro: 16, attackRange: 9, keepAway: 5.5, atk: A('throw', 0.8, 0.1, 0.9, 50, { range: 11, speed: 15 }), lunge: 0,
+    knock: 1.25, style: 'hop', hitRadius: 0.55, xp: 10, tint: [0.8, 1.0, 0.8],
   },
   mushroom: {
-    name: 'Гриб-переросток', model: 'mushroom', hp: 70, speed: 3.6, walk: 1.4, radius: 0.5, height: 1.45,
-    aggro: 12, attackRange: 1.8, damage: 10, windup: 0.5, strike: 0.25, recover: 0.7, lunge: 5,
-    poise: 10, knock: 1.0, style: 'waddle', hitRadius: 0.6, xp: 10,
+    name: 'Гриб-переросток', model: 'mushroom', hp: 420, defP: 10, defM: 15, tier: 'medium', speed: 3.6, walk: 1.4, radius: 0.5, height: 1.45,
+    aggro: 12, attackRange: 1.9, atk: A('wide', 1.0, 0.25, 1.0, 110, { arc: 160, reach: 2.3 }), lunge: 2.5,
+    knock: 1.0, style: 'waddle', hitRadius: 0.6, xp: 10,
   },
   // Quaternius Bestiary: a pig-faced goblin with a club and a quick clawing imp.
   puglin: {
-    name: 'Пуглин', model: 'puglin', hp: 55, speed: 4.0, walk: 1.4, radius: 0.45, height: 1.05,
-    aggro: 13, attackRange: 1.7, damage: 9, windup: 0.5, strike: 0.22, recover: 0.7, lunge: 4,
-    poise: 8, knock: 1.1, style: 'hop', hitRadius: 0.6, xp: 10,
+    name: 'Пуглин', model: 'puglin', hp: 300, defP: 15, defM: 10, tier: 'light', speed: 4.0, walk: 1.4, radius: 0.45, height: 1.05,
+    aggro: 13, attackRange: 1.7, atk: A('light', 0.6, 0.15, 0.65, 75), lunge: 4,
+    knock: 1.1, style: 'hop', hitRadius: 0.6, xp: 10,
   },
   imp: {
-    name: 'Бес', model: 'imp', hp: 90, speed: 5.0, walk: 1.6, radius: 0.45, height: 1.7,
-    aggro: 15, attackRange: 1.8, damage: 13, windup: 0.45, strike: 0.2, recover: 0.6, lunge: 5,
-    poise: 10, knock: 0.8, style: 'dash', hitRadius: 0.6, xp: 18,
+    name: 'Бес', model: 'imp', hp: 260, defP: 10, defM: 15, tier: 'light', speed: 5.0, walk: 1.6, radius: 0.45, height: 1.7,
+    aggro: 15, attackRange: 1.8, atk: A('light', 0.45, 0.18, 0.6, 70), lunge: 5,
+    knock: 0.8, style: 'dash', hitRadius: 0.6, xp: 18,
   },
   // KayKit Skeletons (CC0): the undead of the old mines and the dungeon (mocap-driven like the Bestiary).
   skeleton_minion: {
-    name: 'Скелет-прислужник', model: 'skeleton_minion', hp: 38, speed: 4.6, walk: 1.5, radius: 0.4, height: 1.45,
-    aggro: 12, attackRange: 1.6, damage: 7, windup: 0.45, strike: 0.2, recover: 0.6, lunge: 4.5,
-    poise: 5, knock: 1.3, style: 'hop', hitRadius: 0.5, xp: 9,
+    name: 'Скелет-прислужник', model: 'skeleton_minion', hp: 200, defP: 10, defM: 10, tier: 'light', speed: 4.6, walk: 1.5, radius: 0.4, height: 1.45,
+    aggro: 12, attackRange: 1.6, atk: A('light', 0.5, 0.12, 0.6, 60), lunge: 4.5,
+    knock: 1.3, style: 'hop', hitRadius: 0.5, xp: 9,
   },
   skeleton_rogue: {
-    name: 'Скелет-разбойник', model: 'skeleton_rogue', hp: 58, speed: 5.4, walk: 1.7, radius: 0.42, height: 1.7,
-    aggro: 14, attackRange: 1.7, damage: 10, windup: 0.38, strike: 0.18, recover: 0.55, lunge: 5.5,
-    poise: 7, knock: 1.0, style: 'dash', hitRadius: 0.55, xp: 14,
+    name: 'Скелет-разбойник', model: 'skeleton_rogue', hp: 200, defP: 10, defM: 10, tier: 'light', speed: 5.4, walk: 1.7, radius: 0.42, height: 1.7,
+    aggro: 14, attackRange: 9, keepAway: 5.5, atk: A('throw', 0.8, 0.1, 0.9, 50, { range: 11, speed: 16 }), lunge: 0,
+    knock: 1.0, style: 'dash', hitRadius: 0.55, xp: 14,
   },
   skeleton_warrior: {
-    name: 'Скелет-воин', model: 'skeleton_warrior', hp: 120, speed: 3.7, walk: 1.3, radius: 0.5, height: 1.85,
-    aggro: 14, attackRange: 2.0, damage: 15, windup: 0.7, strike: 0.22, recover: 0.85, lunge: 3,
-    poise: 20, knock: 0.6, style: 'hop', hitRadius: 0.65, xp: 24,
+    name: 'Скелет-воин', model: 'skeleton_warrior', hp: 420, defP: 25, defM: 20, tier: 'medium', speed: 3.7, walk: 1.3, radius: 0.5, height: 1.85,
+    aggro: 14, attackRange: 2.0, atk: A('medium', 0.8, 0.2, 0.9, 100), lunge: 3,
+    knock: 0.6, style: 'hop', hitRadius: 0.65, xp: 24,
   },
-  // Awakened stone guardians of the Astrarium (the demon body, cold grey-blue).
+  // Awakened stone guardians of the Astrarium (the demon body, cold grey-blue): armoured, a red heavy blow.
   guardian: {
-    name: 'Каменный страж', model: 'demon', scale: 0.9, hp: 160, speed: 2.6, walk: 1.1, radius: 0.58, height: 2.1,
-    aggro: 14, attackRange: 2.2, damage: 16, windup: 0.95, strike: 0.22, recover: 1.0, lunge: 2,
-    poise: 30, knock: 0.4, style: 'brute', aoe: 2.4, tint: [0.55, 0.68, 0.85], hitRadius: 0.75, xp: 22,
+    name: 'Каменный страж', model: 'demon', scale: 0.9, hp: 900, defP: 40, defM: 35, tier: 'heavy', speed: 2.6, walk: 1.1, radius: 0.58, height: 2.1,
+    aggro: 14, attackRange: 2.2, atk: A('heavy', 1.25, 0.22, 1.0, 200, { aoe: 2.4 }), lunge: 2,
+    knock: 0.4, style: 'brute', tint: [0.55, 0.68, 0.85], hitRadius: 0.75, xp: 22,
+    // The armoured joint opens after a heavy swing and during a stagger (an amber glow): this is how the staff alone
+    // can take a guardian down (the ritual, docs/combat/04 §5): the defence drops and the blows land harder.
+    joint: { defP: 8, defM: 8, mul: 1.8 },
   },
-  // The relay post's second kind of guard (chapter 6): lighter and quicker than the guardian, a pale-blue watcher.
+  // The relay post's second kind of guard (chapter 6): lighter and quicker than the guardian — a rush and an open recovery.
   watcher: {
-    name: 'Страж-наблюдатель', model: 'demon', scale: 0.78, hp: 95, speed: 4.6, walk: 1.4, radius: 0.5, height: 1.8,
-    aggro: 16, attackRange: 2.0, damage: 12, windup: 0.5, strike: 0.2, recover: 0.6, lunge: 4.5,
-    poise: 14, knock: 0.7, style: 'dash', tint: [0.6, 0.85, 1.1], hitRadius: 0.65, xp: 18,
+    name: 'Страж-наблюдатель', model: 'demon', scale: 0.78, hp: 520, defP: 25, defM: 20, tier: 'medium', speed: 4.6, walk: 1.4, radius: 0.5, height: 1.8,
+    aggro: 16, attackRange: 2.0, atk: A('medium', 0.5, 0.2, 0.95, 90), lunge: 4.5,
+    knock: 0.7, style: 'dash', tint: [0.6, 0.85, 1.1], hitRadius: 0.65, xp: 18,
+  },
+  // The charge carrier of the central hall (chapter 9, docs/combat/04 §4): a pulse of heat around itself — step out of
+  // the ring — and it is open to blows while cooled (wet): water from Roxy, then the staff or the Explosion.
+  carrier: {
+    name: 'Носитель заряда', model: 'demon', scale: 0.85, hp: 650, defP: 30, defM: 15, tier: 'medium', speed: 3.0, walk: 1.2, radius: 0.55, height: 1.9,
+    aggro: 15, attackRange: 2.6, atk: A('heavy', 1.2, 0.25, 1.1, 130, { aoe: 4.0, around: true }), lunge: 0,
+    knock: 0.6, style: 'brute', tint: [1.45, 0.78, 0.4], hitRadius: 0.7, xp: 20,
+    cool: { mul: 1.6 },
   },
   demon: {
-    name: 'Демон', model: 'demon', hp: 220, speed: 3.2, walk: 1.3, radius: 0.62, height: 2.35,
-    aggro: 16, attackRange: 2.4, damage: 22, windup: 0.85, strike: 0.22, recover: 0.95, lunge: 2.5,
-    poise: 25, knock: 0.45, style: 'brute', aoe: 2.7, hitRadius: 0.8, xp: 35,
+    name: 'Демон', model: 'demon', hp: 2400, defP: 25, defM: 25, tier: 'heavy', speed: 3.2, walk: 1.3, radius: 0.62, height: 2.35,
+    aggro: 16, attackRange: 2.4, atk: A('heavy', 0.95, 0.22, 0.95, 180, { aoe: 2.7 }), atk2: A('wide', 0.8, 0.25, 0.85, 130, { arc: 170, reach: 3.0 }), lunge: 2.5,
+    knock: 0.45, style: 'brute', hitRadius: 0.8, xp: 35,
   },
   archdemon: {
-    name: 'Архидемон', model: 'demon', scale: 1.45, hp: 520, speed: 3.4, walk: 1.4, radius: 0.9, height: 3.4,
-    aggro: 20, attackRange: 3.2, damage: 30, windup: 0.95, strike: 0.25, recover: 1.0, lunge: 3,
-    poise: 40, knock: 0.25, style: 'brute', aoe: 3.6, boss: true, tint: [1.35, 0.75, 0.75], hitRadius: 1.1, xp: 250,
+    name: 'Архидемон', model: 'demon', scale: 1.45, hp: 8000, defP: 30, defM: 30, tier: 'boss', speed: 3.4, walk: 1.4, radius: 0.9, height: 3.4,
+    aggro: 20, attackRange: 3.2, atk: A('heavy', 1.0, 0.25, 1.0, 260, { aoe: 3.6 }), atk2: A('wide', 0.85, 0.3, 0.9, 170, { arc: 180, reach: 4.0 }), lunge: 3,
+    knock: 0.25, style: 'brute', boss: true, tint: [1.35, 0.75, 0.75], hitRadius: 1.1, xp: 250,
   },
 };
+// The AI reads the flat fields; they come from the attack template.
+for (const t of Object.values(TYPES)) {
+  t.windup = t.atk.windup;
+  t.strike = t.atk.strike;
+  t.recover = t.atk.recover;
+  t.damage = t.atk.damage;
+  if (t.atk.aoe) t.aoe = t.atk.aoe;
+}
 
 /** Models animated by retargeted mocap clips (idle/walk/run/attack/hit/death). */
 const MOCAP = new Set(['demon', 'puglin', 'imp', 'skeleton_minion', 'skeleton_rogue', 'skeleton_warrior']);
 const _v = new THREE.Vector3();
 const _v2 = new THREE.Vector3();
 const _move = new THREE.Vector3();
+const _from = new THREE.Vector3();
+const _v3 = new THREE.Vector3();
 let nextId = 1;
 
 export class Enemy {
@@ -104,7 +143,15 @@ export class Enemy {
     this.canSee = false;
     this.aggroed = false;
     this.lastHitTime = -10;
-    this.poiseDamage = 0;
+    this.poise = new PoiseState(this.type.tier || 'light'); // stability (docs/combat/01 §8)
+    this.wet = 0; // seconds of «Намокание» left
+    this.staggerTime = 0;
+    this.staggerKind = '';
+    this.baseDefP = this.type.defP ?? 0;
+    this.baseDefM = this.type.defM ?? 0;
+    this.tier = this.type.tier || 'light';
+    this.altAttack = false;
+    this.windupTime = this.type.windup;
     this.respawnTimer = 0;
     this.struck = false;
     this.flash = 0;
@@ -161,6 +208,40 @@ export class Enemy {
     return !!this.type.boss;
   }
 
+  // ---- combat target interface (src/combat/core/Damage.js) ---------------------------------------------
+  get pos() {
+    return this.controller.position;
+  }
+  get r() {
+    return this.type.hitRadius;
+  }
+  get h() {
+    return this.type.height;
+  }
+  get attack() {
+    return this.altAttack && this.type.atk2 ? this.type.atk2 : this.type.atk;
+  }
+  /** Story shield (chapter 9): the side posts must be cut first. */
+  immune() {
+    return !!(this.shieldFlags && !this.shieldFlags.every((f) => this.game.rpg.state.flags[f]));
+  }
+  onImmune() {
+    this.flash = 0.5;
+    if (this.game.time - (this._shieldMsg ?? -99) > 4) {
+      this._shieldMsg = this.game.time;
+      this.game.hud?.toast('Щит держит: сними питание обоих боковых постов.', 3);
+    }
+  }
+  /** A counter poke (Roxy) turns the blow aside: a short stagger, the swing is lost. */
+  onDeflected() {
+    if (this.state !== 'windup' && this.state !== 'strike') return;
+    this.telegraph?.cancel();
+    this.telegraph = null;
+    this.stagger(0.55, 'deflect');
+    this.a.vPitch -= 7;
+    this.game.vfx.burst('hitSpark', this.chest(new THREE.Vector3()), 12);
+  }
+
   /** World point at the chest (for hit FX, HP bars). */
   chest(target) {
     return target.copy(this.position).add(_v2.set(0, this.type.height * 0.6, 0));
@@ -168,6 +249,21 @@ export class Enemy {
 
   head(target) {
     return target.copy(this.position).add(_v2.set(0, this.type.height + 0.25, 0));
+  }
+
+  /** An enemy with an armoured joint is open for the recovery of its swing and while it is staggered. */
+  get jointOpen() {
+    return !!this.type.joint && this.alive && (this.state === 'recover' || this.state === 'stagger' || this.poise?.reacting);
+  }
+  get defP() {
+    return this.jointOpen ? Math.min(this.baseDefP, this.type.joint.defP) : this.baseDefP;
+  }
+  get defM() {
+    return this.jointOpen ? Math.min(this.baseDefM, this.type.joint.defM) : this.baseDefM;
+  }
+  /** Damage multiplier read by the combat core at the moment of contact. */
+  get vulnMul() {
+    return (this.jointOpen ? this.type.joint.mul : 1) * (this.type.cool && this.wet > 0 ? this.type.cool.mul : 1);
   }
 
   setState(s) {
@@ -185,33 +281,43 @@ export class Enemy {
     this.stateTime += dt;
     this.cooldown -= dt;
     this.flash = Math.max(0, this.flash - dt * 6);
-    this.poiseDamage = Math.max(0, this.poiseDamage - 12 * dt);
-    // Wind-up tell: an orange glow that swells until the strike.
+    // Wind-up tell: a glow that swells until the strike (orange for blockable blows, red for the ones to dodge).
     if (this.state === 'windup') {
-      const k = this.stateTime / this.type.windup;
+      const k = this.stateTime / this.windupTime;
       this.flash = Math.max(this.flash, 0.15 + 0.6 * k + 0.12 * Math.sin(this.stateTime * 40));
     }
+    if (this.type.joint && this.jointOpen) {
+      this.flash = Math.max(this.flash, 0.2 + 0.05 * Math.sin(this.stateTime * 14));
+      this.uniforms.uFlashColor.value.setRGB(1.0, 0.62, 0.2);
+      this._jointGlow = true;
+    } else if (this._jointGlow) {
+      this._jointGlow = false;
+      if (this.state !== 'windup') this.uniforms.uFlashColor.value.setRGB(1, 1, 1);
+    }
     this.uniforms.uFlash.value = this.flash;
+    if (this.wet > 0 && Math.random() < dt * 7) g.vfx.emit('waterTrail', this.chest(_v));
 
     if (this.state === 'dead') {
       this._updateDead(dt);
       return;
     }
 
-    const player = g.player;
-    const pp = player.position;
+    // The heroine this enemy is after (the nearest living one; the controlled one is slightly preferred).
+    const tg = g.combat.targetFor(this);
+    this.target = tg;
     const myPos = this.position;
+    const pp = tg ? tg.pos : this.home;
     const dx = pp.x - myPos.x, dz = pp.z - myPos.z;
     const dist = Math.hypot(dx, dz);
     const toPlayerYaw = Math.atan2(dx, dz);
-    const playerAlive = player.hp > 0 && player.action !== 'dead';
+    const playerAlive = !!tg;
 
     // Line of sight (throttled).
     this.losTimer -= dt;
     if (this.losTimer <= 0) {
       this.losTimer = 0.3;
       this.canSee = false;
-      if (dist < this.type.aggro * 1.4) {
+      if (tg && dist < this.type.aggro * 1.4) {
         this.chest(_v);
         _v2.set(pp.x, pp.y + 1.2, pp.z).sub(_v);
         const d = _v2.length();
@@ -222,6 +328,7 @@ export class Enemy {
 
     const cmd = { moveDir: _move.set(0, 0, 0), run: true, jumpPressed: false, jumpHeld: false, canMove: true, canJump: false };
     const leash = Math.hypot(myPos.x - this.home.x, myPos.z - this.home.z);
+    const atk = this.attack;
 
     switch (this.state) {
       case 'idle': {
@@ -260,8 +367,8 @@ export class Enemy {
       case 'windup': {
         cmd.faceYaw = toPlayerYaw;
         cmd.canMove = false;
-        if (this.telegraph) this.telegraph.update(this.stateTime / this.type.windup);
-        if (this.stateTime >= this.type.windup) {
+        if (this.telegraph) this.telegraph.update(this.stateTime / this.windupTime);
+        if (this.stateTime >= this.windupTime) {
           this.setState('strike');
           this._beginStrike(toPlayerYaw);
         }
@@ -270,7 +377,7 @@ export class Enemy {
       case 'strike': {
         cmd.canMove = false;
         this._strike(dt, dist);
-        if (this.stateTime >= this.type.strike) {
+        if (this.stateTime >= atk.strike) {
           this.setState('recover');
           this.cooldown = rand(0.4, 1.1);
         }
@@ -278,9 +385,10 @@ export class Enemy {
       }
       case 'recover': {
         cmd.canMove = false;
-        if (this.stateTime >= this.type.recover) {
+        if (this.stateTime >= atk.recover) {
           // Light enemies hop back out of her face after a swing.
           if (dist < 1.1 && this.type.style !== 'brute') this.controller.addImpulse(_v.set(-dx / Math.max(dist, 1e-3), 0, -dz / Math.max(dist, 1e-3)).multiplyScalar(3));
+          this.altAttack = !!this.type.atk2 && Math.random() < 0.4;
           this.setState('chase');
         }
         break;
@@ -297,6 +405,12 @@ export class Enemy {
         _move.set(-rz * this.orbitSign * 0.8 + rx * (dist - ring) * 0.6, 0, rx * this.orbitSign * 0.8 + rz * (dist - ring) * 0.6);
         if (_move.lengthSq() > 1) _move.normalize();
         if ((this.cooldown <= 0 && g.enemies.slotFree?.(this)) || dist > ring + 2.5) this.setState('chase');
+        break;
+      }
+      case 'stagger': {
+        // Stability broken: no new action for the duration of the reaction (0.65 / 1.0 / 1.2 / 1.6 s).
+        cmd.canMove = false;
+        if (this.stateTime >= this.staggerTime) this.setState('chase');
         break;
       }
       case 'hurt': {
@@ -373,138 +487,246 @@ export class Enemy {
 
   _chase(dt, dist, dx, dz, yaw, cmd) {
     const t = this.type;
+    const atk = this.attack;
+    const ranged = atk.kind === 'throw';
+    if (ranged) {
+      // A thrower keeps its distance: backs off when she gets close, closes in when she is far.
+      const lo = t.keepAway, hi = atk.range * 0.85;
+      if (dist < lo) cmd.moveDir.set(-dx / dist, 0, -dz / dist);
+      else if (dist > hi) cmd.moveDir.set(dx / dist, 0, dz / dist);
+      else cmd.faceYaw = yaw;
+      if (dist < lo) cmd.faceYaw = yaw;
+      if (dist < atk.range && dist > 2 && this.cooldown <= 0 && this.canSee && this.game.enemies.takeRangedSlot(this)) {
+        this._startWindup(dist, 'throw');
+      }
+      return;
+    }
     if (dist > t.attackRange * 0.85) {
       cmd.moveDir.set(dx / dist, 0, dz / dist);
     } else {
       cmd.faceYaw = yaw;
     }
     if (dist < t.attackRange && this.cooldown <= 0 && this.canSee) {
-      // At most two enemies attack at once; the rest circle and wait their turn.
+      // At most two melee enemies attack at once; the rest circle and wait their turn.
       if (!this.game.enemies.takeSlot(this)) {
         if (dist < t.attackRange + 2.5) this.setState('circle');
         return;
       }
-      this.setState('windup');
-      this.game.audio?.play('windup', { dist, vol: 0.6 });
-      this.uniforms.uFlashColor.value.setRGB(1, 0.42, 0.1);
-      if (t.style === 'brute') this._showTelegraph();
+      this._startWindup(dist, atk.kind);
     }
+  }
+
+  /** Begin the telegraphed attack. A blow from behind the camera gets at least 0.7 s of audible warning. */
+  _startWindup(dist, kind) {
+    const g = this.game;
+    const atk = this.attack;
+    let w = atk.windup;
+    const cam = g.cameraRig;
+    if (cam) {
+      cam.getForward(_v);
+      _v2.subVectors(this.position, g.camera.position).setY(0);
+      const l = _v2.length();
+      const behind = l > 1e-3 && _v.dot(_v2.divideScalar(l)) < 0.1;
+      if (behind) w = Math.max(w, 0.7);
+    }
+    this.windupTime = w;
+    this.setState('windup');
+    g.audio?.play('windup', { dist, vol: kind === 'heavy' || kind === 'wide' ? 0.95 : 0.6 });
+    const red = kind === 'heavy' || kind === 'wide' || kind === 'aoe';
+    this.uniforms.uFlashColor.value.setRGB(red ? 1 : 1, red ? 0.12 : 0.42, red ? 0.08 : 0.1);
+    this._showTelegraph(kind);
   }
 
   _beginStrike(yaw) {
     const t = this.type;
+    const atk = this.attack;
     this.lungeDir.set(Math.sin(yaw), 0, Math.cos(yaw));
-    // Lunge less when already close: they stop about a metre from her instead of hugging.
-    const d = Math.hypot(this.game.player.position.x - this.position.x, this.game.player.position.z - this.position.z);
-    this.controller.addImpulse(_v.copy(this.lungeDir).multiplyScalar(t.lunge * clamp((d - 0.9) / t.attackRange, 0, 1)));
+    const tg = this.target;
+    this.strikeYaw = yaw;
     this.game.audio?.play?.('swing');
-    if (t.style === 'brute') this._slam();
-  }
-
-  _strike(dt) {
-    const t = this.type;
-    if (this.struck || t.style === 'brute') return;
-    const player = this.game.player;
-    const pp = player.position;
-    _v.subVectors(pp, this.position);
-    const vy = _v.y;
-    _v.y = 0;
-    const d = _v.length();
-    const reach = t.style === 'dash' ? 1.25 : t.attackRange * 0.9 + 0.35;
-    const facing = d > 1e-3 ? _v.dot(this.lungeDir) / d : 1;
-    if (d < reach && facing > 0.25 && Math.abs(vy) < 2) {
-      this.struck = true;
-      player.takeHit(t.damage, this.position, t.style === 'dash' ? 6 : 5);
+    if (atk.kind === 'throw') {
+      this._throw(yaw);
+      return;
     }
+    // Lunge less when already close: they stop about a metre from her instead of hugging.
+    const d = tg ? Math.hypot(tg.pos.x - this.position.x, tg.pos.z - this.position.z) : 9;
+    this.controller.addImpulse(_v.copy(this.lungeDir).multiplyScalar(t.lunge * clamp((d - 0.9) / t.attackRange, 0, 1)));
+    if (atk.kind === 'heavy' || atk.kind === 'aoe') this._slam();
   }
 
-  _showTelegraph() {
+  _strike() {
+    const atk = this.attack;
+    if (this.struck || atk.kind === 'heavy' || atk.kind === 'aoe' || atk.kind === 'throw') return;
+    const g = this.game;
+    const wide = atk.kind === 'wide';
+    const reach = wide ? atk.reach : this.type.style === 'dash' ? 1.25 : this.type.attackRange * 0.9 + 0.35;
+    const halfArc = wide ? ((atk.arc || 150) * Math.PI) / 360 : 0.95;
+    let any = false;
+    for (const h of g.combat.livingHeroes()) {
+      _v.subVectors(h.pos, this.position);
+      const vy = _v.y;
+      _v.y = 0;
+      const d = _v.length();
+      if (d > reach + 0.3 || Math.abs(vy) > 2) continue;
+      const ang = d > 1e-3 ? Math.acos(clamp(_v.dot(this.lungeDir) / d, -1, 1)) : 0;
+      if (ang > halfArc) continue;
+      any = true;
+      g.combat.hitParty(h.id, { dmg: atk.damage, kind: atk.kind === 'medium' ? 'medium' : atk.kind === 'wide' ? 'wide' : 'light', from: this.position, parryable: atk.kind === 'light', attacker: this, knock: this.type.style === 'dash' ? 6 : 5 });
+    }
+    if (any) this.struck = true;
+  }
+
+  _throw(yaw) {
+    const g = this.game;
+    const atk = this.attack;
+    const tg = this.target;
+    if (!tg) return;
+    this.chest(_v);
+    // The projectile flies along the line fixed at the throw; a heroine who steps aside is missed.
+    _v2.set(tg.pos.x, tg.pos.y + 1.0, tg.pos.z).sub(_v);
+    const l = _v2.length() || 1;
+    g.projectiles.spawnEnemy(_v, _v2.divideScalar(l), atk.speed, atk.damage, this);
+    this.struck = true;
+  }
+
+  _showTelegraph(kind) {
+    const atk = this.attack;
     const yaw = this.controller.yaw;
-    const c = _v.set(Math.sin(yaw), 0, Math.cos(yaw)).multiplyScalar(this.type.attackRange * 0.7).add(this.position);
-    this.slamCenter = c.clone();
-    this.telegraph = this.game.combat.telegraph(this.slamCenter, this.type.aoe, this.type.windup);
+    const c = this.game.combat;
+    if (kind === 'heavy' || kind === 'aoe') {
+      const ctr = atk.around ? _v.copy(this.position) : _v.set(Math.sin(yaw), 0, Math.cos(yaw)).multiplyScalar(this.type.attackRange * 0.7).add(this.position);
+      this.slamCenter = ctr.clone();
+      this.telegraph = c.telegraph(this.slamCenter, atk.aoe || this.type.aoe || 2.4, this.windupTime);
+    } else if (kind === 'wide') {
+      this.telegraph = c.telegraph(this.position.clone(), atk.reach, this.windupTime, { yaw, arc: atk.arc || 150 });
+    } else if (kind === 'throw') {
+      const tg = this.target;
+      if (tg) this.telegraph = c.telegraphLine(this.position, tg.pos, this.windupTime);
+    }
   }
 
   _slam() {
     const g = this.game;
+    const atk = this.attack;
     const c = this.slamCenter || this.position;
     this.telegraph?.finish();
     this.telegraph = null;
     g.vfx.burst('groundDust', c, 22, { scale: 0.45 });
     g.vfx.burst('sparks', c, 16, { scale: 0.4 });
-    g.combat.groundImpact(c, this.type.aoe);
+    g.combat.groundImpact(c, atk.aoe || this.type.aoe);
     g.audio?.play('slam', { dist: g.player.position.distanceTo(c) });
     const d = g.player.position.distanceTo(c);
     g.cameraRig.addTrauma(clamp(0.5 - d / 30, 0.05, 0.45));
-    if (d < this.type.aoe + 0.3 && Math.abs(g.player.position.y - c.y) < 1.6) {
-      g.player.takeHit(this.type.damage, c, 8, true);
+    for (const h of g.combat.livingHeroes()) {
+      const dd = Math.hypot(h.pos.x - c.x, h.pos.z - c.z);
+      if (dd < (atk.aoe || this.type.aoe) + 0.3 && Math.abs(h.pos.y - c.y) < 1.6) {
+        g.combat.hitParty(h.id, { dmg: atk.damage, kind: 'heavy', from: c, attacker: this, knock: 8, heavy: true });
+      }
     }
   }
 
   // ---------------------------------------------------------------------------
-  /** Damage from the player. Returns true if it killed the enemy. */
+  /** A short reaction when the stability is broken (also: a counter poke deflecting the swing). */
+  stagger(duration, kind) {
+    this.telegraph?.cancel();
+    this.telegraph = null;
+    this.staggerTime = duration;
+    this.staggerKind = kind;
+    this.setState('stagger');
+    this.a.vPitch -= kind === 'boss' ? 4 : 6;
+  }
+
+  /** Called by the combat core after the damage was applied (src/combat/core/Damage.js applyHit). */
+  onHit(res) {
+    const g = this.game;
+    const hit = res.hit;
+    this.flash = 1;
+    this.lastHitTime = g.time;
+    this.aggroed = true;
+    const explosive = hit.tags?.includes('explosive');
+    const from = _from.set(hit.from?.x ?? this.position.x, this.position.y, hit.from?.z ?? this.position.z);
+    this.chest(_v);
+    g.worldUI?.damage(_v.clone(), res.dmg, !!(explosive || res.wetBonus || res.dmg >= 150));
+    if (res.wetBonus) g.worldUI?.text?.(this.position, 'Намокшая цель +10%');
+    g.audio?.play(res.dmg >= 150 ? 'hitHeavy' : 'hit');
+    _v2.subVectors(this.position, from).setY(0);
+    if (_v2.lengthSq() < 1e-6) _v2.set(0, 0, 1);
+    _v2.normalize();
+    const push = hit.push;
+    if (res.killed) {
+      this.hp = 0;
+      const blast = push?.blast;
+      this.controller.addImpulse(_v2.multiplyScalar((blast ? 9 : 4) * this.type.knock).setY(blast ? 9 : 3));
+      this.a.tumble = (Math.random() < 0.5 ? -1 : 1) * (blast ? 9 : 3);
+      this.telegraph?.cancel();
+      this.telegraph = null;
+      this.setState('airborne');
+      this.alive = false;
+      g.enemies.onKilled(this);
+      return;
+    }
+    if (push?.blast) {
+      // Explosion: light and medium enemies are thrown, heavy ones only flinch.
+      const k = this.tier === 'light' ? 1 : this.tier === 'medium' ? 0.5 : 0;
+      if (k > 0) {
+        this.controller.addImpulse(_v2.multiplyScalar(7 * k).setY(6 * k));
+        this.a.tumble = (Math.random() < 0.5 ? -1 : 1) * 7 * k;
+      }
+    } else if (push && push.dist > 0) {
+      this._push(push, _v2);
+    }
+    if (res.reaction) {
+      this.stagger(res.reaction.duration, res.reaction.tier);
+    } else {
+      this.a.vPitch -= 3; // a small flinch: not an interruption
+    }
+    if (this.state === 'idle' || this.state === 'return') this._alert();
+  }
+
+  /** Displace by `push.dist` metres (away from the source or towards it), stopping before walls and bodies. */
+  _push(push, away) {
+    const g = this.game;
+    let dist = push.dist;
+    const dir = _v3.copy(away);
+    if (push.dir === 'toward') {
+      dir.negate();
+      if (push.to) {
+        const d = Math.hypot(push.to.x - this.position.x, push.to.z - this.position.z);
+        dist = Math.min(dist, Math.max(0, d - (push.stopAt ?? 1)));
+      }
+    }
+    if (dist <= 0.02) return;
+    // Free path: no wall within the distance (at knee height).
+    _v.copy(this.position).setY(this.position.y + 0.5);
+    const wall = g.world.raycast(_v, dir, dist + this.type.radius);
+    if (wall) dist = Math.max(0, wall.distance - this.type.radius - 0.05);
+    for (const o of g.enemies.near(this.position, dist + 1.5)) {
+      if (o === this || !o.alive) continue;
+      _v2.subVectors(o.position, this.position).setY(0);
+      const along = _v2.dot(dir);
+      if (along > 0 && along < dist + 0.6 && Math.abs(_v2.x * dir.z - _v2.z * dir.x) < o.type.radius + this.type.radius) dist = Math.max(0, along - o.type.radius - this.type.radius);
+    }
+    if (dist > 0.02) this.controller.addImpulse(dir.multiplyScalar(dist * 7)); // extVel decays ~ e^(-7t): total ≈ impulse/7
+  }
+
+  /** Legacy damage (lava, scripted): bypasses the core, no stability change. */
   takeHit(damage, from, knock = 4, heavy = false) {
     if (!this.alive || this.state === 'dead') return false;
-    if (this.shieldFlags && !this.shieldFlags.every((f) => this.game.rpg.state.flags[f])) {
-      // A shielded enemy of the story (chapter 9): the side posts must be cut first.
-      this.flash = 0.5;
-      if (this.game.time - (this._shieldMsg ?? -99) > 4) { this._shieldMsg = this.game.time; this.game.hud?.toast('Щит держит: сними питание обоих боковых постов.', 3); }
-      return false;
-    }
+    if (this.immune()) { this.onImmune(); return false; }
     this.hp -= damage;
     this.flash = 1;
     this.lastHitTime = this.game.time;
     this.aggroed = true;
-    _v.subVectors(this.position, from);
-    _v.y = 0;
-    _v.normalize();
-    const t = this.type;
-    this.poiseDamage += damage;
-    const stagger = heavy || this.poiseDamage >= t.poise;
     if (this.hp <= 0) {
-      this.controller.addImpulse(_v.multiplyScalar(knock * t.knock * 1.6).setY(heavy ? 5 : 3));
+      _v.subVectors(this.position, from).setY(0).normalize();
+      this.controller.addImpulse(_v.multiplyScalar(knock * this.type.knock * 1.6).setY(heavy ? 5 : 3));
       this.setState('airborne');
       this.alive = false;
       this.game.enemies.onKilled(this);
       return true;
     }
-    if (stagger) {
-      this.poiseDamage = 0;
-      this.telegraph?.cancel();
-      this.telegraph = null;
-      this.controller.addImpulse(_v.multiplyScalar(knock * t.knock).setY(heavy ? 4 * t.knock : 0));
-      this.setState(heavy && t.knock > 0.5 ? 'airborne' : 'hurt');
-      this.a.vPitch -= 6;
-    }
-    else this.a.vPitch -= 3; // flinch
     if (this.state === 'idle' || this.state === 'return') this._alert();
     return false;
-  }
-
-  /** Explosion response. */
-  blast(center, radius, damage) {
-    if (this.state === 'dead') return;
-    _v.subVectors(this.position, center);
-    _v.y = 0;
-    const d = _v.length();
-    if (d > radius * 1.6) return;
-    const f = clamp(1 - d / radius, 0, 1);
-    const dmg = d < radius ? damage * (0.35 + 0.65 * f) : 0;
-    _v.normalize();
-    this.flash = 1;
-    this.telegraph?.cancel();
-    this.telegraph = null;
-    this.hp -= dmg;
-    this.aggroed = true;
-    const k = this.type.knock;
-    this.controller.addImpulse(_v.multiplyScalar((6 + 14 * f) * Math.min(1.2, k + 0.3)).setY((5 + 12 * f) * Math.min(1, k + 0.25)));
-    this.a.tumble = (Math.random() < 0.5 ? -1 : 1) * (4 + 8 * f) * Math.min(1, k + 0.3);
-    if (dmg > 0) this.game.worldUI?.damage(this.chest(new THREE.Vector3()), Math.round(dmg), true);
-    if (this.hp <= 0 && this.alive) {
-      this.alive = false;
-      this.game.enemies.onKilled(this);
-    }
-    this.setState('airborne');
   }
 
   _die() {
@@ -554,7 +776,8 @@ export class Enemy {
     this.dissolve = 0;
     this.uniforms.uDissolve.value = 0;
     this.respawnTimer = 0;
-    this.poiseDamage = 0;
+    this.poise = new PoiseState(this.tier);
+    this.wet = 0;
     this.root.visible = true;
     this.collider.enabled = true;
     this.a.pitch = this.a.roll = this.a.y = this.a.tumble = 0;
@@ -569,6 +792,8 @@ export class Enemy {
     if (this.state === 'dead') return;
     this.hp = this.maxHp;
     this.aggroed = false;
+    this.wet = 0;
+    this.poise = new PoiseState(this.tier);
     this.telegraph?.cancel();
     this.telegraph = null;
     this.setState('return');
@@ -596,8 +821,12 @@ export class Enemy {
     let tp = 0, tr = 0, ty = 0, ts = 0;
     const st = this.state;
     const k = this.stateTime;
-    if (st === 'windup') {
-      const n = clamp(k / t.windup, 0, 1);
+    if (st === 'stagger') {
+      tp = -0.35;
+      ts = 0.1;
+      tr = Math.sin(k * 30) * 0.05;
+    } else if (st === 'windup') {
+      const n = clamp(k / this.windupTime, 0, 1);
       tp = big ? -0.35 * n : -0.3 * n;
       ts = big ? 0.12 * n : -0.14 * n;
       tr = Math.sin(k * 50) * 0.03 * n;
@@ -605,7 +834,7 @@ export class Enemy {
       tp = big ? 0.55 : 0.45;
       ts = big ? -0.14 : 0.1;
     } else if (st === 'recover') {
-      tp = 0.25 * (1 - k / t.recover);
+      tp = 0.25 * (1 - k / this.attack.recover);
     } else if (st === 'alert') {
       ty = Math.sin(Math.min(k / 0.3, 1) * Math.PI) * 0.25;
       ts = 0.06;
@@ -657,7 +886,7 @@ export class Enemy {
     const spd = c.horizontalSpeed;
     if (demon) {
       if (st === 'dead' || (st === 'airborne' && this.hp <= 0)) { want = 'death'; fade = 0.12; }
-      else if (st === 'hurt' || st === 'airborne' || st === 'getup') { want = 'hit'; fade = 0.06; }
+      else if (st === 'hurt' || st === 'stagger' || st === 'airborne' || st === 'getup') { want = 'hit'; fade = 0.06; }
       else if (st === 'windup' || st === 'strike' || st === 'recover') { want = 'attack'; fade = 0.12; }
       else if (spd > 2.2) want = 'run';
       else if (spd > 0.25) want = 'walk';
@@ -674,7 +903,7 @@ export class Enemy {
       if (want === 'attack') {
         // Land the blow exactly when the telegraph completes.
         const dur = a.getClip().duration;
-        a.timeScale = (this.game.enemyAssets.strike[this.type.model] * dur) / this.type.windup;
+        a.timeScale = (this.game.enemyAssets.strike[this.type.model] * dur) / this.windupTime;
         this._attackSlow = true;
       } else a.timeScale = 1;
       this.clip = want;

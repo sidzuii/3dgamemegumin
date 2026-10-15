@@ -192,7 +192,7 @@ export class CharacterAnimator {
   }
 
   /** Legacy names: Idle Walk Run Jump Fall Land Cast Release Exhausted. */
-  set(name, restart = false) {
+  set(name, restart = false, opts = null) {
     if (name === this._legacy && !restart) return;
     this._legacy = name;
     switch (name) {
@@ -200,10 +200,11 @@ export class CharacterAnimator {
       case 'Jump': this._applyBase('JumpStart', 0.42); break;
       case 'Fall': this._applyBase('Fall'); break;
       case 'Land': this._applyBase('Land', 0.12); break;
-      case 'Cast': this._applyBase('CastEnter'); break;
-      case 'Release': this._applyBase('CastShoot'); break;
+      case 'Cast': this._applyBase('CastEnter', 0, opts?.duration); break;
+      case 'Release': this._applyBase('CastShoot', 0, opts?.duration); break;
       case 'Exhausted': this._applyBase('Death'); break;
-      case 'Roll': this._applyBase('Roll', 0.05); break;
+      case 'Slump': this._applyBase('Crouch'); break; // kneels / settles after the Explosion
+      case 'Roll': this._applyBase('Roll', 0.05, opts?.duration); break;
       default: this._applyBase('Loco');
     }
   }
@@ -212,13 +213,21 @@ export class CharacterAnimator {
    * Play an upper-body action over the locomotion. `fullBody` also drives the legs with
    * the clip (attacks from standing still: the step of the swing instead of sliding feet).
    */
-  playAction(name, fullBody = false) {
+  playAction(name, fullBody = false, opts = null) {
     if (!this.upper[name]) return;
+    const info = this.info[name];
+    // `opts.contact`: seconds from the start at which the clip's strike frame must land (the combat clock);
+    // `opts.duration`: how long the action layer stays on.
+    let ts = info.speed;
+    if (opts?.contact && info.hitTime) ts = info.speed * (info.hitTime / opts.contact);
+    else if (opts?.duration) ts = info.speed * (info.duration / opts.duration);
+    ts = clamp(ts, info.speed * 0.45, info.speed * 3.2);
     for (const L of fullBody ? [this.upper, this.lower] : [this.upper]) {
       L[name].reset();
       L[name].time = 0;
+      L[name].timeScale = ts;
     }
-    this.action = { name, t: 0, duration: this.info[name].duration, full: fullBody };
+    this.action = { name, t: 0, duration: opts?.duration ?? (info.duration * info.speed) / ts, full: fullBody };
     this.fade.upper = name === 'Hit' ? 0.05 : 0.07;
     if (fullBody) this.fade.lower = 0.08;
   }
@@ -227,7 +236,7 @@ export class CharacterAnimator {
     this.action = null;
   }
 
-  _applyBase(name, startAt = 0) {
+  _applyBase(name, startAt = 0, duration = 0) {
     this.base = name;
     this.baseTime = 0;
     this.fade.lower = BASE_FADE[name] ?? 0.2;
@@ -236,6 +245,8 @@ export class CharacterAnimator {
         const a = L[name];
         a.reset();
         a.time = startAt * a.getClip().duration;
+        // Fit the clip into the time the combat clock gives it (the Roll takes 0.62 s, a spell its own preparation).
+        a.timeScale = duration > 0 ? a.getClip().duration / duration : this.info[name].speed;
       }
     }
   }
@@ -248,7 +259,7 @@ export class CharacterAnimator {
     this.speed = speed;
 
     // Automatic follow-ups.
-    if (this.base === 'CastEnter' && this.baseTime > this.info.CastEnter.duration * 0.9) this._applyBase('CastLoop');
+    if (this.base === 'CastEnter' && this.baseTime > this.lower.CastEnter.getClip().duration / (this.lower.CastEnter.timeScale || 1) * 0.9) this._applyBase('CastLoop');
     if (this.base === 'Death') {
       const T = this.ctx.exhaustDuration;
       if (this.baseTime > T - 1.1) this._applyBase('Crouch');
@@ -347,7 +358,9 @@ export class CharacterAnimator {
       else if (this.base === 'Loco') w = 1 - 0.2 * (tl.Walk || 0) - 0.3 * clamp((this.speed - 2.5) / 3, 0, 1);
       else if (this.base === 'JumpStart' || this.base === 'Fall' || this.base === 'Land') w = 0.85;
       else w = 0;
-      this.model.holdStaff(w, dt);
+      // Guard (RMB): the staff across the chest in both hands; the combat layer sets ctx.guard.
+      this.guardW = damp(this.guardW || 0, this.ctx.guard || 0, 14, dt);
+      this.model.holdStaff(w, dt, this.guardW);
     }
     this._levelHead(dt);
 

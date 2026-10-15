@@ -1,53 +1,44 @@
 import * as THREE from 'three';
-import { rand } from '../core/math.js';
 
 /**
- * Pooled magic projectiles (Roxy's water bolts). Each bolt is a bright additive core
- * plus a particle trail; it collides with the world (ray segment) and the player.
+ * Pooled hostile projectiles (thrown daggers / stones of the throwers). They fly a straight line fixed at the
+ * throw — the trajectory is visible and a heroine who steps aside is missed; a projectile in flight never
+ * re-aims at a newly controlled heroine after Tab (docs/combat/04 §5). They stop at walls and hit the first
+ * heroine they touch (blocked for 60% by the guard, dodged by the i-frames).
+ * Roxy's own water arrows are simulated by the combat core and drawn by combat/fx/WaterFX.js.
  */
 const MAX = 24;
 const _seg = new THREE.Vector3();
 const _p = new THREE.Vector3();
-const _q = new THREE.Vector3();
 
 export class Projectiles {
   constructor(game) {
     this.game = game;
     this.items = [];
-    const geo = new THREE.SphereGeometry(0.16, 16, 12);
-    this.mat = new THREE.MeshBasicMaterial({ color: new THREE.Color(1.2, 2.6, 4.0), toneMapped: true, fog: false });
-    this.shellMat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color(0.25, 0.7, 1.6),
-      transparent: true,
-      opacity: 0.45,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    });
+    const geo = new THREE.OctahedronGeometry(0.13, 0).scale(1, 1, 2.2);
+    this.mat = new THREE.MeshStandardMaterial({ color: 0x9a9aa4, metalness: 0.8, roughness: 0.35, emissive: new THREE.Color(0.9, 0.18, 0.05), emissiveIntensity: 0.55 });
     for (let i = 0; i < MAX; i++) {
-      const core = new THREE.Mesh(geo, this.mat);
-      const shell = new THREE.Mesh(geo, this.shellMat);
-      shell.scale.setScalar(1.9);
-      core.add(shell);
-      core.visible = false;
-      game.scene.add(core);
-      this.items.push({ mesh: core, vel: new THREE.Vector3(), life: 0, active: false, damage: 0, homing: 0 });
+      const mesh = new THREE.Mesh(geo, this.mat);
+      mesh.visible = false;
+      game.scene.add(mesh);
+      this.items.push({ mesh, vel: new THREE.Vector3(), life: 0, active: false, damage: 0, owner: null, hit: new Set(), trail: 0 });
     }
   }
 
-  /** friendly = fired by the player (homes on enemies, hurts enemies). */
-  spawn(pos, vel, damage, homing = 0.6, friendly = false) {
+  /** A thrown projectile from `pos` along unit `dir` at `speed` m/s. */
+  spawnEnemy(pos, dir, speed, damage, owner) {
     const it = this.items.find((i) => !i.active);
     if (!it) return;
     it.active = true;
     it.mesh.visible = true;
     it.mesh.position.copy(pos);
-    it.vel.copy(vel);
-    it.life = 4;
+    it.vel.copy(dir).multiplyScalar(speed);
+    it.mesh.lookAt(_p.copy(pos).add(dir));
+    it.life = 2.2;
     it.damage = damage;
-    it.homing = homing;
-    it.friendly = friendly;
-    it.target = null;
-    it.mesh.scale.setScalar(friendly ? 0.8 : 1);
+    it.owner = owner;
+    it.hit.clear();
+    this.game.audio?.play?.('swing');
   }
 
   clear() {
@@ -59,96 +50,36 @@ export class Projectiles {
 
   update(dt) {
     const g = this.game;
-    const player = g.player;
     for (const it of this.items) {
       if (!it.active) continue;
       it.life -= dt;
       const m = it.mesh;
-      if (it.friendly) {
-        this._updateFriendly(it, dt);
-        continue;
-      }
-      // Mild homing towards the player's chest.
-      _p.set(player.position.x, player.position.y + 1.0, player.position.z).sub(m.position);
-      const dist = _p.length();
-      if (it.homing > 0 && dist > 1.5) {
-        const speed = it.vel.length();
-        it.vel.addScaledVector(_p.divideScalar(dist), speed * it.homing * dt).setLength(speed);
-      }
       _seg.copy(it.vel).multiplyScalar(dt);
       const len = _seg.length();
-      const hit = g.world.raycast(m.position, _seg.clone().divideScalar(len), len);
+      const hit = g.world.raycast(m.position, _p.copy(_seg).divideScalar(len), len);
       m.position.add(_seg);
-      m.rotation.y += dt * 8;
-      if (Math.random() < dt * 90) g.vfx.emit('waterTrail', m.position);
-      const dp = m.position.distanceTo(_p.set(player.position.x, player.position.y + 1.0, player.position.z));
-      if (dp < 0.65 && !player.iframes) {
-        player.takeHit(it.damage, m.position, 5);
-        this._splash(it);
-      } else if (dp < 0.65) {
-        if (!player.dodgePerfect) player.takeHit(it.damage, m.position, 5); // counts the perfect dodge; the bolt flies on
-      } else if (hit || it.life <= 0) {
-        if (hit) m.position.copy(hit.point);
-        this._splash(it);
+      m.rotateZ(dt * 14);
+      it.trail -= dt;
+      if (it.trail <= 0) { it.trail = 0.03; g.vfx.emit('ember', m.position, { spread: 0.05, speed: 0.4 }); }
+      let done = false;
+      for (const h of g.combat.livingHeroes()) {
+        if (it.hit.has(h.id)) continue;
+        const dp = Math.hypot(m.position.x - h.pos.x, m.position.z - h.pos.z);
+        if (dp < 0.55 && Math.abs(m.position.y - (h.pos.y + 1.0)) < 0.9) {
+          it.hit.add(h.id);
+          const res = g.combat.hitParty(h.id, { dmg: it.damage, kind: 'projectile', from: m.position, attacker: it.owner, knock: 3 });
+          if (!res?.dodged) { done = true; break; } // a dodged projectile flies on
+        }
       }
+      if (done) this._end(it, false);
+      else if (hit) { m.position.copy(hit.point); this._end(it, true); }
+      else if (it.life <= 0) this._end(it, false);
     }
   }
 
-  _updateFriendly(it, dt) {
-    const g = this.game;
-    const m = it.mesh;
-    // Acquire / keep a target: nearest living enemy roughly ahead.
-    if (!it.target || !it.target.alive) {
-      let best = null, bd = 30;
-      _q.copy(it.vel).normalize();
-      // Spread the volley: enemies already chased by other bolts count as farther away.
-      for (const e of g.enemies.list) {
-        if (!e.alive) continue;
-        e.chest(_p).sub(m.position);
-        let d = _p.length();
-        if (_p.dot(_q) / d <= 0.3) continue;
-        let taken = 0;
-        for (const o of this.items) if (o !== it && o.active && o.target === e) taken++;
-        d += taken * 6;
-        if (d < bd) { bd = d; best = e; }
-      }
-      it.target = best;
-    }
-    if (it.target) {
-      it.target.chest(_p).sub(m.position);
-      const d = _p.length();
-      const speed = it.vel.length();
-      it.vel.addScaledVector(_p.divideScalar(d), speed * it.homing * 3 * dt).setLength(speed);
-    }
-    _seg.copy(it.vel).multiplyScalar(dt);
-    const len = _seg.length();
-    const hit = g.world.raycast(m.position, _seg.clone().divideScalar(len), len);
-    m.position.add(_seg);
-    if (Math.random() < dt * 90) g.vfx.emit('waterTrail', m.position);
-    for (const e of g.enemies.near(m.position, 3)) {
-      if (!e.alive) continue;
-      if (e.chest(_p).distanceTo(m.position) < e.type.hitRadius + 0.35) {
-        const dmg = Math.round(it.damage * (0.9 + Math.random() * 0.2));
-        e.takeHit(dmg, m.position, 3);
-        g.worldUI.damage(_p.clone(), dmg, false);
-        this._splash(it);
-        return;
-      }
-    }
-    if (hit || it.life <= 0) {
-      if (hit) m.position.copy(hit.point);
-      this._splash(it);
-    }
-  }
-
-  _splash(it) {
-    const g = this.game;
-    g.vfx.burst('waterSplash', it.mesh.position, 26);
+  _end(it, wall) {
+    if (wall) this.game.vfx.burst('sparks', it.mesh.position, 6, { scale: 0.2 });
     it.active = false;
     it.mesh.visible = false;
   }
-}
-
-export function spread(base, angle) {
-  return base.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), angle + rand(-0.03, 0.03));
 }

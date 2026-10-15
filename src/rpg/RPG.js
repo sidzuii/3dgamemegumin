@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { EventBus, freshState, loadSave, writeSave, check, MAP_REV, STORY_REV } from './State.js';
-import { CLIPS } from '../data/story/clips.js';
+import { CLIPS as STORY_CLIPS } from '../data/story/clips.js';
+import { COMBAT_CLIPS } from '../data/story/combatClips.js';
+const CLIPS = { ...STORY_CLIPS, ...COMBAT_CLIPS };
 import { VOICE } from '../data/story/dsl.js';
 import { TRIGGERS } from '../data/story/triggers.js';
 import { STORY_PROPS, STORY_VOLLEY, STORY_WAVES, STORY_BLASTS } from '../data/story/props.js';
@@ -68,9 +70,17 @@ export class RPG {
         else this.setFlag('ritual_sector_hit');
       }
     });
+    // The first delivered contract opens the sweep (the short exercise at Bran's dummies).
+    this.events.on('custom', (e) => {
+      if (e.name === 'contract_done' && !this.state.flags.skill_M_E) {
+        this.setFlag('skill_M_E');
+        this.notify('info', 'Открыт Круговой отбив (E): широкая дуга 240°, 26 выносливости. Потренируйся на манекенах у Брана.');
+      }
+    });
     this.events.on('volley', (e) => { this._volleyStory(e); this._combatBark('V02_001', 0.35, 6); });
-    this.events.on('explosion', () => this._combatBark('V01_003', 0.5, 8));
+    this.events.on('explosion', (e) => { if (e.kind === 'explosion') this._combatBark('V01_003', 0.5, 8); });
     this.events.on('explosion', (e) => {
+      if (!e.tags?.includes('story_demolition')) return; // directed story blasts need the big Explosion
       for (const t of STORY_BLASTS) {
         const s = this.spotPos(t.spot);
         if (s && !this.state.flags[t.flag] && check(this, t.when) && Math.hypot(e.pos.x - s.x, e.pos.z - s.z) <= t.r) this.setFlag(t.flag);
@@ -203,8 +213,19 @@ export class RPG {
       pl.level = P.level || 1;
       pl.xp = P.xp || 0;
       pl.applyStats();
-      pl.hp = Math.min(pl.maxHp, P.hp ?? pl.maxHp);
-      pl.mana = Math.min(pl.maxMana, P.mana ?? pl.maxMana);
+      // Older saves had one 100-point health value for the active heroine (and a shared pool).
+      for (const id of ['megumin', 'roxy']) {
+        const f = pl.fighters[id], sv = P.party?.[id];
+        if (sv) {
+          f.hp = Math.min(f.maxHp, Math.max(1, sv.hp));
+          f.mana = Math.min(f.maxMana, sv.mana ?? f.maxMana);
+          f.stamina = Math.min(f.maxStamina, sv.stamina ?? f.maxStamina);
+        } else {
+          const frac = Math.min(1, Math.max(0.2, (P.hp ?? 100) / (100 + ((P.level || 1) - 1) * 12 + 20)));
+          f.hp = id === (P.character || 'megumin') ? Math.max(1, Math.round(f.maxHp * frac)) : f.maxHp;
+          f.mana = Math.min(f.maxMana, P.mana ?? f.maxMana);
+        }
+      }
       const pos = new THREE.Vector3(P.x, P.y, P.z);
       // Saved where there is water now (the reed pond on the Olkhovka road): onto the road.
       if (g.world.surfaceAt(pos) === 'water' || g.world.surfaceAt(pos.clone().setY(g.world.heightAt(pos.x, pos.z) + 0.3)) === 'water') {
@@ -220,8 +241,7 @@ export class RPG {
       pl.level = 1;
       pl.xp = 0;
       pl.applyStats();
-      pl.hp = pl.maxHp;
-      pl.mana = pl.maxMana;
+      pl.restoreParty(true);
       const s = this.spot('caravan_arrival');
       pl.controller.teleport(s.pos.clone(), s.yaw);
       pl.setCheckpoint(s.pos.clone(), s.yaw);
@@ -348,8 +368,7 @@ export class RPG {
       pl.xp -= XP_TABLE(pl.level);
       pl.level++;
       pl.applyStats();
-      pl.heal(pl.maxHp);
-      pl.restoreMana(pl.maxMana);
+      pl.restoreParty(false);
       this.notify('level', `Уровень ${pl.level}! Здоровье и мана выросли.`);
       this.game.audio?.play('levelup');
       this.game.vfx.burst('magicPop', pl.position.clone().setY(pl.position.y + 1), 50);
@@ -419,7 +438,7 @@ export class RPG {
       case 'event': this.events.emit('custom', { name: v }); break;
       case 'follow': { const n = this.npcs.get(v[0]); n?.setFollow(v[1] ? { pos: () => this.game.player.position, keep: 2.4 } : null); if (!v[1]) n?.refresh(true); break; }
       case 'escort': this.startEscort(v); break;
-      case 'heal': this.game.player.heal(9999); this.game.player.restoreMana(9999); this.game.player.restoreStamina(100); break;
+      case 'heal': this.game.player.restoreParty(true); break;
       case 'say': this.say(v); break;
       case 'sayChain': this._sayChain(v); break;
       case 'wave': this._startWave(v); break;
@@ -457,7 +476,7 @@ export class RPG {
     for (const [id, d] of Object.entries(this.quests.defs)) {
       if (d.giver === npc.id && d.category === 'story' && !d.noAuto && this.quests.canStart(id)) this.quests.start(id);
     }
-    for (const t of def.talk || []) {
+    for (const t of talkOrder(def)) {
       if (!t.if || this.check(t.if)) {
         if (t.dialogue) {
           npc.startTalk();
@@ -675,6 +694,37 @@ export class RPG {
     this.say(clip);
   }
 
+  /**
+   * A spoken line of the combat description (CB_M* / CB_R*), rare and never over a conversation: one global gap
+   * of 3 s, a per-line gap, and never the same line twice in a row (docs/combat/05 §6).
+   */
+  combatBark(clip, hero) {
+    const t = performance.now() / 1000;
+    if (this.dialogue.active || t - (this._cbAny ?? -99) < 3 || this._lastBark === clip) return;
+    const gap = /CB_M001|CB_R001|CB_R002/.test(clip) ? 12 : 20;
+    if (t - (this._cbT?.[clip] ?? -99) < gap) return;
+    if (/CB_M001|CB_R001|CB_R002|CB_M003/.test(clip) && Math.random() > 0.5) return;
+    (this._cbT ||= {})[clip] = t;
+    this._cbAny = t;
+    this._lastBark = clip;
+    void hero;
+    this.say(clip);
+  }
+
+  /** Story / zone rules for explosive spells (Explosion and Crimson Breach both carry the `explosive` tag). */
+  explosiveAllowed(heroId, spec, pos) {
+    const A = REGION.astrarium;
+    if (pos && this.quests.status('roxy_trust') === 'active' && Math.hypot(pos.x - A.center.x, pos.z - A.center.z) <= A.r + 10) {
+      const st = this.quests.stageId('roxy_trust');
+      if ((st === 'crystals' || st === 'return') && this.getVar('ROXY_PROMISE')) return { ok: true, warn: 'Рокси просила не взрывать в руинах: это нарушит обещание.' };
+      if (st === 'defend') {
+        const far = this.spotPos('astrarium_far');
+        if (far && Math.hypot(pos.x - far.x, pos.z - far.z) > 14) return { ok: true, warn: 'Ритуал: взрыв разрешён только в дальнем секторе.' };
+      }
+    }
+    return { ok: true };
+  }
+
   /** V03 / V04: on the road, Megumin and Roxy talk now and then (by the level of trust). */
   _roadBark(dt) {
     if (!this.state.flags.roxy_companion || this.game.inDungeon || this.dialogue.active) return;
@@ -837,9 +887,7 @@ export class RPG {
   sleep(hour = 7) {
     this.clock.advanceTo(hour);
     const pl = this.game.player;
-    pl.heal(9999);
-    pl.restoreMana(9999);
-    pl.restoreStamina(100);
+    pl.restoreParty(true);
     this.game.hud.fade?.(1.2);
     this.notify('info', `Вы хорошо выспались. ${this.clock.label()}`);
     if (this.quests.stageId('ch5_crypt') === 'rest') this.setFlag('C_RESTED');
@@ -937,7 +985,12 @@ export class RPG {
     const S = this.state;
     // Don't save a position in mid-air or while dead: use the checkpoint instead.
     const pos = pl.hp > 0 && pl.controller.grounded ? pl.position : pl.spawnPoint;
-    S.player = { x: pos.x, y: pos.y, z: pos.z, yaw: pl.controller.yaw, hp: Math.max(1, pl.hp), mana: pl.mana, level: pl.level, xp: pl.xp, character: pl.character };
+    const party = {};
+    for (const id of ['megumin', 'roxy']) {
+      const f = pl.fighters[id];
+      party[id] = { hp: Math.max(1, f.hp), mana: f.mana, stamina: f.stamina, present: pl.slots[id]?.present || false };
+    }
+    S.player = { x: pos.x, y: pos.y, z: pos.z, yaw: pl.controller.yaw, hp: Math.max(1, pl.hp), mana: pl.mana, level: pl.level, xp: pl.xp, character: pl.character, party };
     S.inventory = g.inventory.serialize();
     S.discovered = [...g.discovered];
     let bin = '';
@@ -995,3 +1048,21 @@ function roadRoute(id, from) {
 }
 
 export { REGIONS };
+
+const _talkOrder = new WeakMap();
+/** An offer of a side contract (`status: 'available'`) never hides a story step of the same person: the offers move behind
+ *  the last conversation that belongs to a quest stage; everything else keeps the order of data/npcs.js. */
+function talkOrder(def) {
+  let list = _talkOrder.get(def);
+  if (!list) {
+    const talk = def.talk || [];
+    const offer = (t) => !!t.dialogue && JSON.stringify(t.if || '').includes('"status":"available"');
+    const step = (t) => !!t.dialogue && !offer(t) && JSON.stringify(t.if || '').includes('"stage"');
+    const rest = talk.filter((t) => !offer(t));
+    let at = -1;
+    rest.forEach((t, i) => { if (step(t)) at = i; });
+    list = at < 0 ? talk : [...rest.slice(0, at + 1), ...talk.filter(offer), ...rest.slice(at + 1)];
+    _talkOrder.set(def, list);
+  }
+  return list;
+}
