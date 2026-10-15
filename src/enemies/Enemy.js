@@ -86,6 +86,14 @@ export const TYPES = {
     aggro: 16, attackRange: 2.0, atk: A('medium', 0.5, 0.2, 0.95, 90), lunge: 4.5,
     knock: 0.7, style: 'dash', tint: [0.6, 0.85, 1.1], hitRadius: 0.65, xp: 18,
   },
+  // The charge carrier of the central hall (chapter 9, docs/combat/04 §4): a pulse of heat around itself — step out of
+  // the ring — and it is open to blows while cooled (wet): water from Roxy, then the staff or the Explosion.
+  carrier: {
+    name: 'Носитель заряда', model: 'demon', scale: 0.85, hp: 650, defP: 30, defM: 15, tier: 'medium', speed: 3.0, walk: 1.2, radius: 0.55, height: 1.9,
+    aggro: 15, attackRange: 2.6, atk: A('heavy', 1.2, 0.25, 1.1, 130, { aoe: 4.0, around: true }), lunge: 0,
+    knock: 0.6, style: 'brute', tint: [1.45, 0.78, 0.4], hitRadius: 0.7, xp: 20,
+    cool: { mul: 1.6 },
+  },
   demon: {
     name: 'Демон', model: 'demon', hp: 2400, defP: 25, defM: 25, tier: 'heavy', speed: 3.2, walk: 1.3, radius: 0.62, height: 2.35,
     aggro: 16, attackRange: 2.4, atk: A('heavy', 0.95, 0.22, 0.95, 180, { aoe: 2.7 }), atk2: A('wide', 0.8, 0.25, 0.85, 130, { arc: 170, reach: 3.0 }), lunge: 2.5,
@@ -255,7 +263,7 @@ export class Enemy {
   }
   /** Damage multiplier read by the combat core at the moment of contact. */
   get vulnMul() {
-    return this.jointOpen ? this.type.joint.mul : 1;
+    return (this.jointOpen ? this.type.joint.mul : 1) * (this.type.cool && this.wet > 0 ? this.type.cool.mul : 1);
   }
 
   setState(s) {
@@ -586,7 +594,7 @@ export class Enemy {
     const yaw = this.controller.yaw;
     const c = this.game.combat;
     if (kind === 'heavy' || kind === 'aoe') {
-      const ctr = _v.set(Math.sin(yaw), 0, Math.cos(yaw)).multiplyScalar(this.type.attackRange * 0.7).add(this.position);
+      const ctr = atk.around ? _v.copy(this.position) : _v.set(Math.sin(yaw), 0, Math.cos(yaw)).multiplyScalar(this.type.attackRange * 0.7).add(this.position);
       this.slamCenter = ctr.clone();
       this.telegraph = c.telegraph(this.slamCenter, atk.aoe || this.type.aoe || 2.4, this.windupTime);
     } else if (kind === 'wide') {

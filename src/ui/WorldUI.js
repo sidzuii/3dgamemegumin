@@ -122,7 +122,7 @@ export class WorldUI {
         b.poise.style.transform = `scaleX(${(po.reacting ? 1 : po.protected ? 0 : po.fraction).toFixed(3)})`;
         b.poiseWrap.className = 'ehp-poise' + (po.reacting ? ' broken' : po.protected ? ' prot' : '');
       }
-      const icons = (e.jointOpen ? '✦' : '') + (e.wet > 0 ? '💧' : '') + (po?.protected && !po.reacting ? '🛡' : '') + (e.tier === 'heavy' || e.tier === 'boss' ? '▲' : e.tier === 'medium' ? '◆' : '');
+      const icons = (e.jointOpen ? '✦' : '') + (e.type?.cool && e.wet > 0 ? '❄' : '') + (e.wet > 0 ? '💧' : '') + (po?.protected && !po.reacting ? '🛡' : '') + (e.tier === 'heavy' || e.tier === 'boss' ? '▲' : e.tier === 'medium' ? '◆' : '');
       if (icons !== b.iconText) {
         b.iconText = icons;
         b.icons.textContent = icons;

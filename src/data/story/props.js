@@ -286,7 +286,7 @@ export const STORY_WAVES = {
   kharz_battle: { spot: 'kharz_arena', camp: 'kharz_battle', enemies: [['archdemon', 0, 0], ['imp', -4, -3], ['imp', 4, -3]], onClear: [{ scene: 'C14b' }] },
   pump_guards: { spot: 'pump_guards', camp: 'pump_wave', enemies: [['guardian', -6, 2], ['guardian', 6, 2], ['watcher', 0, -5]], onClear: [] },
   amp_guards: { spot: 'core_rack', camp: 'amp_wave', enemies: [['guardian', 4, 3], ['guardian', 4, -3]], onClear: [] },
-  ctrl_wave1: { spot: 'core_arena', camp: 'ctrl_w1', enemies: [['guardian', -6, 0], ['watcher', 6, 2], ['imp', 0, -5]], onClear: [{ scene: 'C24b' }] },
+  ctrl_wave1: { spot: 'core_arena', camp: 'ctrl_w1', enemies: [['guardian', -6, 0], ['watcher', 6, 2], ['carrier', 0, -6]], onClear: [{ scene: 'C24b' }] },
   ctrl_wave2: { spot: 'core_arena', camp: 'ctrl_w2', enemies: [['guardian', 0, 5, { shield: ['post_l_off', 'post_r_off'] }], ['watcher', -6, -2]], onClear: [{ scene: 'C24c' }] },
   final_wave: { spot: 'core_arena', camp: 'final_w', enemies: [['guardian', -5, 3, { shield: ['fpost_l_off', 'fpost_r_off'] }], ['guardian', 5, 3, { shield: ['fpost_l_off', 'fpost_r_off'] }], ['watcher', 0, -5]], onClear: [] },
   raid1: { spot: 'night_field', camp: 'raid_w1', enemies: [['mushroom', -6, 0], ['mushroom', 0, 5], ['mushroom', 6, 0]], onClear: [{ wave: 'raid2' }], say: [] },

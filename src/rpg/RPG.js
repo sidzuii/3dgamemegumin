@@ -476,7 +476,9 @@ export class RPG {
     for (const [id, d] of Object.entries(this.quests.defs)) {
       if (d.giver === npc.id && d.category === 'story' && !d.noAuto && this.quests.canStart(id)) this.quests.start(id);
     }
-    for (const t of def.talk || []) {
+    // An offer of a side contract never hides a story step of the same person: offers come after the conditional
+    // entries (story stages, barks) and before the unconditional default.
+    for (const t of talkOrder(def)) {
       if (!t.if || this.check(t.if)) {
         if (t.dialogue) {
           npc.startTalk();
@@ -1048,3 +1050,15 @@ function roadRoute(id, from) {
 }
 
 export { REGIONS };
+
+const _talkOrder = new WeakMap();
+function talkOrder(def) {
+  let list = _talkOrder.get(def);
+  if (!list) {
+    const talk = def.talk || [];
+    const offer = (t) => !!t.dialogue && JSON.stringify(t.if || '').includes('"status":"available"');
+    list = [...talk.filter((t) => t.if && !offer(t)), ...talk.filter(offer), ...talk.filter((t) => !t.if && !offer(t))];
+    _talkOrder.set(def, list);
+  }
+  return list;
+}
