@@ -323,6 +323,7 @@ export class Game {
     else if (input.wasPressed('KeyM')) this.menu.show('map');
     else if (input.wasPressed('KeyC')) this.menu.show('char');
     else if (input.wasPressed('KeyG')) this.menu.show('guild');
+    else if (input.wasPressed('KeyK')) this.menu.show('combat');
     else if (input.wasPressed('KeyO')) this.menu.show('sound');
     if (input.wasPressed('Digit3')) this.inventory.use('hp_potion');
     if (input.wasPressed('Digit4')) this.inventory.use('st_potion');
