@@ -68,7 +68,8 @@ Full description, file map and how-to guides: see `README.md` (Russian). The use
   markdown with `tools/story/draft.mjs`, list its ids with `tools/story/outline.mjs`). Dialogue ids = scene ids
   (`A00`, entry points `A00:join`); NPC `talk` entries in `data/npcs.js` route to them by quest stage. Story variables:
   `state.vars` (`{ setVar }` / `{ addVar }` / `{ var: [name, op, value] }`, names declared in `story/vars.js`).
-  `node tools/story/check.mjs [A|B|C]` = static check + coverage (run it after every change). Do not touch the
+  `node tools/story/check.mjs [A|B|C]` = static check + coverage (run it after every change). Story props / Water Volley targets / enemy waves
+  are DATA in `story/props.js` (`STORY_PROPS`, `STORY_VOLLEY`, `STORY_WAVES`; effects `{ wave }`, `{ scene }`); interiors beyond the map edge: `build/Dungeon.js` zones (mine, crypt, relay), helpers `hall()`/`passage()` in `build/Crypt.js`. Do not touch the
   voice-over (`Озвучка/` of the package, core/Audio.js) while the story is being built.
 - Character animation = mocap clips from `public/models/anim/ual.glb` retargeted at runtime
   (`src/character/Retarget.js` + `CharacterAnimator.js`). Bone maps per skeleton are in `MAPS`

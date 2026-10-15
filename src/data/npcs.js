@@ -221,10 +221,14 @@ export const NPCS = [
     id: 'tobias', name: 'Тобиас', title: 'Странствующий торговец',
     model: M(['Casual_Head', 'Adventurer_Body', 'Adventurer_Legs', 'Adventurer_Feet', 'Backpack'], { Hair: 0x6a3a1a, 'Adventurer_Body:Green': 0x5a8a5a }),
     look: { skin: 0xf6d0b0, hair: 0x6a3a1a, hairStyle: 'short', top: 0x5a8a5a, vest: 0x8a6a3a, bottom: 0x4a3a2a, hat: 'cap', hatColor: 0x5a8a5a, bag: 0x7a5232 },
-    schedule: (rpg) => (rpg.check({ any: [{ quest: 'c_escort_tobias', status: 'done' }, { quest: 'c_escort_tobias', stage: 'pay' }] })
-      ? [{ time: [7, 21], spot: 'olkhovka_tobias', anim: 'idle' }, { time: [21, 7], hidden: true }]
-      : [{ time: [8, 20], spot: 'tobias_wait', anim: 'idle' }, { time: [20, 8], hidden: true }]),
+    schedule: (rpg) => (rpg.check({ quest: 'ch6_relay', status: 'active' }) && !rpg.check({ any: [{ quest: 'ch6_relay', stage: 'tobias' }] })
+      ? [{ time: [0, 24], spot: 'relay_tobias', anim: 'idle' }]
+      : rpg.check({ any: [{ quest: 'c_escort_tobias', status: 'done' }, { quest: 'c_escort_tobias', stage: 'pay' }] })
+        ? [{ time: [7, 21], spot: 'olkhovka_tobias', anim: 'idle' }, { time: [21, 7], hidden: true }]
+        : [{ time: [8, 20], spot: 'tobias_wait', anim: 'idle' }, { time: [20, 8], hidden: true }]),
     talk: [
+      { if: { quest: 'ch6_relay', stage: 'tobias' }, dialogue: 'C06' },
+      { if: { quest: 'ch6_relay', status: 'active' }, bark: ['Дорогу знаю, внутрь не пойду. Жду у ворот.', 'Если Дан и Оса выйдут, я отведу их к лошадям.'] },
       { if: { quest: 'c_escort_tobias', stage: 'meet' }, dialogue: 'B06a' },
       { if: { quest: 'c_escort_tobias', stage: 'escort' }, bark: ['Идём, идём! Только не слишком быстро…'] },
       { if: { quest: 'c_escort_tobias', stage: 'pay' }, dialogue: 'B06c' },
@@ -334,6 +338,35 @@ export const NPCS = [
       { if: { flag: 'B12_READY', notFlag: 'B12_DONE' }, dialogue: 'B12b' },
       { if: { item: 'astra_token', notFlag: 'B12_ASKED' }, dialogue: 'B12a' },
       { dialogue: 'trader_main' },
+    ],
+  },
+  // ------------------------------------------------------------------ the workers of the relay post (chapter 6)
+  {
+    id: 'dan', name: 'Дан', title: 'Рабочий поста',
+    model: M(['Casual2_Head', 'Farmer_Body', 'Worker_Legs', 'Worker_Feet'], { Skin: 0xc89070, Skin_Darker: 0xa87050, Hair: 0x2a1a12, Beige: 0x8a7a5a, LightBlue: 0x5a4a3a }),
+    look: { skin: 0xc89070, hair: 0x2a1a12, hairStyle: 'short', top: 0x8a7a5a, sleeves: 'short', bottom: 0x4a4038 },
+    schedule: (rpg) => (rpg.check({ any: [{ quest: 'ch6_relay', stage: 'dan' }, { quest: 'ch6_relay', stage: 'p_dan' }, { quest: 'ch6_relay', stage: 'p_osa' }, { quest: 'ch6_relay', stage: 'p_guard' }, { quest: 'ch6_relay', stage: 'out' }] })
+      ? [{ time: [0, 24], spot: 'relay_dan', anim: 'idle' }]
+      : rpg.check({ flag: 'relay_workers_out' }) ? [{ time: [0, 24], spot: 'relay_dan_out', anim: 'idle' }] : [{ time: [0, 24], hidden: true }]),
+    talk: [
+      { if: { quest: 'ch6_relay', stage: 'dan' }, dialogue: 'C07' },
+      { if: { quest: 'ch6_relay', stage: 'out' }, dialogue: 'C07b' },
+      { if: { quest: 'ch6_relay', status: 'active', flag: 'relay_workers_out' }, bark: ['Спасибо. Нога болит, но идти могу.', 'Панель в архиве читает наш пропуск. Берите документы, пока они сухие.'] },
+      { bark: ['Не поднимайтесь по лестнице: страж её видит.', 'Защёлка наверху. Мы туда не достаём.'] },
+    ],
+  },
+  {
+    id: 'osa', name: 'Оса', title: 'Рабочая поста',
+    model: F(['Soldier_Head', 'Adventurer_Body', 'Medieval_Legs', 'Adventurer_Feet'], { Hair_Brown: 0x6a2a1a, 'Adventurer_Body:Green': 0x6a6a4a, 'Adventurer_Body:LightGreen': 0x4a4a38, Black: 0x3a3428 }),
+    look: { skin: 0xe8c8a8, hair: 0x6a2a1a, hairStyle: 'ponytail', top: 0x6a6a4a, vest: 0x4a4a38, bottom: 0x3a3428 },
+    schedule: (rpg) => (rpg.check({ any: [{ quest: 'ch6_relay', stage: 'dan' }, { quest: 'ch6_relay', stage: 'p_dan' }, { quest: 'ch6_relay', stage: 'p_osa' }, { quest: 'ch6_relay', stage: 'p_guard' }, { quest: 'ch6_relay', stage: 'out' }] })
+      ? [{ time: [0, 24], spot: 'relay_osa', anim: 'idle' }]
+      : rpg.check({ flag: 'relay_workers_out' }) ? [{ time: [0, 24], spot: 'relay_osa_out', anim: 'idle' }] : [{ time: [0, 24], hidden: true }]),
+    talk: [
+      { if: { quest: 'ch6_relay', stage: 'dan' }, dialogue: 'C07' },
+      { if: { quest: 'ch6_relay', stage: 'out' }, dialogue: 'C07b' },
+      { if: { quest: 'ch6_relay', status: 'active', flag: 'relay_workers_out' }, bark: ['В архиве список людей, которые работали до нас. Не оставляйте его под водой.'] },
+      { bark: ['На боковой площадке держится последний крюк.', 'По одному. Я первая, у Дана болит нога.'] },
     ],
   },
   // ------------------------------------------------------------------ Roxy (chapter 4)

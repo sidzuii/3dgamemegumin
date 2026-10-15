@@ -16,6 +16,7 @@ import { CRYPT_ZONE } from './Dungeon.js';
 const H = 6.5;
 const T = 1.2;
 const TINT = { wall: 0x8c8478, floor: 0x6a655c, ceil: 0x4a463f, trim: 0xa09886 };
+const DEFAULT_TINT = TINT;
 
 export function buildCrypt(world) {
   const W = world;
@@ -146,7 +147,7 @@ export function buildCrypt(world) {
 
 // -----------------------------------------------------------------------------------------
 /** A stone hall with openings in its walls (like the mine's rooms, but built of stone blocks). */
-function hall(W, rng, x0, x1, z0, z1, openings, h = H) {
+export function hall(W, rng, x0, x1, z0, z1, openings, h = H, TINT = DEFAULT_TINT) {
   const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, w = x1 - x0, d = z1 - z0;
   const F = new Frame(W, cx, 0, cz, 0);
   F.box(w + 2, 1, d + 2, 0, -1, 0, 'stoneDark', { tint: TINT.floor });
@@ -180,7 +181,7 @@ function hall(W, rng, x0, x1, z0, z1, openings, h = H) {
   F.box(w, 0.3, 0.3, 0, h - 0.6, d / 2 - 0.15, 'stoneDark', { collide: false, castShadow: false, tint: TINT.trim });
 }
 
-function passage(W, ax, az, bx, bz, width) {
+export function passage(W, ax, az, bx, bz, width, TINT = DEFAULT_TINT) {
   const len = Math.hypot(bx - ax, bz - az);
   const rot = Math.atan2(bx - ax, bz - az);
   const F = new Frame(W, (ax + bx) / 2, 0, (az + bz) / 2, rot);

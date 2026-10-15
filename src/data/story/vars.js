@@ -22,6 +22,8 @@ export const VARS = {
   EDMUND_FIELD_NOTE: 'bool', // drew the stump (A16.2)
   // chapters 5-10
   PUBLIC_REPORT: 'bool',
+  C07_PLAN: ['dan', 'osa', 'guard'], // how the workers were got out (C07.1)
+  C08_CHOICE: ['copies', 'council', 'orin'], // what was done with the documents (C08.1)
   KHARZ_ROUTE: ['treaty', 'battle'],
   WATER_FIRST: ['residents', 'repair'],
   VEYR_HELP: 'bool',

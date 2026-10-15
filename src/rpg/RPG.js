@@ -3,6 +3,7 @@ import { EventBus, freshState, loadSave, writeSave, check, MAP_REV, STORY_REV } 
 import { CLIPS } from '../data/story/clips.js';
 import { VOICE } from '../data/story/dsl.js';
 import { TRIGGERS } from '../data/story/triggers.js';
+import { STORY_PROPS, STORY_VOLLEY, STORY_WAVES } from '../data/story/props.js';
 import { Clock } from './Clock.js';
 import { QuestManager } from './Quests.js';
 import { DialogueRunner } from './Dialogue.js';
@@ -66,6 +67,7 @@ export class RPG {
         else this.setFlag('ritual_sector_hit');
       }
     });
+    this.events.on('volley', (e) => this._volleyStory(e));
     // C03: Roxy's volley flies where she aims; a latch in the cone (about 20 degrees, 32 m) is knocked off.
     this.events.on('volley', (e) => {
       if (this.quests.stageId('ch5_crypt') !== 'water') return;
@@ -91,6 +93,7 @@ export class RPG {
     });
     // The ritual: the second pair of guardians comes when the first two are down (A25).
     this.events.on('kill', (e) => {
+      this._waveKill(e.camp);
       if (e.camp !== 'rift_wave' || this.quests.stageId('roxy_trust') !== 'defend') return;
       this._ritualKills = (this._ritualKills || 0) + 1;
       if (this._ritualKills === 2) this._effect('ritualWave', 2);
@@ -125,6 +128,7 @@ export class RPG {
     this.npcs?.refresh();
     this._resumeEscort();
     this._resumeRitual();
+    this._resumeWaves();
     this.loaded = { migrated, corrupted, fresh: newGame || !this.state.player || !!this._storyReset };
     this._storyReset = false;
     if (migrated) this.notify('info', 'Сохранение со старой карты перенесено: эрисы и предметы на месте, история начинается заново.');
@@ -232,8 +236,11 @@ export class RPG {
   _syncProps() {
     const F = this.state.flags;
     this.game.world.crypt?.sync(F);
+    this.game.world.relay?.sync(F);
     for (const it of this.game.world.interactables) {
       if (!it.setActive) continue;
+      const sp = STORY_PROPS[it.id];
+      if (sp) it.setActive(!!check(this, sp.when) && !(sp.once && F[sp.once]));
       if (it.id === 'glade_shard') it.setActive(!F.glade_shard_taken);
       if (it.id === 'deep_shard') it.setActive(!F.deep_shard_taken);
       if (it.id?.startsWith('rift_crystal_')) it.setActive(!F[it.id] && this.quests.stageId('roxy_trust') === 'crystals');
@@ -403,6 +410,8 @@ export class RPG {
       case 'heal': this.game.player.heal(9999); this.game.player.restoreMana(9999); this.game.player.restoreStamina(100); break;
       case 'say': this.say(v); break;
       case 'sayChain': this._sayChain(v); break;
+      case 'wave': this._startWave(v); break;
+      case 'scene': setTimeout(() => { if (!this.dialogue.active) this.dialogue.start(v, null); }, 400); break;
       case 'startIfAvailable': if (this.quests.canStart(v)) this.quests.start(v); break;
       case 'ritualWave': {
         const p = this.spotPos('astrarium_center');
@@ -576,7 +585,8 @@ export class RPG {
         this.game.hud.toast('Уголёк: «Мрррр…» Кажется, он вас запомнил.', 3);
         break;
       default:
-        if (id.startsWith('caravan_bag_')) {
+        if (STORY_PROPS[id]) this._storyProp(STORY_PROPS[id], id, prop);
+        else if (id.startsWith('caravan_bag_')) {
           this.setFlag(id + '_taken');
           this.notify('info', 'Мешок тяжёлый. Складываю у телеги Марты.');
         } else if (id.startsWith('rift_crystal_')) {
@@ -623,6 +633,75 @@ export class RPG {
     n._goTo(this.escort.to, v.road ? roadRoute(v.road, n.position) : v.route);
     n.escorting = true;
     n.escortSpeed = 3.0;
+  }
+
+  /** A story prop from data/story/props.js used by the player. */
+  _storyProp(sp, id, prop) {
+    const hud = this.game.hud;
+    if (this.dialogue.active) return;
+    if (sp.char && this.game.player.character !== sp.char) { hud.toast(sp.wrong || 'Сейчас нужна другая героиня (Tab).', 4); return; }
+    if (sp.need && !check(this, sp.need)) { hud.toast(sp.locked || 'Пока не получится.', 4); return; }
+    if (sp.once) this.setFlag(sp.once);
+    if (sp.vfx && prop?.root) this.game.vfx.burst(sp.vfx, prop.root.getWorldPosition(new THREE.Vector3()), 24);
+    if (sp.toast) hud.toast(sp.toast, 4);
+    if (sp.do) this.apply(sp.do);
+    if (sp.say) this._sayChain(sp.say);
+    if (sp.scene) this.dialogue.start(sp.scene, null);
+  }
+
+  /** Roxy's volley at the targets of STORY_VOLLEY (a cone of about 20 degrees, 32 m). */
+  _volleyStory(e) {
+    const F = this.state.flags;
+    for (const t of STORY_VOLLEY) {
+      if (F[t.flag] || !check(this, t.when)) continue;
+      const s = this.spotPos(t.spot);
+      if (!s) continue;
+      const dx = s.x - e.from.x, dz = s.z - e.from.z, L = Math.hypot(dx, dz);
+      if (L > 32 || L < 1) continue;
+      if ((dx * e.dir.x + dz * e.dir.z) / (L * (Math.hypot(e.dir.x, e.dir.z) || 1)) < Math.cos(0.36)) continue;
+      this.setFlag(t.flag);
+      this.game.vfx.burst('waterSplash', s.clone(), 24);
+      if (t.toast) this.notify('event', t.toast);
+      if (t.do) this.apply(t.do);
+    }
+  }
+
+  /** Enemy waves of STORY_WAVES: started by the effect { wave: id }, closed by the last kill (onClear). */
+  _startWave(id) {
+    if (!STORY_WAVES[id] || this.state.flags['wv_' + id]) return;
+    this.setFlag('wv_' + id);
+    this._spawnWave(id);
+    if (STORY_WAVES[id].say) this._sayChain(STORY_WAVES[id].say);
+  }
+
+  _spawnWave(id) {
+    const W = STORY_WAVES[id];
+    const p = this.spotPos(W.spot);
+    if (!p) return;
+    const killed = this.state.counters['wk_' + id] || 0;
+    for (const [type, dx, dz] of W.enemies.slice(killed)) {
+      const e = this.game.enemies.spawn(type, new THREE.Vector3(p.x + dx, p.y, p.z + dz), W.camp);
+      e.noRespawn = true;
+    }
+  }
+
+  _waveKill(camp) {
+    const F = this.state.flags;
+    for (const [id, W] of Object.entries(STORY_WAVES)) {
+      if (W.camp !== camp || !F['wv_' + id] || F['wd_' + id]) continue;
+      const n = (this.state.counters['wk_' + id] = (this.state.counters['wk_' + id] || 0) + 1);
+      this.markDirty();
+      if (n >= W.enemies.length) {
+        this.setFlag('wd_' + id);
+        if (W.onClear) this.apply(W.onClear);
+      }
+    }
+  }
+
+  /** Loaded in the middle of a wave: the enemies that were still alive are back. */
+  _resumeWaves() {
+    const F = this.state.flags;
+    for (const id of Object.keys(STORY_WAVES)) if (F['wv_' + id] && !F['wd_' + id]) this._spawnWave(id);
   }
 
   /** After a load: an escort that was under way goes on from where it was saved. */

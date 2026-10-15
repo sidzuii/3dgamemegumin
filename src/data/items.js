@@ -144,6 +144,7 @@ export const ENEMY_LOOT = {
   skeleton_rogue: [['eris', 1, 5, 11], ['old_coin', 0.3, 1, 1], ['st_potion', 0.1, 1, 1]],
   skeleton_warrior: [['eris', 1, 9, 16], ['iron_ore', 0.35, 1, 2], ['old_coin', 0.35, 1, 2], ['hp_potion', 0.12, 1, 1]],
   imp: [['eris', 1, 6, 12], ['demon_horn', 0.25, 1, 1], ['mana_potion', 0.1, 1, 1]],
+  watcher: [['eris', 1, 8, 14], ['guardian_core', 0.3, 1, 1]],
   guardian: [['eris', 1, 10, 18], ['guardian_core', 0.5, 1, 1], ['old_coin', 0.25, 1, 1]],
   demon: [['eris', 1, 12, 22], ['demon_horn', 0.35, 1, 1], ['hp_potion', 0.2, 1, 1]],
   archdemon: [['eris', 1, 80, 120], ['gem_ruby', 1, 1, 1], ['manatite', 0.5, 1, 1]],

@@ -300,6 +300,38 @@ export const QUESTS = Object.fromEntries([
       { id: 'report', text: 'Поднимись подъёмником и доложи в гильдии: Луна, Клара и Эдмунд ждут.', target: 'npc:luna', objectives: [{ type: 'talk', label: 'Доклад в гильдии' }] },
     ],
     rewards: { eris: 150, xp: 300, flags: ['crypt_done'] },
+    next: 'ch6_relay',
+  }),
+
+  // =====================================================================================
+  // CHAPTER 6 — beyond the ridge
+  // =====================================================================================
+  Q('ch6_relay', {
+    title: 'По другую сторону хребта', category: 'story', chapter: 6, giver: 'tobias', requires: { quest: 'ch5_crypt', status: 'done' },
+    summary: 'Вейр отправил за отчётом на восток. Тобиас знает дорогу к восточному посту Астрариума. На посту остались двое работников.',
+    stages: [
+      { id: 'tobias', text: 'Поговори с Тобиасом о восточной дороге и перевале.', target: 'npc:tobias', objectives: [{ type: 'talk', label: 'Поговорить с Тобиасом' }] },
+      { id: 'road', text: 'Дойди до Восточного перевала (дорога за Ольховкой). Тобиас ждёт у ворот поста.', target: 'region:east_pass', objectives: [{ type: 'reach', region: 'east_pass', label: 'Дойти до перевала' }] },
+      { id: 'yard', text: 'Войди в ворота поста: каменные стражи во дворе не пропустят. Осмотри верёвку работников на арке.', target: 'spot:relay_gate_out',
+        objectives: [{ type: 'kill', camp: 'relay_yard', n: 2, label: 'Каменные стражи' }, { type: 'flag', flag: 'C06_ROPE', label: 'Осмотреть верёвку на арке' }],
+        hint: 'Стражи медленные, но бьют сильно: уклоняйся (Пробел) и бей, когда замах закончился.' },
+      { id: 'dan', text: 'В служебном зале за решёткой ждут Дан и Оса. Поговори с ними.', target: 'spot:relay_dan', objectives: [{ type: 'talk', label: 'Поговорить с Даном' }] },
+      { id: 'p_dan', skipIf: { not: { var: ['C07_PLAN', '==', 'dan'] } }, text: 'План «Дан первый»: Рокси сбивает защёлку водяным залпом, Мегумин натягивает канат у опоры.', target: 'spot:relay_latch',
+        objectives: [{ type: 'flag', flag: 'relay_latch_hit', label: 'Сбить защёлку (Рокси: Tab, Q)' }, { type: 'flag', flag: 'relay_rope_set', label: 'Натянуть канат (Мегумин)' }] },
+      { id: 'p_osa', skipIf: { not: { var: ['C07_PLAN', '==', 'osa'] } }, text: 'План «Оса ставит страховку»: закрепи нижний крюк у западной стены, Рокси сбивает защёлку.', target: 'spot:relay_latch',
+        objectives: [{ type: 'flag', flag: 'relay_anchor_set', label: 'Закрепить нижний крюк' }, { type: 'flag', flag: 'relay_latch_hit', label: 'Сбить защёлку (Рокси: Tab, Q)' }] },
+      { id: 'p_guard', skipIf: { not: { var: ['C07_PLAN', '==', 'guard'] } }, text: 'План «отвести стража»: дойди до дальнего края зала, победи стража-наблюдателя и сбей защёлку.', target: 'spot:relay_far_edge',
+        objectives: [{ type: 'reach', spot: 'relay_far_edge', r: 5, label: 'Дойти до дальнего края зала' }, { type: 'flag', flag: 'relay_watch_dead', label: 'Победить стража-наблюдателя' }, { type: 'flag', flag: 'relay_latch_hit', label: 'Сбить защёлку (Рокси: Tab, Q)' }] },
+      { id: 'out', text: 'Решётка поднята. Поговори с Даном: он отдаст пропуск.', target: 'spot:relay_dan', objectives: [{ type: 'talk', label: 'Поговорить с Даном' }] },
+      { id: 'archive', manual: true, text: 'В архиве на трёх столах лежат документы. Прочитай их все.', target: 'spot:relay_archive',
+        objectives: [{ type: 'flag', flag: 'C08_DOC1', label: 'Протокол испытаний' }, { type: 'flag', flag: 'C08_DOC2', label: 'Возражение Орина' }, { type: 'flag', flag: 'C08_DOC3', label: 'Список людей' }] },
+      { id: 'lens', text: 'Зал линзы: согласуй две площадки, промой водяной желоб (залп Рокси), затем Мегумин держит рычаг линзы.', target: 'spot:relay_lens',
+        objectives: [{ type: 'flag', flag: 'relay_plate_a', label: 'Первая площадка' }, { type: 'flag', flag: 'relay_plate_b', label: 'Вторая площадка' }, { type: 'flag', flag: 'relay_trough_clean', label: 'Промыть желоб (Рокси)' }, { type: 'flag', flag: 'relay_lens_on', label: 'Рычаг линзы (Мегумин)' }],
+        hint: 'Рокси стреляет водяным залпом по прицелу (Tab, затем Q). Рычаг держит Мегумин.' },
+      { id: 'panel', manual: true, text: 'Стражи постов идут к панели. Защити её.', target: 'spot:relay_panel', objectives: [{ type: 'flag', flag: 'wd_relay_panel', label: 'Защитить панель' }] },
+      { id: 'camp', text: 'Вернись на перевал (подъёмник в зале) и присядь к костру у ворот: Рокси хочет поговорить.', target: 'spot:relay_camp', objectives: [{ type: 'talk', label: 'Привал у костра' }] },
+    ],
+    rewards: { eris: 200, xp: 350, flags: ['ch6_done'] },
   }),
 
   // =====================================================================================

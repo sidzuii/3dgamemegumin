@@ -9,12 +9,13 @@ import { DIALOGUES } from '../../src/data/dialogues.js';
 import { NPCS } from '../../src/data/npcs.js';
 import { QUESTS } from '../../src/data/quests.js';
 import { ITEMS } from '../../src/data/items.js';
+import { STORY_PROPS, STORY_VOLLEY, STORY_WAVES } from '../../src/data/story/props.js';
 
 const args = process.argv.slice(2);
 const showMissing = args.includes('--missing');
 const prefixes = args.filter((a) => !a.startsWith('--'));
 const COND = new Set(['flag', 'notFlag', 'quest', 'status', 'stage', 'member', 'rank', 'item', 'n', 'eris', 'level', 'hour', 'rel', 'met', 'any', 'not', 'counter', 'roxy', 'day', 'canPromote', 'var', 'v', 'nv', 'seen']);
-const FX = new Set(['say', 'sayChain', 'ritualWave', 'startIfAvailable', 'setFlag', 'clearFlag', 'setVar', 'addVar', 'give', 'take', 'eris', 'xp', 'rel', 'startQuest', 'advance', 'completeQuest', 'openShop', 'openCraft', 'openBoard', 'joinGuild', 'promote', 'sleep', 'toast', 'notify', 'travel', 'spawn', 'met', 'counter', 'event', 'follow', 'escort', 'heal', 'readItem', 'read', 'refreshNPCs', 'unlockRoxy']);
+const FX = new Set(['say', 'sayChain', 'ritualWave', 'wave', 'scene', 'startIfAvailable', 'setFlag', 'clearFlag', 'setVar', 'addVar', 'give', 'take', 'eris', 'xp', 'rel', 'startQuest', 'advance', 'completeQuest', 'openShop', 'openCraft', 'openBoard', 'joinGuild', 'promote', 'sleep', 'toast', 'notify', 'travel', 'spawn', 'met', 'counter', 'event', 'follow', 'escort', 'heal', 'readItem', 'read', 'refreshNPCs', 'unlockRoxy']);
 const errors = [];
 const err = (m) => errors.push(m);
 const used = new Map(); // clip id -> scene
@@ -92,6 +93,16 @@ for (const [id, d] of Object.entries(STORY_SCENES)) {
     checkCond(n.if, w); checkCond(n.branch, w); checkFx(n.do, w);
   }
 }
+// Story props / volley targets / waves (data/story/props.js).
+const fxScenes = (fx, where) => { for (const e of [].concat(fx || [])) { if (e.scene && !DIALOGUES[e.scene]) err(`${where}: unknown scene ${e.scene}`); if (e.wave && !STORY_WAVES[e.wave]) err(`${where}: unknown wave ${e.wave}`); } };
+for (const [id, p] of Object.entries(STORY_PROPS)) {
+  for (const k of ['when', 'need']) { checkCond(p[k], `prop ${id}`); checkRefs(p[k], `prop ${id}`); }
+  checkFx(p.do, `prop ${id}`); checkRefs(p.do, `prop ${id}`); fxScenes(p.do, `prop ${id}`);
+  if (p.scene && !DIALOGUES[p.scene]) err(`prop ${id}: unknown scene ${p.scene}`);
+}
+for (const t of STORY_VOLLEY) { checkCond(t.when, `volley ${t.id}`); checkRefs(t.when, `volley ${t.id}`); checkFx(t.do, `volley ${t.id}`); }
+for (const [id, w] of Object.entries(STORY_WAVES)) { checkFx(w.onClear, `wave ${id}`); fxScenes(w.onClear, `wave ${id}`); }
+
 // Coverage per scene prefix.
 const want = Object.keys(CLIPS).filter((k) => !k.startsWith('V') && (!prefixes.length || prefixes.some((p) => k.startsWith(p))));
 const usedIds = new Set([...used.keys()].map((k) => k.split('#')[0]));

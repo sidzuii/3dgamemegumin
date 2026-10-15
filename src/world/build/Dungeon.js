@@ -14,13 +14,16 @@ import { QuestProp, Door } from '../Interactables.js';
  */
 /** The crypt under the temple of Eris (build/Crypt.js) is a second interior beyond the map edge. */
 export const CRYPT_ZONE = { minX: -40, maxX: 40, minZ: 1226, maxZ: 1390 };
+/** The relay post beyond the eastern ridge (build/Relay.js, chapter 6) — the third interior beyond the map edge. */
+export const RELAY_ZONE = { minX: -45, maxX: 45, minZ: 1406, maxZ: 1610 };
+const ZONES = [CRYPT_ZONE, RELAY_ZONE];
 
 export const DUNGEON = {
   minX: -50, maxX: 50, minZ: 1090, maxZ: 1210,
   floor: 0,
   contains(x, z) {
     return (x > this.minX && x < this.maxX && z > this.minZ && z < this.maxZ)
-      || (x > CRYPT_ZONE.minX && x < CRYPT_ZONE.maxX && z > CRYPT_ZONE.minZ && z < CRYPT_ZONE.maxZ);
+      || ZONES.some((q) => x > q.minX && x < q.maxX && z > q.minZ && z < q.maxZ);
   },
 };
 

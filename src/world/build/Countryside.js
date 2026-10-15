@@ -786,4 +786,24 @@ function eastPass(W, rng) {
   const c = REGION.east_pass.center;
   for (let i = 0; i < 16; i++) rock(W, c.x + 4 + (rng() - 0.5) * 10, c.z + (rng() - 0.5) * 14, 1.5 + rng() * 2.5, rng, 'rock');
   W.addSign(new THREE.Vector3(c.x - 8, 0, c.z + 3), Math.PI / 2, ['Перевал закрыт: камнепад. Караваны ждут, пока гильдия расчистит дорогу.']);
+  // Chapter 6: the stone gate of the relay post (build/Relay.js) at the foot of the ridge, Tobias' waiting place, the camp.
+  const gx = c.x + 12, gz = c.z - 2, gy = H(W, gx, gz);
+  const G = new Frame(W, gx, gy, gz, 0);
+  for (const s of [-1, 1]) {
+    G.box(1.2, 6, 1.2, 0, 0, s * 3.4, 'stoneDark', { tint: 0x8a94a0 });
+    G.box(1.5, 0.4, 1.5, 0, 6, s * 3.4, 'stone', { tint: 0x9aa4b0 });
+  }
+  G.box(1.4, 0.9, 8.6, 0, 6.4, 0, 'stoneDark', { tint: 0x8a94a0 });
+  G.box(0.6, 4.6, 5.6, 1.4, 0, 0, 'stoneDark', { tint: 0x6a7480 });
+  W.spot('relay_gate_out', new THREE.Vector3(gx - 4, gy, gz), -Math.PI / 2);
+  W.addInteractable(new Door({ id: 'relay_gate', name: 'Ворота ретранслятора', prompt: 'Войти на пост', position: new THREE.Vector3(gx + 0.6, gy, gz), target: 'relay_in', rotY: Math.PI / 2 }));
+  W.spot('relay_tobias', new THREE.Vector3(c.x - 3, H(W, c.x - 3, c.z + 6), c.z + 6), Math.PI / 2);
+  W.spot('relay_dan_out', new THREE.Vector3(c.x - 1, H(W, c.x - 1, c.z + 8), c.z + 8), Math.PI);
+  W.spot('relay_osa_out', new THREE.Vector3(c.x - 5, H(W, c.x - 5, c.z + 7.5), c.z + 7.5), Math.PI);
+  const kx = c.x - 4, kz = c.z + 10, ky = H(W, kx, kz);
+  campfire(W, kx, kz);
+  const K = new Frame(W, kx, ky, kz, 0.3);
+  for (const a of [0.6, 2.2, 3.9]) K.cyl(0.22, 1.2, Math.cos(a) * 2.1, 0.25, Math.sin(a) * 2.1, 'log', { seg: 8, rz: Math.PI / 2, ry: a + Math.PI / 2, collide: false });
+  W.spot('relay_camp', new THREE.Vector3(kx, ky, kz), 0);
+  W.addInteractable(new QuestProp({ id: 'relay_camp', name: 'Костёр', prompt: 'Присесть к огню', position: new THREE.Vector3(kx, ky + 0.6, kz), shape: 'none' }));
 }
