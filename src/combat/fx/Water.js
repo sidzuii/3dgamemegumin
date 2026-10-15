@@ -51,6 +51,8 @@ export function waterMaterial() {
 const _side = new THREE.Vector3();
 const _tan = new THREE.Vector3();
 const _toCam = new THREE.Vector3();
+const _side2 = new THREE.Vector3();
+const _up = new THREE.Vector3(0, 1, 0);
 
 /**
  * A camera-facing ribbon of N+1 points with a width per point (variable thickness). `set(points, widths)` rebuilds
@@ -100,7 +102,12 @@ export class Ribbon {
       if (_tan.lengthSq() < 1e-8) _tan.set(0, 0, 1);
       _tan.normalize();
       _toCam.set(camera.position.x - p.x, camera.position.y - p.y, camera.position.z - p.z).normalize();
-      _side.crossVectors(_tan, _toCam).normalize().multiplyScalar(widths[i] * 0.5);
+      // Camera-facing width, blended with a horizontal band: a lash pointing away from the camera would collapse to a line.
+      _side.crossVectors(_tan, _toCam);
+      const camK = _side.length();
+      _side.multiplyScalar(0.55 / Math.max(camK, 0.2));
+      _side2.crossVectors(_tan, _up).normalize().multiplyScalar(0.45);
+      _side.add(_side2).normalize().multiplyScalar(widths[i] * 0.5);
       for (let k = 0; k < 2; k++) {
         const s = k ? 1 : -1;
         const o = (i * 2 + k) * 3;
