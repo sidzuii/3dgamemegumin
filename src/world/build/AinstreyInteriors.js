@@ -1,5 +1,6 @@
 import { mulberry32 } from '../../core/math.js';
-import { prop, tableware } from './Kit.js';
+import * as THREE from 'three';
+import { prop, tableware, lamp } from './Kit.js';
 import { keyBuilding } from './AinstreyBuildings.js';
 import { QuestProp } from '../Interactables.js';
 
@@ -213,6 +214,10 @@ export function interiorBuilding(W, k) {
   let pts;
   try { wainscot(G, k.w, k.d, 3.8); pts = spec.furnish(G, k.w, k.d, spec.floorH); } finally { W.lodMode = prev; }
   for (const [name, [lx, lz, yaw = 0, ly = 0]] of Object.entries(pts)) W.spot(name, G.at(lx, ly, lz), k.rot + yaw);
+  // the open entrance reads at night: a lantern on each side of the doorway and a signpost with the name of the hall
+  const fz = k.d / 2 + 1.0;
+  for (const sx of [-1, 1]) { const p = F.at(sx * 3.4, 0, fz); lamp(W, new THREE.Vector3(p.x, W.heightAt(p.x, p.z), p.z), k.rot); }
+  { const p = F.at(5.6, 0, k.d / 2 + 3.0); W.addSign(new THREE.Vector3(p.x, 0, p.z), k.rot, [k.name, 'Открыто: вход через арку']); }
   // the board of the guild is the same prop as in Axel (RPG.onInteract: the list of contracts for members)
   if (k.id === 'guild_hall') W.addInteractable(new QuestProp({ id: 'guild_board', name: 'Доска заказов', prompt: 'Посмотреть заказы', position: G.at(-11, 1.9, -k.d / 2 + 1.3), shape: 'none' }));
   return r;

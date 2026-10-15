@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mulberry32 } from '../../core/math.js';
 import { QuestProp } from '../Interactables.js';
 import { keyBuilding } from './AinstreyBuildings.js';
+import { lamp } from './Kit.js';
 
 /**
  * The pump hall of the port (chapter 7 of version 2.0, D20-D24): a tall hall on a stone podium at the quay, two levels:
@@ -50,6 +51,11 @@ function furnish(W, G, k, r) {
   for (const s of [-1, 1]) {
     for (let i = 0; i < 6; i++) { const z = d / 2 + 1.5 + i * 3.1, y = -(ramp.rise * (z - d / 2)) / ramp.len; G.box(0.4, 1.0, 3.2, s * 3.0, y - 0.3, z, 'stone', { tint: 0xb4aa94 }); }
   }
+  // lanterns at the foot of the ramp and at the doorway (the way in and the safe way out read at night), the signpost of the service zone
+  for (const sx of [-1, 1]) {
+    for (const z of [d / 2 + ramp.len + 1.2, d / 2 + 0.8]) { const p = G.at(sx * 3.9, 0, z); lamp(W, new THREE.Vector3(p.x, W.heightAt(p.x, p.z) + (z < d / 2 + 2 ? 0 : 0), p.z), G.rot); }
+  }
+  { const p = G.at(6.5, 0, d / 2 + ramp.len + 3); W.addSign(new THREE.Vector3(p.x, 0, p.z), G.rot, ['Насосный участок порта', 'Служебная зона: вход по допуску', 'Площадка вывода рабочих — здесь']); }
   // the green arrows on the floor and on the ramp: the safe way out
   for (let i = 0; i < 3; i++) arrow(G, 0, 0.03, 7.2 - i * 1.6 - 0, 0, NC);
   for (let i = 0; i < 4; i++) { const z = d / 2 + 2.5 + i * 3.6, y = -(ramp.rise * (z - d / 2)) / ramp.len; arrow(G, 0, y + 0.03, z, ang, NC); }
