@@ -5,7 +5,9 @@ import { check } from './State.js';
  * Quest engine. Quest definitions are data (data/quests.js):
  *
  *  { id, title, category: 'story'|'contract'|'side', chapter, giver, rank, requires,
- *    summary, stages: [{ id, text, target, objectives: [...], onStart, onDone, manual }],
+ *    summary, stages: [{ id, text, target, objectives: [...], onStart, onDone, manual, skipIf }],
+ *    (`skipIf`: a condition; when it holds on entering the stage, the stage is skipped silently.)
+ *    `noAuto` on a quest: talking to its giver does not start it (a dialogue does).
  *    rewards: { eris, xp, items, rankPoints, rel, flags } }
  *
  * Objectives: talk (advanced by dialogue effects), collect {item,n}, kill {enemy|camp,n},
@@ -85,11 +87,16 @@ export class QuestManager {
     return true;
   }
 
+  /** Enter the current stage. Returns true when it was skipped at once (`skipIf` holds): the quest moved on. */
   _enterStage(id) {
     const st = this.stage(id);
-    if (!st) return;
+    if (!st) return false;
     const q = this.state[id];
     q.progress = {};
+    if (st.skipIf && check(this.rpg, st.skipIf)) {
+      this.advance(id);
+      return true;
+    }
     if (st.onStart) this.rpg.apply(st.onStart);
     if (st.hint) setTimeout(() => this.rpg.notify('hint', st.hint), 1200);
     // Baselines for objectives that count from now on.
@@ -97,6 +104,7 @@ export class QuestManager {
       if (o.type === 'collect' || o.type === 'flag') return;
       q.progress[i] = 0;
     });
+    return false;
   }
 
   /** Complete the current stage (dialogues call this through { advance }). */
@@ -105,13 +113,17 @@ export class QuestManager {
     if (!q || q.status !== 'active') return;
     const d = this.def(id);
     const st = d.stages[q.stage];
-    if (st?.onDone) this.rpg.apply(st.onDone);
+    if (st?.onDone) {
+      // Effects may set flags that re-evaluate this very quest: it must not advance a second time from the same stage.
+      (this._busy ||= new Set()).add(id);
+      try { this.rpg.apply(st.onDone); } finally { this._busy.delete(id); }
+    }
     q.stage++;
     if (q.stage >= d.stages.length) {
       this.complete(id);
       return;
     }
-    this._enterStage(id);
+    if (this._enterStage(id)) return; // the new stage was skipped (skipIf): the next one has announced itself
     this.rpg.notify('stage', d.stages[q.stage].text, d.category);
     this.rpg.markDirty(true);
     this.rpg.events.emit('questStage', { id, stage: d.stages[q.stage].id });
@@ -182,7 +194,7 @@ export class QuestManager {
 
   evaluate(id) {
     const q = this.state[id];
-    if (!q || q.status !== 'active') return;
+    if (!q || q.status !== 'active' || this._busy?.has(id)) return;
     const st = this.stage(id);
     if (!st || st.manual || !st.objectives?.length) return;
     if (st.objectives.some((o) => o.type === 'talk')) return;

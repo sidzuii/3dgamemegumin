@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mulberry32 } from '../../core/math.js';
 import { Frame, house, houseTower, cityWall, paveRibbon, pavePoly, lamp, lantern, barrel, crate, stall, well, bench, wagon, haystack, fence, tree, bush, food, prop, tableware } from './Kit.js';
-import { HealingCrystal, Brazier, QuestProp } from '../Interactables.js';
+import { HealingCrystal, Brazier, QuestProp, Door } from '../Interactables.js';
 import { TrainingDummy } from '../TrainingDummy.js';
 import { ROOF_COLORS } from '../KitLibrary.js';
 import { REGION, offsetPolygon } from '../MapData.js';
@@ -328,6 +328,8 @@ function temple(rng) {
   W.addLightSource(F.at(0, fy + 2.5, back + 0.5), { color: 0x9ff0ff, intensity: 5, distance: 12, always: true });
   W.addLightSource(F.at(0, 5.2, 0), { color: 0xffd8a0, intensity: 6, distance: 16, always: true });
   W.addInteractable(new HealingCrystal(F.at(0, fy + 0.5, back - 0.3)));
+  // C00: the service room under the stairs (people must be led out before the crypt is opened).
+  W.addInteractable(new QuestProp({ id: 'temple_room', name: 'Служебная комната', prompt: 'Проверить, не остался ли кто внизу', position: F.at(3.2, fy + 0.9, back - 0.3), shape: 'none' }));
   inside(() => templeExtras(F, w, d));
   W.spot('temple_door', F.at(0, fy, d / 2 + 2.4), rot);
 }
@@ -339,6 +341,9 @@ function crypt() {
   C.kit('graveyard/crypt-small', 0, 0, 0, { s: 2.8 });
   C.kit('graveyard/crypt-small-roof', 0, 2.8, 0, { s: 2.8, collide: false });
   W.spot('crypt_door', C.at(0, 0, 2.6), rot + Math.PI);
+  // C02: Clara breaks the seal (flag crypt_open); the stair leads down to the crypt level (build/Crypt.js).
+  W.addInteractable(new Door({ id: 'crypt_gate', name: 'Спуск в крипту', prompt: 'Спуститься', position: C.at(0, 0, 1.3), target: 'crypt_in', rotY: rot }));
+  W.addInteractable(new QuestProp({ id: 'crypt_sealed', name: 'Запертая крипта', prompt: 'Осмотреть дверь', position: C.at(0, 1.0, 1.6), shape: 'none' }));
 }
 
 /** Town hall: a two-storey stone hall with a clock tower over the door. */
@@ -358,6 +363,29 @@ function townHall(rng) {
   for (const s of [-1, 1]) lantern(W, D.sub(s * 1.7, 2.4, 0.2));
   D.box(5, 0.5, 1.0, 0, -0.3, 0.55, 'stone', { tint: 0xc8bca8 }); // steps
   W.spot('town_hall_door', D.at(0, 0, 1.8), rot);
+  // Chapter 8: the shelter of the residents in front of the hall: cots, crates, a chalk line, a stuck handcart, a barrier.
+  const S = F.sub(0, 0, 5.9 + 1.5 + 5.5);
+  for (let i = 0; i < 5; i++) {
+    const c = S.sub(-5 + i * 2.2, 0, 1.2 + (i % 2) * 0.6);
+    c.box(0.9, 0.22, 1.9, 0, 0, 0, 'plank', { collide: false, tint: 0x8a6a4a });
+    c.box(0.7, 0.12, 0.5, 0, 0.22, -0.6, 'cloth', { collide: false, tint: [0xd8b0a0, 0xa8c0d0, 0xc8d0a0][i % 3] });
+  }
+  for (let i = 0; i < 3; i++) crate(W, S.sub(5.5, 0, -1 + i * 1.0), 0, 0, 0.8, i * 0.4);
+  S.box(11, 0.03, 0.12, 0, 0.01, 3.2, 'stone', { collide: false, castShadow: false, tint: 0xf0f0e8 }); // the chalk line
+  W.spot('shelter', S.at(0, 0, 0.5), rot + Math.PI);
+  W.spot('shelter_lina', S.at(-2, 0, 0), rot + Math.PI);
+  W.spot('shelter_mia', S.at(0.6, 0, 0.2), rot + Math.PI);
+  const cart = F.sub(-9, 0, 5.9 + 1.5 + 9);
+  cart.box(1.3, 0.12, 1.9, 0, 0.55, 0, 'wood', { tint: 0x7a5232 });
+  cart.box(1.3, 0.5, 0.1, 0, 0.67, 0.9, 'wood', { tint: 0x7a5232, collide: false });
+  for (const s of [-1, 1]) cart.cyl(0.42, 0.1, s * 0.75, 0.42, -0.2, 'wood', { seg: 12, rz: Math.PI / 2, collide: false, tint: 0x5a3a22 });
+  W.spot('shelter_cart', cart.at(0, 0, 0), rot);
+  W.addInteractable(new QuestProp({ id: 'shelter_cart', name: 'Застрявшая тележка', prompt: 'Вытолкнуть тележку', position: cart.at(0, 0.9, 0), shape: 'none' }));
+  const bar = F.sub(11, 0, 5.9 + 1.5 + 12);
+  for (const s of [-1, 1]) bar.box(0.12, 1.0, 0.12, s * 0.9, 0, 0, 'wood', { collide: false, tint: 0x7a5232 });
+  bar.box(2.2, 0.14, 0.08, 0, 0.7, 0, 'plank', { collide: false, tint: 0xd8a040 });
+  W.spot('street_block', bar.at(0, 0, 0), rot);
+  W.addInteractable(new QuestProp({ id: 'street_block', name: 'Опасный проход', prompt: 'Перекрыть проход заграждением', position: bar.at(0, 0.9, 0), shape: 'none' }));
 }
 
 /** House with an optional open shop front and a hanging sign; spots <id>_door / <id>_counter. */
@@ -656,10 +684,42 @@ const centroid = (pts) => [pts.reduce((s, p) => s + p[0], 0) / pts.length, pts.r
 
 function places(rng) {
   W.group('square', { x: AXEL.x, z: AXEL.z }, (r) => fountainSquare(r), 'Площадь Фонтана');
+  // Chapter 10 (C33): the signpost outside the north gate where Megumin and Roxy decide to go on together.
+  W.group('north_sign', { x: P(-14, -119)[0], z: P(-14, -119)[1] }, () => {
+    const ns = G(-14, -119);
+    W.spot('north_sign', ns, 0);
+    W.addSign(ns, 0.3, ['Север: Астрариум и горы', 'Юг: Аксель']);
+    W.addInteractable(new QuestProp({ id: 'north_sign', name: 'Указатель северной дороги', prompt: 'Постоять у указателя', position: new THREE.Vector3(ns.x + 1.4, ns.y + 1.0, ns.z), shape: 'none' }));
+  }, 'Указатель у северных ворот');
   W.group('market_square', { x: P(56, 30)[0], z: P(56, 30)[1] }, (r) => marketSquare(r), 'Рыночная площадь');
   W.group('town_well', { x: P(58, -61)[0], z: P(58, -61)[1] }, (r) => {
     well(W, ...P(58, -61));
     W.spot('well', G(58, -58), 0);
+    // Chapter 8: the cistern hatch beside the well — the way down to the pump station (build/Pump.js).
+    const H0 = F0(62.5, -57, 0.3);
+    H0.box(2.2, 0.16, 1.6, 0, 0, 0, 'stoneDark', { collide: false, tint: 0x8a8478 });
+    H0.box(1.7, 0.08, 1.1, 0, 0.16, 0, 'metal', { collide: false, tint: 0x5a5048 });
+    H0.cyl(0.14, 0.12, 0.5, 0.2, 0, 'metal', { seg: 8, collide: false });
+    W.spot('pump_gate_out', G(62.5, -55), Math.PI);
+    W.addInteractable(new Door({ id: 'pump_gate', name: 'Люк цистерны', prompt: 'Спуститься к насосной', position: G(62.5, -57, 0.1), target: 'pump_in', shape: 'none' }));
+    // The pump yard after the final operation (chapter 10): two new hand pumps (the installation taken apart) or a sealed
+    // slab with an operator's booth (the small circuit kept). Shown by `world.pumpYard.sync` from ENDING once epilogue_on is set.
+    const yard = { closure: new THREE.Group(), rebuild: new THREE.Group() };
+    const mat = (c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.8 });
+    const put = (grp, geo, c, p, y = 0) => { const m = new THREE.Mesh(geo, mat(c)); m.position.set(p.x, p.y + y, p.z); m.castShadow = true; grp.add(m); return m; };
+    for (const [u, v] of [[59.4, -53.6], [65.6, -53.6]]) {
+      const p = G(u, v);
+      put(yard.closure, new THREE.BoxGeometry(0.3, 1.1, 0.3), 0x3a4650, p, 0.55);
+      put(yard.closure, new THREE.BoxGeometry(0.9, 0.12, 0.12), 0x3a4650, new THREE.Vector3(p.x + 0.3, p.y, p.z), 1.0);
+    }
+    put(yard.rebuild, new THREE.BoxGeometry(4.4, 0.3, 3.4), 0xc8c2b4, G(62.5, -57), 0.12);
+    put(yard.rebuild, new THREE.BoxGeometry(2.2, 2.4, 2.0), 0x8a7458, G(67.5, -57), 1.2);
+    put(yard.rebuild, new THREE.BoxGeometry(2.6, 0.2, 2.4), 0x5a4a3a, G(67.5, -57), 2.5);
+    yard.closure.visible = yard.rebuild.visible = false;
+    W.addObject(yard.closure);
+    W.addObject(yard.rebuild);
+    W.pumpYard = { sync: (F, vars) => { yard.closure.visible = !!F.epilogue_on && vars.ENDING === 'closure'; yard.rebuild.visible = !!F.epilogue_on && vars.ENDING === 'rebuild'; } };
+    W.addSign(G(62.5, -50), Math.PI, ['Насосный двор: работы по плану гильдии. Вход со стороны колодца.']);
     tree(W, ...P(64, -66), 1.25, r, 'oak'); // the old linden (landmark)
     bench(W, F0(52, -56, 0.4), 0, 0, 0);
   }, 'Колодезная площадь');
@@ -781,6 +841,10 @@ function caravanYard(rng) {
   for (let i = 0; i < 3; i++) haystack(W, ...P(58 + (i % 2) * 2.2, 60 + i * 2.4), 0.7);
   for (let i = 0; i < 4; i++) crate(W, F0(30 + i * 1.0, 58, 0.2 * i), 0, 0, 0.8, i * 0.3);
   for (let i = 0; i < 3; i++) barrel(W, F0(56 + i * 0.9, 76, 0), 0, 0);
+  // A00: two sacks by the rear wheel of the first cart (Marta asks for them in option 1).
+  [[33.2, 62.4, 0.5], [34.2, 66.0, -0.4]].forEach(([u, v, rot], i) => {
+    W.addInteractable(new QuestProp({ id: 'caravan_bag_' + 'ab'[i], name: 'Мешок', prompt: 'Взять мешок', position: G(u, v, 0), shape: 'sack', rotY: rot }));
+  });
   W.spot('caravan_arrival', G(44, 66), Math.PI + 0.4);
   W.spot('caravan_master', G(48, 58), Math.PI);
   W.addLightSource(G(46, 66, 2.2), { color: 0xffa050, intensity: 5, distance: 12, night: true });

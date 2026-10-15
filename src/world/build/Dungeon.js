@@ -12,11 +12,22 @@ import { QuestProp, Door } from '../Interactables.js';
  *  B  → tunnel blocked by a cave-in (only an Explosion clears it) →
  *  D  crystal chamber (guardian, the second star shard, chest, mine lift back to the surface)
  */
+/** The crypt under the temple of Eris (build/Crypt.js) is a second interior beyond the map edge. */
+export const CRYPT_ZONE = { minX: -40, maxX: 40, minZ: 1226, maxZ: 1390 };
+/** The relay post beyond the eastern ridge (build/Relay.js, chapter 6) — the third interior beyond the map edge. */
+export const RELAY_ZONE = { minX: -45, maxX: 45, minZ: 1406, maxZ: 1610 };
+/** The outer drain channel under the Crimson Gorge (build/Drain.js, chapter 7). */
+export const DRAIN_ZONE = { minX: -45, maxX: 45, minZ: 1636, maxZ: 1850 };
+/** The pump station and the deep shaft under Axel (build/Pump.js, chapter 8). */
+export const PUMP_ZONE = { minX: -45, maxX: 45, minZ: 1876, maxZ: 2300 }; // also the service galleries and the central hall (build/Core.js)
+const ZONES = [CRYPT_ZONE, RELAY_ZONE, DRAIN_ZONE, PUMP_ZONE];
+
 export const DUNGEON = {
   minX: -50, maxX: 50, minZ: 1090, maxZ: 1210,
   floor: 0,
   contains(x, z) {
-    return x > this.minX && x < this.maxX && z > this.minZ && z < this.maxZ;
+    return (x > this.minX && x < this.maxX && z > this.minZ && z < this.maxZ)
+      || ZONES.some((q) => x > q.minX && x < q.maxX && z > q.minZ && z < q.maxZ);
   },
 };
 

@@ -59,6 +59,12 @@ export const TYPES = {
     aggro: 14, attackRange: 2.2, damage: 16, windup: 0.95, strike: 0.22, recover: 1.0, lunge: 2,
     poise: 30, knock: 0.4, style: 'brute', aoe: 2.4, tint: [0.55, 0.68, 0.85], hitRadius: 0.75, xp: 22,
   },
+  // The relay post's second kind of guard (chapter 6): lighter and quicker than the guardian, a pale-blue watcher.
+  watcher: {
+    name: 'Страж-наблюдатель', model: 'demon', scale: 0.78, hp: 95, speed: 4.6, walk: 1.4, radius: 0.5, height: 1.8,
+    aggro: 16, attackRange: 2.0, damage: 12, windup: 0.5, strike: 0.2, recover: 0.6, lunge: 4.5,
+    poise: 14, knock: 0.7, style: 'dash', tint: [0.6, 0.85, 1.1], hitRadius: 0.65, xp: 18,
+  },
   demon: {
     name: 'Демон', model: 'demon', hp: 220, speed: 3.2, walk: 1.3, radius: 0.62, height: 2.35,
     aggro: 16, attackRange: 2.4, damage: 22, windup: 0.85, strike: 0.22, recover: 0.95, lunge: 2.5,
@@ -439,6 +445,12 @@ export class Enemy {
   /** Damage from the player. Returns true if it killed the enemy. */
   takeHit(damage, from, knock = 4, heavy = false) {
     if (!this.alive || this.state === 'dead') return false;
+    if (this.shieldFlags && !this.shieldFlags.every((f) => this.game.rpg.state.flags[f])) {
+      // A shielded enemy of the story (chapter 9): the side posts must be cut first.
+      this.flash = 0.5;
+      if (this.game.time - (this._shieldMsg ?? -99) > 4) { this._shieldMsg = this.game.time; this.game.hud?.toast('Щит держит: сними питание обоих боковых постов.', 3); }
+      return false;
+    }
     this.hp -= damage;
     this.flash = 1;
     this.lastHitTime = this.game.time;

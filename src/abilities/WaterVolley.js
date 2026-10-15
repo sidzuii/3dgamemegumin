@@ -75,6 +75,7 @@ export class WaterVolley {
         const dir = _d.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), a);
         g.projectiles.spawn(from, dir.multiplyScalar(16), VOLLEY.damage, 0.9, true);
       }
+      g.rpg?.events.emit('volley', { from: from.clone(), dir: _d.clone() });
       g.vfx.burst('waterSplash', from, 30);
       g.cameraRig.addTrauma(0.12);
       this.circle?.kill(5);

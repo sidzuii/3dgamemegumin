@@ -34,10 +34,12 @@ export function buildCountryside(world) {
   W.group('watchtower', R('watchtower'), (r) => watchtower(W, r), 'Сторожевая башня');
   W.group('cave_entrance', R('cave'), (r) => caveEntrance(W, r), 'Вход в Старую шахту');
   W.group('astrarium', R('astrarium'), (r) => astrarium(W, r), 'Руины Астрариума');
+  W.group('return_camp', { x: -318, z: -196, rot: 0 }, () => returnCamp(W), 'Привал на северной дороге (A27)');
   W.group('mist_lake', R('mist_lake'), (r) => mistLake(W, r), 'Озеро Туманов');
   W.group('crimson_gorge', R('crimson_gorge'), (r) => crimsonGorge(W, r), 'Багровое ущелье');
   W.group('old_mines', R('old_mines'), (r) => oldMines(W, r), 'Заброшенный посёлок');
   W.group('east_pass', R('east_pass'), (r) => eastPass(W, r), 'Восточный перевал');
+  W.group('convoy_ledge', R('ledge'), (r) => convoyLedge(W, r), 'Уступ с обозом Марты (C12)');
 }
 
 const H = (W, x, z) => W.heightAt(x, z);
@@ -670,6 +672,18 @@ function astrarium(W, rng) {
     W.addInteractable(new QuestProp({ id: 'rift_crystal_' + i, name: 'Резонирующий кристалл', prompt: 'Коснуться', position: F.at(dx, 1.0, dz), shape: 'none' }));
   });
   W.spot('astrarium_center', F.at(0, 0.95, 6), Math.PI);
+  // A24: the measuring stand of the west gallery (an early blast topples it, the lever puts it back) ...
+  F.box(0.5, 2.2, 0.5, -9, 0.15, -14, 'stone', { tint: 0xdedad0 });
+  F.box(1.4, 0.12, 0.12, -9, 2.35, -14, 'metal', { collide: false, tint: 0xc8a050 });
+  W.spot('astra_lever', F.at(-9, 0.15, -12), 0);
+  W.addInteractable(new QuestProp({ id: 'astra_lever', name: 'Измерительная стойка', prompt: 'Поднять стойку рычагом', position: F.at(-9, 1.0, -12), shape: 'none' }));
+  // ... and A25: the only sector where the ritual allows a blast, behind the white stone.
+  W.spot('astrarium_far', F.at(-16, 0.15, 12), 0);
+  F.cyl(1.0, 1.6, -16, 0.15, 12, 'stone', { seg: 7, tint: 0xf4f4f0 });
+  const farRing = createRitualCircle(F.at(-16, 0.2, 12), 6);
+  farRing.mesh.material.color.setRGB(1.8, 1.8, 1.8);
+  W.addObject(farRing.mesh);
+  W.addUpdatable(farRing);
   // Roxy's camp just south of the ruins.
   const R = new Frame(W, c.x + 6, H(W, c.x + 6, c.z + 30), c.z + 30, 0.3);
   tent(W, c.x + 9, c.z + 33, 0.3, 0x3a5a8a);
@@ -677,6 +691,16 @@ function astrarium(W, rng) {
   for (let i = 0; i < 3; i++) R.box(0.4, 0.12, 0.3, -2.2 + i * 0.45, 0, 1.5, 'cloth', { collide: false, tint: [0x3a5a8a, 0x8a3a3a, 0x4a7a4a][i] });
   W.spot('roxy_camp', R.at(-1.5, 0, 0.5), Math.PI);
   W.addFootprint(c.x, c.z, 40, 40, 0, 'ruins');
+}
+
+/** A27: the first camp together on the way back from the Astrarium: a fire and three logs by the north road. */
+function returnCamp(W) {
+  const x = -318, z = -196, y = H(W, x, z);
+  campfire(W, x, z);
+  const F = new Frame(W, x, y, z, 0.4);
+  for (const a of [0.6, 2.2, 3.9]) F.cyl(0.22, 1.2, Math.cos(a) * 2.1, 0.25, Math.sin(a) * 2.1, 'log', { seg: 8, rz: Math.PI / 2, ry: a + Math.PI / 2, collide: false });
+  W.spot('return_camp', new THREE.Vector3(x, y, z), 0);
+  W.addInteractable(new QuestProp({ id: 'return_camp', name: 'Костёр', prompt: 'Присесть к огню', position: new THREE.Vector3(x, y + 0.6, z), shape: 'none' }));
 }
 
 function mistLake(W, rng) {
@@ -736,6 +760,37 @@ function crimsonGorge(W, rng) {
   W.addUpdatable(rc);
   W.addChest(new THREE.Vector3(ax, ay + 0.15, az - 4.8), 0, 'crimson_gorge');
   W.addFootprint(ax, az, 15, 15, 0, 'arena');
+  // Chapter 7: the drain gate (the lift down to the outer drain, build/Drain.js) at the gorge's southern lip.
+  const gx = c.x - 18, gz = c.z + 40, gy = H(W, gx, gz);
+  const G = new Frame(W, gx, gy, gz, 0);
+  for (const s of [-1, 1]) G.box(1.1, 4.4, 1.1, s * 2.6, 0, 0, 'basalt', { tint: 0x5a4a48 });
+  G.box(6.8, 0.9, 1.3, 0, 4.4, 0, 'basalt', { tint: 0x5a4a48 });
+  G.box(4.2, 0.3, 0.5, 0, 0.0, -0.4, 'stoneDark', { collide: false, tint: 0x6a5a56 });
+  W.spot('drain_gate_out', new THREE.Vector3(gx, gy, gz + 3.5), Math.PI);
+  W.addInteractable(new Door({ id: 'drain_gate', name: 'Спуск к внешнему отводу', prompt: 'Спуститься', position: new THREE.Vector3(gx, gy, gz - 0.2), target: 'drain_in', shape: 'lift' }));
+}
+
+/** C12: Marta's cart on a crumbling ledge of the lava trail; the gorge's drain gate is built with the gorge. */
+function convoyLedge(W, rng) {
+  const c = REGION.ledge.center;
+  const y = H(W, c.x, c.z);
+  wagon(W, c.x, c.z, 0.5, 0xd8c8a0);
+  // the broken ledge edge: dark rocks and a crack
+  for (let i = 0; i < 7; i++) rock(W, c.x - 6 + i * 1.3, c.z - 5 + (rng() - 0.5) * 1.2, 0.9 + rng() * 0.9, rng, 'rockDark');
+  const crack = new Frame(W, c.x - 3, y, c.z - 2.5, 0.4);
+  crack.box(0.25, 0.04, 3.4, 0, 0.02, 0, 'stoneDark', { collide: false, castShadow: false, tint: 0x2a2220 });
+  W.spot('ledge_marta', new THREE.Vector3(c.x + 4, H(W, c.x + 4, c.z + 2.5), c.z + 2.5), -Math.PI / 2);
+  W.spot('ledge_crack', new THREE.Vector3(c.x - 3, y + 0.3, c.z - 2.5), 0);
+  W.spot('ledge_cart', new THREE.Vector3(c.x, y, c.z), 0);
+  const prop = (id, name, prompt, dx, dz, shape = 'none', dy = 0.9) => W.addInteractable(new QuestProp({ id, name, prompt, position: new THREE.Vector3(c.x + dx, H(W, c.x + dx, c.z + dz) + dy, c.z + dz), shape }));
+  prop('ledge_cargo_a', 'Мешок с грузом', 'Вынести мешок за каменный столб', -2.6, 2.4, 'sack', 0.2);
+  prop('ledge_cargo_b', 'Мешок с грузом', 'Вынести мешок за каменный столб', -3.4, 3.6, 'sack', 0.2);
+  prop('ledge_people', 'Телега с людьми', 'Вывести людей из телеги', 0.6, 1.2);
+  prop('ledge_rope', 'Страховочный канат', 'Закрепить канат (Мегумин держит)', 3, -1.2);
+  prop('ledge_axle', 'Канат к оси', 'Привязать канат к оси переднего колеса', 2.4, 2.8);
+  prop('ledge_crack', 'Трещина уступа', 'Уступ крошится. Укрепи край водяным залпом (Рокси: Tab, Q)', -3, -2.5);
+  const rf = new Frame(W, c.x + 3, H(W, c.x + 3, c.z - 1.2), c.z - 1.2, 0);
+  rf.cyl(0.35, 0.18, 0, 0, 0, 'log', { seg: 10, collide: false, tint: 0xc0aa78 });
 }
 
 function oldMines(W, rng) {
@@ -763,4 +818,24 @@ function eastPass(W, rng) {
   const c = REGION.east_pass.center;
   for (let i = 0; i < 16; i++) rock(W, c.x + 4 + (rng() - 0.5) * 10, c.z + (rng() - 0.5) * 14, 1.5 + rng() * 2.5, rng, 'rock');
   W.addSign(new THREE.Vector3(c.x - 8, 0, c.z + 3), Math.PI / 2, ['Перевал закрыт: камнепад. Караваны ждут, пока гильдия расчистит дорогу.']);
+  // Chapter 6: the stone gate of the relay post (build/Relay.js) at the foot of the ridge, Tobias' waiting place, the camp.
+  const gx = c.x + 12, gz = c.z - 2, gy = H(W, gx, gz);
+  const G = new Frame(W, gx, gy, gz, 0);
+  for (const s of [-1, 1]) {
+    G.box(1.2, 6, 1.2, 0, 0, s * 3.4, 'stoneDark', { tint: 0x8a94a0 });
+    G.box(1.5, 0.4, 1.5, 0, 6, s * 3.4, 'stone', { tint: 0x9aa4b0 });
+  }
+  G.box(1.4, 0.9, 8.6, 0, 6.4, 0, 'stoneDark', { tint: 0x8a94a0 });
+  G.box(0.6, 4.6, 5.6, 1.4, 0, 0, 'stoneDark', { tint: 0x6a7480 });
+  W.spot('relay_gate_out', new THREE.Vector3(gx - 4, gy, gz), -Math.PI / 2);
+  W.addInteractable(new Door({ id: 'relay_gate', name: 'Ворота ретранслятора', prompt: 'Войти на пост', position: new THREE.Vector3(gx + 0.6, gy, gz), target: 'relay_in', rotY: Math.PI / 2 }));
+  W.spot('relay_tobias', new THREE.Vector3(c.x - 3, H(W, c.x - 3, c.z + 6), c.z + 6), Math.PI / 2);
+  W.spot('relay_dan_out', new THREE.Vector3(c.x - 1, H(W, c.x - 1, c.z + 8), c.z + 8), Math.PI);
+  W.spot('relay_osa_out', new THREE.Vector3(c.x - 5, H(W, c.x - 5, c.z + 7.5), c.z + 7.5), Math.PI);
+  const kx = c.x - 4, kz = c.z + 10, ky = H(W, kx, kz);
+  campfire(W, kx, kz);
+  const K = new Frame(W, kx, ky, kz, 0.3);
+  for (const a of [0.6, 2.2, 3.9]) K.cyl(0.22, 1.2, Math.cos(a) * 2.1, 0.25, Math.sin(a) * 2.1, 'log', { seg: 8, rz: Math.PI / 2, ry: a + Math.PI / 2, collide: false });
+  W.spot('relay_camp', new THREE.Vector3(kx, ky, kz), 0);
+  W.addInteractable(new QuestProp({ id: 'relay_camp', name: 'Костёр', prompt: 'Присесть к огню', position: new THREE.Vector3(kx, ky + 0.6, kz), shape: 'none' }));
 }

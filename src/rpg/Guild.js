@@ -63,6 +63,17 @@ export class Guild {
     return parts.length ? `До ранга ${next}: ${parts.join(', ')}.` : `Можно получить ранг ${next}!`;
   }
 
+  /** A story promotion (docs/story: C11, C30): straight to `rank` regardless of points. */
+  promoteTo(rank) {
+    if (RANKS.indexOf(rank) <= RANKS.indexOf(this.g.rank)) return false;
+    this.g.rank = rank;
+    this.g.points = Math.max(this.g.points, RANK_POINTS[rank] || 0);
+    this.rpg.notify('rank', `Ранг гильдии повышен: ${RANK_TITLES[rank]}!`);
+    this.rpg.events.emit('rank', { rank });
+    this.rpg.markDirty(true);
+    return true;
+  }
+
   promote() {
     if (!this.canPromote()) return false;
     this.g.rank = this.nextRank();

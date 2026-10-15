@@ -97,6 +97,16 @@ export const ITEMS = {
 
   // --- trophies (sold for coin) ---
   gem_ruby: { name: 'Алый самоцвет', icon: '♦️', kind: 'trophy', rarity: 'epic', price: 260, desc: 'Сияет как глаза Алых Демонов.' },
+  reg_flask: { name: 'Регистрационный флакон', icon: '🧪', tint: 'hp', kind: 'quest', rarity: 'common', price: 0, desc: 'Флакон Висс с красной этикеткой. Его нужно показать Луне. Выпить можно после проверки.' },
+  edmund_device: { name: 'Прибор Эдмунда', icon: '🧭', kind: 'quest', rarity: 'rare', price: 0, desc: 'Керамическая тарелка с двумя иглами: показывает направление резонанса. Эдмунд просил вернуть целым.' },
+  astra_token: { name: 'Жетон снабженца', icon: '🪙', kind: 'quest', rarity: 'rare', price: 0, desc: 'Монета со знаком Астрариума. Сайрус говорит: жетон служебной кладовой. Продать можно, но Эдмунд просил сначала показать.' },
+  rope_kit: { name: 'Канат и клинья', icon: '🪢', kind: 'quest', rarity: 'common', price: 0, desc: 'Снаряжение для спуска к отводу: канат и стальные клинья. Приготовил Гаррет.' },
+  drain_map: { name: 'Карта отводного канала', icon: '🗺️', kind: 'quest', rarity: 'common', price: 0, desc: 'Схема аварийного отвода: Багровое ущелье, подъёмник, две площадки охлаждения и заслонка у западной стены.' },
+  valve_key: { name: 'Ключ насоса', icon: '🔑', kind: 'quest', rarity: 'common', price: 0, desc: 'Тяжёлый ключ для клапанов насосной станции. Он висел на стойке рабочей галереи.' },
+  link_module: { name: 'Модуль связи Эдмунда', icon: '📡', kind: 'quest', rarity: 'uncommon', price: 0, desc: 'Привезённый модуль для сервисной линии: после установки Эдмунд и Луна услышат героинь из глубокой шахты.' },
+  waterproof_case: { name: 'Водостойкий футляр', icon: '🧰', kind: 'quest', rarity: 'uncommon', price: 0, desc: 'Герметичный футляр из старого снабжения. Удобно хранить свитки и реагенты.' },
+  tar_tools: { name: 'Набор инструментов смолокура', icon: '🔧', kind: 'material', rarity: 'uncommon', price: 40, desc: 'Старые инструменты из кладовой смолокуров: для крафта и ремонта.' },
+  crypt_lamp: { name: 'Лампа гильдии', icon: '🏮', kind: 'quest', rarity: 'common', price: 0, desc: 'Лампа с запасом масла. Повесь её у развилки в крипте: это твоя отметка на обратном пути.' },
   old_coin: { name: 'Старинная монета', icon: '🪙', kind: 'trophy', rarity: 'rare', price: 45, desc: 'Чеканка времён Астрариума. Коллекционеры платят хорошо.' },
 };
 
@@ -140,6 +150,7 @@ export const ENEMY_LOOT = {
   skeleton_rogue: [['eris', 1, 5, 11], ['old_coin', 0.3, 1, 1], ['st_potion', 0.1, 1, 1]],
   skeleton_warrior: [['eris', 1, 9, 16], ['iron_ore', 0.35, 1, 2], ['old_coin', 0.35, 1, 2], ['hp_potion', 0.12, 1, 1]],
   imp: [['eris', 1, 6, 12], ['demon_horn', 0.25, 1, 1], ['mana_potion', 0.1, 1, 1]],
+  watcher: [['eris', 1, 8, 14], ['guardian_core', 0.3, 1, 1]],
   guardian: [['eris', 1, 10, 18], ['guardian_core', 0.5, 1, 1], ['old_coin', 0.25, 1, 1]],
   demon: [['eris', 1, 12, 22], ['demon_horn', 0.35, 1, 1], ['hp_potion', 0.2, 1, 1]],
   archdemon: [['eris', 1, 80, 120], ['gem_ruby', 1, 1, 1], ['manatite', 0.5, 1, 1]],

@@ -235,6 +235,7 @@ export class Game {
     this.hud.show();
     this.clock.start();
     this.renderer.setAnimationLoop(() => this._frame());
+    if (info.fresh) this.rpg.autoIntro();
     return info;
   }
 

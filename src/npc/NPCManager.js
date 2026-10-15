@@ -1,3 +1,4 @@
+import { SPEAKERS } from '../data/story/speakers.js';
 import * as THREE from 'three';
 import { NPCS } from '../data/npcs.js';
 import { NavGrid } from './NavGrid.js';
@@ -66,7 +67,7 @@ export class NPCManager {
   }
 
   def(id) {
-    return NPCS.find((d) => d.id === id);
+    return NPCS.find((d) => d.id === id) || SPEAKERS[id];
   }
 
   get(id) {

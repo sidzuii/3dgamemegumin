@@ -11,6 +11,8 @@ const LEGACY_KEY = 'megumin-save-v1';
 export const SAVE_VERSION = 2;
 /** Map layout revision: saves from an older map get the player moved to a safe spot (RPG._fixups). */
 export const MAP_REV = 3;
+/** Story revision: a save from an older story (before the scenario package, docs/story) restarts the story, keeping the character. */
+export const STORY_REV = 1;
 
 export class EventBus {
   constructor() {
@@ -34,6 +36,7 @@ export function freshState() {
     version: SAVE_VERSION,
     // mapRev is set by RPG._fixups (absent in saves from the old map).
     flags: {},
+    vars: {}, // story variables of the scenario (ROXY_TRUST, KHARZ_ROUTE...): number | boolean | string
     counters: {},
     quests: {}, // id -> { status: 'active'|'done', stage, progress: {}, day }
     guild: { member: false, rank: 'F', points: 0, completed: [] },
@@ -122,7 +125,21 @@ export const RANK_POINTS = { F: 0, E: 3, D: 7, C: 12, B: 20, A: 30 };
  *  { member } { rank: 'E' } (at least) { item, n } { eris } { level } { hour: [from, to] }
  *  { rel: [npc, min] } { met: npc } { any: [...] } { not: {...} } { counter: [name, min] }
  *  { roxy: true } { day: n } (at least)
+ *  { var: [name, op, value] } story variable compared with ==, !=, >=, <=, >, < (an unset one is false / 0 / '')
+ *  { seen: nodeId | [ids] } these nodes of the running conversation were already shown (answers that disappear)
+ *  { v: name } story variable is truthy   { nv: name } story variable is falsy / unset
  */
+const cmp = (a, op, b) => {
+  switch (op) {
+    case '==': return a === b;
+    case '!=': return a !== b;
+    case '>=': return a >= b;
+    case '<=': return a <= b;
+    case '>': return a > b;
+    case '<': return a < b;
+    default: return false;
+  }
+};
 export function check(rpg, cond) {
   if (!cond) return true;
   if (Array.isArray(cond)) return cond.every((c) => check(rpg, c));
@@ -162,6 +179,15 @@ export function check(rpg, cond) {
       case 'counter': if ((S.counters[v[0]] || 0) < v[1]) return false; break;
       case 'roxy': if (!!S.flags.roxy_companion !== !!v) return false; break;
       case 'day': if (S.time.day < v) return false; break;
+      case 'var': {
+        const have = S.vars?.[v[0]];
+        const want = v[2];
+        if (!cmp(have === undefined ? (typeof want === 'number' ? 0 : typeof want === 'boolean' ? false : '') : have, v[1], want)) return false;
+        break;
+      }
+      case 'seen': { const s = rpg.dialogue?.current?.seen; if (![].concat(v).every((id) => s?.has(id))) return false; break; }
+      case 'v': if (!S.vars?.[v]) return false; break;
+      case 'nv': if (S.vars?.[v]) return false; break;
       case 'canPromote': if (rpg.guild.canPromote() !== !!v) return false; break;
       default: break;
     }
