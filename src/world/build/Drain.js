@@ -71,6 +71,7 @@ export function buildDrain(world) {
   pf.box(1.6, 1.0, 0.5, 0, 0, 0, 'stoneDark', { tint: TN.trim });
   pf.box(1.3, 0.1, 0.8, 0, 1.0, 0, 'metal', { collide: false, rx: -0.5 });
   P('drain_panel', 'Панель с договором', 'Прочитать договор', -4, 1.1, 1744.6);
+  P('drain_panel_after', 'Панель с договором', 'Осмотреть панель', -4, 1.1, 1744.8);
   const gf = new Frame(W, 4, 0, 1745, 0);
   gf.cyl(0.16, 1.4, 0, 0, 0, 'metal', { seg: 8 });
   gf.box(0.7, 0.4, 0.1, 0, 1.4, 0, 'metal', { collide: false });

@@ -15,7 +15,11 @@ const AT = (quest, ...stages) => (stages.length === 1 ? { quest, stage: stages[0
 const PLAN = (v) => ({ var: ['C07_PLAN', '==', v] });
 
 export const STORY_PROPS = {
-  // V05: a locked passage answers with a line of the package
+  // V05: a locked passage answers with a line of the package; V07: the gorge after the finale
+  street_blocked: { when: [{ flag: 'shelter_block' }, { not: { quest: 'ch8_city', status: 'done' } }], say: ['V05_004'] },
+  gorge_patrol_t: { when: [{ flag: 'game_complete' }, { var: ['KHARZ_ROUTE', '==', 'treaty'] }], say: ['V07_001', 'V07_002'] },
+  gorge_patrol_b: { when: [{ flag: 'game_complete' }, { var: ['KHARZ_ROUTE', '==', 'battle'] }], say: ['V07_003', 'V07_004'] },
+  drain_panel_after: { when: { flag: 'game_complete' }, say: ['V07_005'] },
   crypt_sealed: { when: { notFlag: 'crypt_open' }, say: ['V05_001'] },
 
   // ---- chapter 6: the relay post

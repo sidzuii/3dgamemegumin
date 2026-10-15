@@ -68,9 +68,15 @@ Full description, file map and how-to guides: see `README.md` (Russian). The use
   markdown with `tools/story/draft.mjs`, list its ids with `tools/story/outline.mjs`). Dialogue ids = scene ids
   (`A00`, entry points `A00:join`); NPC `talk` entries in `data/npcs.js` route to them by quest stage. Story variables:
   `state.vars` (`{ setVar }` / `{ addVar }` / `{ var: [name, op, value] }`, names declared in `story/vars.js`).
-  `node tools/story/check.mjs [A|B|C]` = static check + coverage (run it after every change). Story props / Water Volley targets / enemy waves
-  are DATA in `story/props.js` (`STORY_PROPS`, `STORY_VOLLEY`, `STORY_WAVES`; effects `{ wave }`, `{ scene }`); interiors beyond the map edge: `build/Dungeon.js` zones (mine, crypt, relay), helpers `hall()`/`passage()` in `build/Crypt.js`. Do not touch the
-  voice-over (`Озвучка/` of the package, core/Audio.js) while the story is being built.
+  `node tools/story/check.mjs [A|B|C]` = static check + coverage (run it after every change). The WHOLE package is ported (A00-A29, B01-B23,
+  C00-C33; the voice-over is still not touched: `Озвучка/` of the package and core/Audio.js stay as they are). Story props / Water Volley
+  targets / enemy waves / directed blasts are DATA in `story/props.js` (`STORY_PROPS`, `STORY_VOLLEY`, `STORY_WAVES` with optional shields,
+  `STORY_BLASTS`; effects `{ wave }`, `{ scene }`, `{ save }`, `{ credits }`); side-story places/props/camps are DATA in `story/sideprops.js`
+  (built by `world/build/SideProps.js`, after every other builder). Interiors beyond the map edge: zones in `build/Dungeon.js` (mine, crypt,
+  relay, drain, pump + core), builders Crypt/Relay/Drain/Pump/Core (helpers `hall()`/`passage()` in Crypt.js); `world.<level>.sync(flags, vars)`
+  applies story state, called from `RPG._syncProps`. Quest stages: a stage whose objectives are flags advances by itself — use `manual: true`
+  when a scene's `{ advance }` must do it; `onDone` effects run with the quest locked against re-entrant advance. Main chain:
+  ch4_return -> ch5_crypt -> ch6_relay -> ch7_gorge -> ch8_city -> ch9_capsule -> ch10_finale (credits, `game_complete`).
 - Character animation = mocap clips from `public/models/anim/ual.glb` retargeted at runtime
   (`src/character/Retarget.js` + `CharacterAnimator.js`). Bone maps per skeleton are in `MAPS`
   (ual, mixamo, cc, qp = Quaternius people, demon). The library has no sitting clip: NPC `sit` = idle + legs

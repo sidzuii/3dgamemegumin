@@ -91,6 +91,10 @@ export const SIDE_PROPS = [
   { id: 'road_debris', name: 'Обломок телеги', prompt: 'Убрать обломок телеги с дороги', spot: 'relay_gate_out', dx: -6, dz: 5, shape: 'plank' },
   { id: 'road_sign', name: 'Указатель у дороги', prompt: 'Восстановить указатель', spot: 'relay_gate_out', dx: -9, dz: -3, shape: 'board' },
   { id: 'post_panel', name: 'Панель старого поста', prompt: 'Осмотреть холодную панель поста', spot: 'relay_gate_out', dx: 3, dz: -4, shape: 'stake' },
+  // V05 / V07: lines of the package at passages (the barrier of the shelter day, the gorge patrol and the panel after the finale)
+  { id: 'street_blocked', name: 'Заграждение', prompt: 'Осмотреть заграждение', spot: 'street_block', dx: 0.8, dz: 0, shape: 'none' },
+  { id: 'gorge_patrol_t', name: 'Патруль гильдии', prompt: 'Поговорить с патрулём', spot: 'drain_gate_out', dx: 3, dz: 1, shape: 'none' },
+  { id: 'gorge_patrol_b', name: 'Патруль гильдии', prompt: 'Поговорить с патрулём', spot: 'drain_gate_out', dx: 3, dz: 2, shape: 'none' },
   // B23 — the day at the shelter
   { id: 'shelter_food', name: 'Столы с обедом', prompt: 'Раздать обед', spot: 'shelter', dx: 3, dz: 2, shape: 'crate' },
   { id: 'shelter_lamps', name: 'Лампы у дальней стены', prompt: 'Поставить лампы у дальней стены', spot: 'shelter', dx: -6, dz: 5, shape: 'stake' },
