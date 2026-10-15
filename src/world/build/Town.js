@@ -362,6 +362,29 @@ function townHall(rng) {
   for (const s of [-1, 1]) lantern(W, D.sub(s * 1.7, 2.4, 0.2));
   D.box(5, 0.5, 1.0, 0, -0.3, 0.55, 'stone', { tint: 0xc8bca8 }); // steps
   W.spot('town_hall_door', D.at(0, 0, 1.8), rot);
+  // Chapter 8: the shelter of the residents in front of the hall: cots, crates, a chalk line, a stuck handcart, a barrier.
+  const S = F.sub(0, 0, 5.9 + 1.5 + 5.5);
+  for (let i = 0; i < 5; i++) {
+    const c = S.sub(-5 + i * 2.2, 0, 1.2 + (i % 2) * 0.6);
+    c.box(0.9, 0.22, 1.9, 0, 0, 0, 'plank', { collide: false, tint: 0x8a6a4a });
+    c.box(0.7, 0.12, 0.5, 0, 0.22, -0.6, 'cloth', { collide: false, tint: [0xd8b0a0, 0xa8c0d0, 0xc8d0a0][i % 3] });
+  }
+  for (let i = 0; i < 3; i++) crate(W, S.sub(5.5, 0, -1 + i * 1.0), 0, 0, 0.8, i * 0.4);
+  S.box(11, 0.03, 0.12, 0, 0.01, 3.2, 'stone', { collide: false, castShadow: false, tint: 0xf0f0e8 }); // the chalk line
+  W.spot('shelter', S.at(0, 0, 0.5), rot + Math.PI);
+  W.spot('shelter_lina', S.at(-2, 0, 0), rot + Math.PI);
+  W.spot('shelter_mia', S.at(0.6, 0, 0.2), rot + Math.PI);
+  const cart = F.sub(-9, 0, 5.9 + 1.5 + 9);
+  cart.box(1.3, 0.12, 1.9, 0, 0.55, 0, 'wood', { tint: 0x7a5232 });
+  cart.box(1.3, 0.5, 0.1, 0, 0.67, 0.9, 'wood', { tint: 0x7a5232, collide: false });
+  for (const s of [-1, 1]) cart.cyl(0.42, 0.1, s * 0.75, 0.42, -0.2, 'wood', { seg: 12, rz: Math.PI / 2, collide: false, tint: 0x5a3a22 });
+  W.spot('shelter_cart', cart.at(0, 0, 0), rot);
+  W.addInteractable(new QuestProp({ id: 'shelter_cart', name: 'Застрявшая тележка', prompt: 'Вытолкнуть тележку', position: cart.at(0, 0.9, 0), shape: 'none' }));
+  const bar = F.sub(11, 0, 5.9 + 1.5 + 12);
+  for (const s of [-1, 1]) bar.box(0.12, 1.0, 0.12, s * 0.9, 0, 0, 'wood', { collide: false, tint: 0x7a5232 });
+  bar.box(2.2, 0.14, 0.08, 0, 0.7, 0, 'plank', { collide: false, tint: 0xd8a040 });
+  W.spot('street_block', bar.at(0, 0, 0), rot);
+  W.addInteractable(new QuestProp({ id: 'street_block', name: 'Опасный проход', prompt: 'Перекрыть проход заграждением', position: bar.at(0, 0.9, 0), shape: 'none' }));
 }
 
 /** House with an optional open shop front and a hanging sign; spots <id>_door / <id>_counter. */
@@ -664,6 +687,13 @@ function places(rng) {
   W.group('town_well', { x: P(58, -61)[0], z: P(58, -61)[1] }, (r) => {
     well(W, ...P(58, -61));
     W.spot('well', G(58, -58), 0);
+    // Chapter 8: the cistern hatch beside the well — the way down to the pump station (build/Pump.js).
+    const H0 = F0(62.5, -57, 0.3);
+    H0.box(2.2, 0.16, 1.6, 0, 0, 0, 'stoneDark', { collide: false, tint: 0x8a8478 });
+    H0.box(1.7, 0.08, 1.1, 0, 0.16, 0, 'metal', { collide: false, tint: 0x5a5048 });
+    H0.cyl(0.14, 0.12, 0.5, 0.2, 0, 'metal', { seg: 8, collide: false });
+    W.spot('pump_gate_out', G(62.5, -55), Math.PI);
+    W.addInteractable(new Door({ id: 'pump_gate', name: 'Люк цистерны', prompt: 'Спуститься к насосной', position: G(62.5, -57, 0.1), target: 'pump_in', shape: 'none' }));
     tree(W, ...P(64, -66), 1.25, r, 'oak'); // the old linden (landmark)
     bench(W, F0(52, -56, 0.4), 0, 0, 0);
   }, 'Колодезная площадь');

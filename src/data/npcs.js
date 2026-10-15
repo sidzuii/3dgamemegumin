@@ -71,8 +71,10 @@ export const NPCS = [
     id: 'lina', name: 'Лина', title: 'Пекарь',
     model: F(['Casual_Head', 'Formal_Body', 'Formal_Legs', 'Formal_Feet'], { Hair_Blond: 0xe8d098, Hair_Brown: 0xc8a868, LimeGreen: 0xc87a5a, Gold: 0xf4f0e8 }),
     look: { skin: 0xffe0c8, hair: 0xe8d8a0, hairStyle: 'ponytail', top: 0xd88a6a, dress: true, dressLong: true, dressColor: 0x6a4a3a, apron: 0xf4f0e8, chestShape: true, height: 0.95 },
-    schedule: [{ time: [6, 18], spot: 'bakery_counter', anim: 'shop' }, { time: [18, 21], spot: 'square_west', anim: 'idle' }, { time: [21, 6], hidden: true }],
+    schedule: [{ time: [0, 24], spot: 'shelter_lina', anim: 'idle', if: { any: [{ quest: 'ch8_city', stage: 'shelter' }, { quest: 'ch8_city', stage: 'route_res' }, { quest: 'ch8_city', stage: 'route_rep' }, { quest: 'ch8_city', stage: 'pump_talk' }, { quest: 'ch8_city', stage: 'pump_key' }, { quest: 'ch8_city', stage: 'p17_shield' }, { quest: 'ch8_city', stage: 'p17_hold' }, { quest: 'ch8_city', stage: 'p17_flow' }, { quest: 'ch8_city', stage: 'pump_out' }, { quest: 'ch8_city', stage: 'veyr' }, { quest: 'ch8_city', stage: 'deep' }, { quest: 'ch8_city', stage: 'p19_lever' }, { quest: 'ch8_city', stage: 'p19_latch' }, { quest: 'ch8_city', stage: 'p19_breaker' }, { quest: 'ch8_city', stage: 'deep_out' }, { quest: 'ch8_city', stage: 'link' }, { quest: 'ch8_city', stage: 'link_check' }] } }, { time: [6, 18], spot: 'bakery_counter', anim: 'shop' }, { time: [18, 21], spot: 'square_west', anim: 'idle' }, { time: [21, 6], hidden: true }],
     talk: [
+      { if: { quest: 'ch8_city', stage: 'shelter' }, dialogue: 'C16' },
+      { if: { quest: 'ch8_city', status: 'active', flag: 'C16_DONE' }, bark: ['Пока все не получат воду, я здесь. Хлеб вечером будет холодный.'] },
       { if: { quest: 'prologue_arrival', stage: 'lina', flag: 'A02_LATER' }, dialogue: 'A02b' },
       { if: { quest: 'prologue_arrival', stage: 'lina' }, dialogue: 'A02' },
       { if: { quest: 'first_delivery', stage: 'back' }, dialogue: 'A03:back' },
@@ -84,8 +86,11 @@ export const NPCS = [
     id: 'garret', name: 'Гаррет', title: 'Кузнец',
     model: M(['King_Head', 'Farmer_Body', 'Worker_Legs', 'Worker_Feet'], { Hair_White: 0x2a1a12, Beige: 0x8a5a3a, LightBlue: 0x3a2a1e, 'Worker_Legs:Brown': 0x3a3028, 'Worker_Legs:Brown2': 0x2a2420 }, { hide: { King_Head: ['Gold'] }, scale: 0.98 }),
     look: { skin: 0xe8b890, hair: 0x2a1a12, hairStyle: 'bald', beard: true, top: 0x8a5a3a, sleeves: 'short', apron: 0x3a2a1e, bottom: 0x3a3028, build: 1.25, height: 1.06 },
-    schedule: [{ time: [7, 19], spot: 'forge_anvil', anim: 'work' }, { time: [19, 22], spot: 'tavern_bar_front', anim: 'idle' }, NIGHT_HOME],
+    schedule: [{ time: [0, 24], spot: 'pump_garret', anim: 'work', if: { any: [{ quest: 'ch8_city', stage: 'pump_talk' }, { quest: 'ch8_city', stage: 'pump_key' }, { quest: 'ch8_city', stage: 'p17_shield' }, { quest: 'ch8_city', stage: 'p17_hold' }, { quest: 'ch8_city', stage: 'p17_flow' }, { quest: 'ch8_city', stage: 'pump_out' }] } }, { time: [7, 19], spot: 'forge_anvil', anim: 'work' }, { time: [19, 22], spot: 'tavern_bar_front', anim: 'idle' }, NIGHT_HOME],
     talk: [
+      { if: { quest: 'ch8_city', stage: 'pump_talk' }, dialogue: 'C17' },
+      { if: { quest: 'ch8_city', stage: 'pump_out' }, dialogue: 'C17c' },
+      { if: { any: [{ quest: 'ch8_city', stage: 'pump_key' }, { quest: 'ch8_city', stage: 'p17_shield' }, { quest: 'ch8_city', stage: 'p17_hold' }, { quest: 'ch8_city', stage: 'p17_flow' }] }, bark: ['Если снять крышку под напором, поток ударит в лицо. Не торопись.'] },
       { if: { quest: 'first_delivery', stage: 'deliver' }, dialogue: 'A03' },
       { if: { quest: 'ch3_lights', stage: 'garret' }, dialogue: 'A18' },
       { if: { quest: 'ch5_crypt', stage: 'prep', notFlag: 'C00_GARRET' }, dialogue: 'C01' },
@@ -100,6 +105,7 @@ export const NPCS = [
     look: { skin: 0xffe8d8, hair: 0xa06a3a, hairStyle: 'long', top: 0xf2ead8, vest: 0x2f5a8a, dress: true, dressLong: true, dressColor: 0x2f3a5a, chestShape: true },
     schedule: [{ time: [8, 20], spot: 'guild_counter', anim: 'idle' }, { time: [20, 22], spot: 'tavern_table2', anim: 'sit' }, NIGHT_HOME],
     talk: [
+      { if: { quest: 'ch8_city', stage: 'hq' }, dialogue: 'C15' },
       { if: { quest: 'ch7_gorge', stage: 'luna' }, dialogue: 'C11' },
       { if: { quest: 'join_guild', stage: 'go' }, dialogue: 'A04' },
       { if: { quest: 'join_guild', stage: 'potion' }, bark: ['Регистрационный флакон ждёт тебя у Висс. Принеси его и взнос.'] },
@@ -175,8 +181,9 @@ export const NPCS = [
     id: 'mia', name: 'Мия', title: 'Девочка с площади',
     model: F(['Formad_Head', 'Formal_Body', 'Formal_Legs', 'Formal_Feet'], { 'Formad_Head:Red': 0xe8789a, LimeGreen: 0xf0a0c0, Gold: 0xffffff }, { scale: 0.64 }),
     look: { skin: 0xffe8d8, hair: 0xe8789a, hairStyle: 'braids', top: 0xf0a0c0, dress: true, dressColor: 0xf0a0c0, stockings: 0xffffff, height: 0.72 },
-    schedule: [{ time: [9, 18], spot: 'square_west', anim: 'idle' }, { time: [18, 9], hidden: true }],
+    schedule: [{ time: [0, 24], spot: 'shelter_mia', anim: 'idle', if: { any: [{ quest: 'ch8_city', stage: 'shelter' }, { quest: 'ch8_city', stage: 'route_res' }, { quest: 'ch8_city', stage: 'route_rep' }, { quest: 'ch8_city', stage: 'pump_talk' }, { quest: 'ch8_city', stage: 'pump_key' }, { quest: 'ch8_city', stage: 'p17_shield' }, { quest: 'ch8_city', stage: 'p17_hold' }, { quest: 'ch8_city', stage: 'p17_flow' }, { quest: 'ch8_city', stage: 'pump_out' }, { quest: 'ch8_city', stage: 'veyr' }, { quest: 'ch8_city', stage: 'deep' }, { quest: 'ch8_city', stage: 'p19_lever' }, { quest: 'ch8_city', stage: 'p19_latch' }, { quest: 'ch8_city', stage: 'p19_breaker' }, { quest: 'ch8_city', stage: 'deep_out' }, { quest: 'ch8_city', stage: 'link' }, { quest: 'ch8_city', stage: 'link_check' }] } }, { time: [9, 18], spot: 'square_west', anim: 'idle' }, { time: [18, 9], hidden: true }],
     talk: [
+      { if: { quest: 'ch8_city', status: 'active' }, bark: ['Уголёк сегодня сидит в корзине. Сам. Это очень подозрительно.', 'Лина нарисовала линию мелом. Мы за неё не заходим.'] },
       { if: { quest: 'c_lost_cat', stage: 'mia' }, dialogue: 'B02a' },
       { if: { quest: 'c_lost_cat', stage: 'return', flag: 'cat_found' }, dialogue: 'B02c' },
       { if: { quest: 'c_lost_cat', status: 'active' }, bark: ['Уголёк ещё не нашёлся?..', 'Он любит тёплые места и не любит собак.'] },
@@ -364,10 +371,13 @@ export const NPCS = [
     id: 'dan', name: 'Дан', title: 'Рабочий поста',
     model: M(['Casual2_Head', 'Farmer_Body', 'Worker_Legs', 'Worker_Feet'], { Skin: 0xc89070, Skin_Darker: 0xa87050, Hair: 0x2a1a12, Beige: 0x8a7a5a, LightBlue: 0x5a4a3a }),
     look: { skin: 0xc89070, hair: 0x2a1a12, hairStyle: 'short', top: 0x8a7a5a, sleeves: 'short', bottom: 0x4a4038 },
-    schedule: (rpg) => (rpg.check({ any: [{ quest: 'ch6_relay', stage: 'dan' }, { quest: 'ch6_relay', stage: 'p_dan' }, { quest: 'ch6_relay', stage: 'p_osa' }, { quest: 'ch6_relay', stage: 'p_guard' }, { quest: 'ch6_relay', stage: 'out' }] })
+    schedule: (rpg) => (rpg.check({ any: [{ quest: 'ch8_city', stage: 'deep' }, { quest: 'ch8_city', stage: 'p19_lever' }, { quest: 'ch8_city', stage: 'p19_latch' }, { quest: 'ch8_city', stage: 'p19_breaker' }, { quest: 'ch8_city', stage: 'deep_out' }] }) ? [{ time: [0, 24], spot: 'deep_dan', anim: 'idle' }] : rpg.check({ quest: 'ch8_city', status: 'active' }) && !rpg.check({ quest: 'ch8_city', stage: 'hq' }) && rpg.check({ flag: 'relay_workers_out' }) ? [{ time: [0, 24], hidden: true }] : rpg.check({ any: [{ quest: 'ch6_relay', stage: 'dan' }, { quest: 'ch6_relay', stage: 'p_dan' }, { quest: 'ch6_relay', stage: 'p_osa' }, { quest: 'ch6_relay', stage: 'p_guard' }, { quest: 'ch6_relay', stage: 'out' }] })
       ? [{ time: [0, 24], spot: 'relay_dan', anim: 'idle' }]
       : rpg.check({ flag: 'relay_workers_out' }) ? [{ time: [0, 24], spot: 'relay_dan_out', anim: 'idle' }] : [{ time: [0, 24], hidden: true }]),
     talk: [
+      { if: { quest: 'ch8_city', stage: 'deep' }, dialogue: 'C19' },
+      { if: { quest: 'ch8_city', stage: 'deep_out' }, dialogue: 'C19b' },
+      { if: { any: [{ quest: 'ch8_city', stage: 'p19_lever' }, { quest: 'ch8_city', stage: 'p19_latch' }, { quest: 'ch8_city', stage: 'p19_breaker' }] }, bark: ['Лестницу держу. Решётка закрывается сама.'] },
       { if: { quest: 'ch6_relay', stage: 'dan' }, dialogue: 'C07' },
       { if: { quest: 'ch6_relay', stage: 'out' }, dialogue: 'C07b' },
       { if: { quest: 'ch6_relay', status: 'active', flag: 'relay_workers_out' }, bark: ['Спасибо. Нога болит, но идти могу.', 'Панель в архиве читает наш пропуск. Берите документы, пока они сухие.'] },
@@ -378,10 +388,13 @@ export const NPCS = [
     id: 'osa', name: 'Оса', title: 'Рабочая поста',
     model: F(['Soldier_Head', 'Adventurer_Body', 'Medieval_Legs', 'Adventurer_Feet'], { Hair_Brown: 0x6a2a1a, 'Adventurer_Body:Green': 0x6a6a4a, 'Adventurer_Body:LightGreen': 0x4a4a38, Black: 0x3a3428 }),
     look: { skin: 0xe8c8a8, hair: 0x6a2a1a, hairStyle: 'ponytail', top: 0x6a6a4a, vest: 0x4a4a38, bottom: 0x3a3428 },
-    schedule: (rpg) => (rpg.check({ any: [{ quest: 'ch6_relay', stage: 'dan' }, { quest: 'ch6_relay', stage: 'p_dan' }, { quest: 'ch6_relay', stage: 'p_osa' }, { quest: 'ch6_relay', stage: 'p_guard' }, { quest: 'ch6_relay', stage: 'out' }] })
+    schedule: (rpg) => (rpg.check({ any: [{ quest: 'ch8_city', stage: 'deep' }, { quest: 'ch8_city', stage: 'p19_lever' }, { quest: 'ch8_city', stage: 'p19_latch' }, { quest: 'ch8_city', stage: 'p19_breaker' }, { quest: 'ch8_city', stage: 'deep_out' }] }) ? [{ time: [0, 24], spot: 'deep_osa', anim: 'idle' }] : rpg.check({ quest: 'ch8_city', status: 'active' }) && !rpg.check({ quest: 'ch8_city', stage: 'hq' }) && rpg.check({ flag: 'relay_workers_out' }) ? [{ time: [0, 24], hidden: true }] : rpg.check({ any: [{ quest: 'ch6_relay', stage: 'dan' }, { quest: 'ch6_relay', stage: 'p_dan' }, { quest: 'ch6_relay', stage: 'p_osa' }, { quest: 'ch6_relay', stage: 'p_guard' }, { quest: 'ch6_relay', stage: 'out' }] })
       ? [{ time: [0, 24], spot: 'relay_osa', anim: 'idle' }]
       : rpg.check({ flag: 'relay_workers_out' }) ? [{ time: [0, 24], spot: 'relay_osa_out', anim: 'idle' }] : [{ time: [0, 24], hidden: true }]),
     talk: [
+      { if: { quest: 'ch8_city', stage: 'deep' }, dialogue: 'C19' },
+      { if: { quest: 'ch8_city', stage: 'deep_out' }, dialogue: 'C19b' },
+      { if: { any: [{ quest: 'ch8_city', stage: 'p19_lever' }, { quest: 'ch8_city', stage: 'p19_latch' }, { quest: 'ch8_city', stage: 'p19_breaker' }] }, bark: ['Жду. Решётка закрывается сама, не отпускайте рычаг!'] },
       { if: { quest: 'ch6_relay', stage: 'dan' }, dialogue: 'C07' },
       { if: { quest: 'ch6_relay', stage: 'out' }, dialogue: 'C07b' },
       { if: { quest: 'ch6_relay', status: 'active', flag: 'relay_workers_out' }, bark: ['В архиве список людей, которые работали до нас. Не оставляйте его под водой.'] },

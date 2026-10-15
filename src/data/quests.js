@@ -374,6 +374,46 @@ export const QUESTS = Object.fromEntries([
       { id: 'outro', text: 'Выслушай Вейра у панели.', target: 'spot:drain_projection', objectives: [{ type: 'talk', label: 'Панель Вейра' }] },
     ],
     rewards: { eris: 300, xp: 450, flags: ['ch7_done'] },
+    next: 'ch8_city',
+  }),
+
+  // =====================================================================================
+  // CHAPTER 8 — the city above the machine
+  // =====================================================================================
+  Q('ch8_city', {
+    title: 'Город над машиной', category: 'story', chapter: 8, giver: 'luna', requires: { quest: 'ch7_gorge', status: 'done' },
+    summary: 'Внешний отвод защитил город от жара, но установка начала забирать воду из городского резерва. Трубы пусты. Нужно подать воду людям, починить насос и подготовиться к центральному залу.',
+    stages: [
+      { id: 'hq', text: 'В гильдии штаб: Лина, Бернард, Клара и Луна. Поговори с Луной: куда вести первые бочки?', target: 'npc:luna', objectives: [{ type: 'talk', label: 'Поговорить с Луной' }] },
+      { id: 'shelter', text: 'Убежище у ратуши: поговори с Линой, вытолкни застрявшую тележку и перекрой опасный проход.', target: 'spot:shelter',
+        objectives: [{ type: 'flag', flag: 'C16_DONE', label: 'Поговорить с Линой' }, { type: 'flag', flag: 'shelter_cart', label: 'Вытолкнуть тележку' }, { type: 'flag', flag: 'shelter_block', label: 'Перекрыть проход' }] },
+      { id: 'route_res', skipIf: { not: { var: ['WATER_FIRST', '==', 'residents'] } }, text: 'Путь «сначала жителям»: спустись в люк у колодца, пройди боковым тоннелем (западный ход) и повесь две лампы. Стражи обслуживания в тоннеле.', target: 'spot:pump_tunnel',
+        objectives: [{ type: 'flag', flag: 'tunnel_lamp_a', label: 'Первая лампа' }, { type: 'flag', flag: 'tunnel_lamp_b', label: 'Вторая лампа' }] },
+      { id: 'route_rep', skipIf: { not: { var: ['WATER_FIRST', '==', 'repair'] } }, text: 'Путь «сначала насос»: спустись в люк у колодца, пройди рабочей галереей (восточный ход): возьми ключ насоса и поверни вентиль.', target: 'spot:pump_gallery',
+        objectives: [{ type: 'flag', flag: 'gallery_tool', label: 'Ключ насоса' }, { type: 'flag', flag: 'gallery_valve', label: 'Вентиль галереи' }] },
+      { id: 'pump_talk', text: 'В насосной ждёт Гаррет. Поговори с ним.', target: 'npc:garret', objectives: [{ type: 'talk', label: 'Поговорить с Гарретом' }] },
+      { id: 'pump_key', text: 'Мегумин проворачивает заклинивший клапан ключом (Рокси держит воду).', target: 'spot:pump_room', objectives: [{ type: 'talk', label: 'Провернуть клапан (Мегумин)' }] },
+      { id: 'p17_shield', skipIf: { not: { var: ['C17_PLAN', '==', 'shield'] } }, text: 'План «щит»: Мегумин ставит ремонтный щит у отверстия, затем Рокси регулирует шов водой.', target: 'spot:pump_seam_b',
+        objectives: [{ type: 'flag', flag: 'pump_shield', label: 'Ремонтный щит (Мегумин)' }, { type: 'flag', flag: 'pump_adjusted', label: 'Регулировка шва (Рокси)' }] },
+      { id: 'p17_hold', skipIf: { not: { var: ['C17_PLAN', '==', 'hold'] } }, text: 'План «меняемся»: Мегумин держит ключ, а сервисные стражи вышли на рабочую площадку. Защити её.', target: 'spot:pump_guards', onStart: [{ wave: 'pump_guards' }],
+        objectives: [{ type: 'flag', flag: 'wd_pump_guards', label: 'Отбить стражей обслуживания' }] },
+      { id: 'p17_flow', skipIf: { not: { var: ['C17_PLAN', '==', 'flow'] } }, text: 'План «снизить поток»: закрой нижний вентиль и вентиль подачи на четверть.', target: 'spot:pump_room',
+        objectives: [{ type: 'flag', flag: 'pump_valve_a', label: 'Нижний вентиль' }, { type: 'flag', flag: 'pump_valve_b', label: 'Вентиль подачи' }] },
+      { id: 'pump_out', text: 'Поговори с Гарретом: насос пошёл.', target: 'npc:garret', objectives: [{ type: 'talk', label: 'Поговорить с Гарретом' }] },
+      { id: 'veyr', text: 'Включи сервисную панель на северной стене насосной: Вейр вышел на связь.', target: 'spot:service_panel', objectives: [{ type: 'talk', label: 'Сервисная панель' }] },
+      { id: 'deep', text: 'Спустись глубже по сервисному ходу. Дан держит лестницу, Оса осталась у нижнего шва.', target: 'npc:dan', objectives: [{ type: 'talk', label: 'Поговорить с Даном' }] },
+      { id: 'p19_lever', skipIf: { not: { var: ['C19_PLAN', '==', 'lever'] } }, text: 'План «рычаг»: Мегумин держит рычаг решётки, Рокси сбивает защёлку водяным залпом.', target: 'spot:deep_latch',
+        objectives: [{ type: 'flag', flag: 'deep_lever_held', label: 'Удержать рычаг (Мегумин)' }, { type: 'flag', flag: 'deep_latch_hit', label: 'Сбить защёлку (Рокси: Tab, Q)' }] },
+      { id: 'p19_latch', skipIf: { not: { var: ['C19_PLAN', '==', 'latch'] } }, text: 'План «защёлка»: Рокси сбивает защёлку, Мегумин помогает Осе.', target: 'spot:deep_latch',
+        objectives: [{ type: 'flag', flag: 'deep_latch_hit', label: 'Сбить защёлку (Рокси: Tab, Q)' }, { type: 'flag', flag: 'deep_osa_helped', label: 'Помочь Осе' }] },
+      { id: 'p19_breaker', skipIf: { not: { var: ['C19_PLAN', '==', 'breaker'] } }, text: 'План «рубильник»: поднимись на верхний уступ (восточный проход) и выключи рубильник панели.', target: 'spot:deep_ledge',
+        objectives: [{ type: 'reach', spot: 'deep_ledge', r: 5, label: 'Подняться на уступ' }, { type: 'flag', flag: 'deep_breaker_off', label: 'Выключить рубильник' }] },
+      { id: 'deep_out', text: 'Решётка открыта. Поговори с Осой.', target: 'npc:osa', objectives: [{ type: 'talk', label: 'Поговорить с Осой' }] },
+      { id: 'link', text: 'Поставь модуль связи в гнездо на северной стене шахты и подай питание.', target: 'spot:deep_hall',
+        objectives: [{ type: 'flag', flag: 'link_socket', label: 'Установить модуль' }, { type: 'flag', flag: 'link_power', label: 'Подать питание' }] },
+      { id: 'link_check', text: 'Проверь связь на контрольной панели: Эдмунд и Луна на линии.', target: 'spot:deep_hall', objectives: [{ type: 'talk', label: 'Проверить связь' }] },
+    ],
+    rewards: { eris: 300, xp: 500, flags: ['ch8_done'] },
   }),
 
   // =====================================================================================

@@ -238,6 +238,7 @@ export class RPG {
     this.game.world.crypt?.sync(F);
     this.game.world.relay?.sync(F);
     this.game.world.drain?.sync(F);
+    this.game.world.pump?.sync(F, this.state.vars);
     for (const it of this.game.world.interactables) {
       if (!it.setActive) continue;
       const sp = STORY_PROPS[it.id];

@@ -79,10 +79,48 @@ export const STORY_PROPS = {
   drain_lever_m: {
     when: AT('ch7_gorge', 't_release'), once: 'release_megumin', char: 'megumin',
     wrong: 'Рычаг привязки тянет Мегумин (Tab).', need: { flag: 'release_roxy' }, locked: 'Рычаг не поддаётся, пока Рокси не открыла клапан привязки.',
-    do: [{ setFlag: 'drain_released' }, { scene: 'C14t' }], vfx: 'magicPop',
+    do: [{ setFlag: 'drain_released' }], scene: 'C14t', vfx: 'magicPop',
   },
   kharz_shield_a: { when: AT('ch7_gorge', 'b_shields'), toast: 'Щит держит жар. Разбить его может водяной залп Рокси (Tab, затем Q).' },
   kharz_shield_b: { when: AT('ch7_gorge', 'b_shields'), toast: 'Щит держит жар. Разбить его может водяной залп Рокси (Tab, затем Q).' },
+  // ---- chapter 8: the shelter in front of the town hall, the pump station, the deep shaft
+  pump_gate: {
+    when: { any: [{ quest: 'ch8_city', status: 'done' }, [{ quest: 'ch8_city', status: 'active' }, { any: ['route_res', 'route_rep', 'pump_talk', 'pump_key', 'p17_shield', 'p17_hold', 'p17_flow', 'pump_out', 'veyr', 'deep', 'p19_lever', 'p19_latch', 'p19_breaker', 'deep_out', 'link', 'link_check'].map((stage) => ({ quest: 'ch8_city', stage })) }]] },
+  },
+  shelter_cart: { when: AT('ch8_city', 'shelter'), once: 'shelter_cart', toast: 'Тележка выкачена на ровное место: проход к убежищу свободен.', vfx: 'magicPop' },
+  street_block: { when: AT('ch8_city', 'shelter'), once: 'shelter_block', toast: 'Опасный проход перекрыт заграждением: Бернард его удержит.', vfx: 'magicPop' },
+  tunnel_lamp_a: { when: AT('ch8_city', 'route_res'), once: 'tunnel_lamp_a', toast: 'Лампа повешена. Жители помогают переносить свет по тоннелю.', vfx: 'magicPop' },
+  tunnel_lamp_b: { when: AT('ch8_city', 'route_res'), once: 'tunnel_lamp_b', toast: 'Вторая лампа повешена: обход через боковой тоннель освещён.', vfx: 'magicPop' },
+  gallery_tool: { when: AT('ch8_city', 'route_rep'), once: 'gallery_tool', do: [{ give: [['valve_key', 1]] }], toast: 'Ключ насоса снят со стойки рабочей галереи.' },
+  gallery_valve: { when: AT('ch8_city', 'route_rep'), once: 'gallery_valve', toast: 'Вентиль галереи повернут: напор в трубе насосной ровнее.', vfx: 'magicPop' },
+  pump_key: {
+    when: AT('ch8_city', 'pump_key'), once: 'pump_turn1', char: 'megumin',
+    wrong: 'Ключ берёт Мегумин (Tab).', toast: 'Рукоять провернулась, но на соседнем шве выступила течь!', scene: 'C17b',
+  },
+  pump_hole: { when: AT('ch8_city', 'p17_shield'), once: 'pump_shield', char: 'megumin', wrong: 'Щит ставит Мегумин (Tab).', toast: 'Ремонтный щит у отверстия поставлен.', vfx: 'magicPop' },
+  pump_adjust: {
+    when: AT('ch8_city', 'p17_shield'), once: 'pump_adjusted', char: 'roxy', wrong: 'Шов регулирует Рокси (Tab).',
+    need: { flag: 'pump_shield' }, locked: 'Сначала ремонтный щит у отверстия (Мегумин).', toast: 'Рокси отрегулировала шов: течь прекратилась.', vfx: 'magicPop',
+  },
+  pump_valve: { when: AT('ch8_city', 'p17_flow'), once: 'pump_valve_a', toast: 'Нижний вентиль закрыт на четверть.', vfx: 'magicPop' },
+  pump_valve_b: { when: AT('ch8_city', 'p17_flow'), once: 'pump_valve_b', toast: 'Вентиль подачи закрыт на четверть: поток держится.', vfx: 'magicPop' },
+  service_panel: { when: AT('ch8_city', 'veyr'), once: 'service_on', scene: 'C18', vfx: 'magicPop' },
+  deep_latch: { when: AT('ch8_city', 'p19_lever', 'p19_latch'), toast: 'Защёлка высоко над полом. Руками не достать: нужен водяной залп Рокси (Tab, затем Q).' },
+  deep_lever: {
+    when: AT('ch8_city', 'p19_lever'), once: 'deep_lever_held', char: 'megumin', wrong: 'Рычаг держит Мегумин (Tab).',
+    toast: 'Мегумин удерживает рычаг: решётка стоит, пока он под рукой.', vfx: 'magicPop',
+  },
+  deep_osa_help: { when: AT('ch8_city', 'p19_latch'), once: 'deep_osa_helped', toast: 'Мегумин подаёт руку Осе: та ждёт сигнала Рокси.', vfx: 'magicPop' },
+  deep_breaker: {
+    when: AT('ch8_city', 'p19_breaker'), once: 'deep_breaker_off', toast: 'Рубильник выключен: панель погасла, решётка у нижнего шва ушла вверх.', do: [{ setFlag: 'deep_grate_open' }], vfx: 'magicPop',
+  },
+  deep_tag: { when: { quest: 'ch8_city' }, toast: 'Бирка на стене: «Малый расход. Для капсулы. Не превышать». Рядом отметки мелом: Дан и Оса.' },
+  link_socket: {
+    when: AT('ch8_city', 'link'), once: 'link_socket', need: { item: 'link_module' }, locked: 'Нужен модуль связи Эдмунда (его отдал Гаррет).',
+    do: [{ take: [['link_module', 1]] }], toast: 'Модуль встал в гнездо: лампа загорелась жёлтым.', vfx: 'magicPop',
+  },
+  link_power: { when: AT('ch8_city', 'link'), once: 'link_power', need: { flag: 'link_socket' }, locked: 'Сначала установи модуль связи в гнездо.', toast: 'Питание подано: лампа модуля стала голубой.', vfx: 'magicPop' },
+  link_check: { when: AT('ch8_city', 'link_check'), scene: 'C20', vfx: 'magicPop' },
 };
 
 export const STORY_VOLLEY = [
@@ -96,6 +134,7 @@ export const STORY_VOLLEY = [
   { id: 'drain_cool_b', spot: 'drain_cool_b', when: AT('ch7_gorge', 'cool'), flag: 'drain_cool_b', toast: 'Плита остыла.' },
   { id: 'kharz_shield_a', spot: 'kharz_shield_a', when: AT('ch7_gorge', 'b_shields'), flag: 'kharz_shield_a', toast: 'Внешний щит разбит.' },
   { id: 'kharz_shield_b', spot: 'kharz_shield_b', when: AT('ch7_gorge', 'b_shields'), flag: 'kharz_shield_b', toast: 'Внешний щит разбит.' },
+  { id: 'deep_latch', spot: 'deep_latch', when: AT('ch8_city', 'p19_lever', 'p19_latch'), flag: 'deep_latch_hit', do: [{ setFlag: 'deep_grate_open' }], toast: 'Защёлка сбита: решётка у нижнего шва поднялась.' },
 ];
 
 export const STORY_WAVES = {
@@ -107,4 +146,5 @@ export const STORY_WAVES = {
   drain_guards: { spot: 'drain_guards', camp: 'drain_wave', enemies: [['guardian', -5, 3], ['guardian', 5, 3], ['watcher', 0, -6]], onClear: [] },
   veyr_guards: { spot: 'veyr_guards', camp: 'veyr_wave', enemies: [['guardian', -6, 2], ['guardian', 6, 2], ['watcher', 0, -3]], onClear: [] },
   kharz_battle: { spot: 'kharz_arena', camp: 'kharz_battle', enemies: [['archdemon', 0, 0], ['imp', -4, -3], ['imp', 4, -3]], onClear: [{ scene: 'C14b' }] },
+  pump_guards: { spot: 'pump_guards', camp: 'pump_wave', enemies: [['guardian', -6, 2], ['guardian', 6, 2], ['watcher', 0, -5]], onClear: [] },
 };
