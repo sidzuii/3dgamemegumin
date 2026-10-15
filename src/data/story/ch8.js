@@ -55,7 +55,7 @@ export const CH8 = {
     $.L(1, 6),
     $.CH('C18.1', [$.O(7, [$.L(8, 9)]), $.O(10, [$.L(11, 12)]), $.O(13, [$.L(14, 15)])]),
     $.L(16, 17),
-    $.DO([{ setFlag: 'service_open' }, { advance: 'ch8_city' }]),
+    $.DO({ advance: 'ch8_city' }),
   ]),
 
   // C19 — Dan and Osa in the deep shaft: the plan (C19) and what Osa says after the rescue (C19b).
@@ -72,13 +72,14 @@ export const CH8 = {
 
   // C20 — Edmund over the link: the last talk before the central hall.
   ...S('C20', ($) => [
-    $.L(1, 4),
+    $.L(1),
+    $.L(901, 904),
     $.CH('C20.1', [
-      $.O(5, [$.L(6, 7), $.DO(TRUST(1))]),
-      $.O(8, [$.L(9, 10)]),
-      $.O(11, [$.L(12)]),
+      $.O(905, [$.L(906, 907), $.DO(TRUST(1))]),
+      $.O(908, [$.L(909, 910)]),
+      $.O(911, [$.L(912)]),
     ]),
-    $.L(13),
-    $.DO({ advance: 'ch8_city' }),
+    $.L(913, 915),
+    $.DO([{ promote: 'C' }, { setVar: ['AXEL_LOCAL_FLOW_SAFE', true] }, { setVar: ['NEXT_NORTH_SURVEY', 'planned'] }, { advance: 'ch8_city' }]),
   ]),
 };

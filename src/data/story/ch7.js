@@ -9,9 +9,10 @@ import { S } from './dsl.js';
 export const CH7 = {
   // C11 — Luna: rank D and the plan.
   ...S('C11', ($) => [
-    $.L(1, 5),
+    $.L(901, 902),
+    $.L(3, 5),
     $.CH('C11.1', [$.O(6, [$.L(7, 8)]), $.O(9, [$.L(10, 11)]), $.O(12, [$.L(13, 15)])]),
-    $.DO([{ promote: 'D' }, { give: [['rope_kit', 1], ['drain_map', 1], ['hp_potion', 2]] }, { advance: 'ch7_gorge' }]),
+    $.DO([{ give: [['rope_kit', 1], ['drain_map', 1], ['hp_potion', 2]] }, { advance: 'ch7_gorge' }]),
   ]),
 
   // C12 — Marta's cart on the ledge (said by the place trigger): the plan decides the task.

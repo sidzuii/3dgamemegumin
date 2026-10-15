@@ -12,7 +12,8 @@ const DOCS_READ = [{ flag: 'C08_DOC1' }, { flag: 'C08_DOC2' }, { flag: 'C08_DOC3
 export const CH6 = {
   // C06 — Tobias: the road and the workers.
   ...S('C06', ($) => [
-    $.L(1, 5),
+    $.L(901),
+    $.L(2, 5),
     $.CH('C06.1', [
       $.O(6, [$.L(7, 8)]),
       $.O(9, [$.L(10, 11)]),

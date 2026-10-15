@@ -31,6 +31,11 @@ export const CH3 = {
     $.L(1, 8),
     $.CH('A17.1', [$.O(9, [$.L(10)]), $.O(11, [$.L(12, 13)]), $.O(14, [$.L(15, 17)])]),
     $.IF({ v: 'EDMUND_FIELD_NOTE' }, [$.L(18, 19)]),
+    // A17.2 — an optional topic (v2.0): Ilar in Ainstrey keeps the records of the old installations.
+    $.CH('A17.2', [
+      $.O(901, [$.L(902)]),
+      $.O(903, [$.L(904)]),
+    ]),
     $.L(20, 22),
     $.DO([{ give: [['edmund_device', 1]] }, { advance: 'ch3_lights' }]),
   ]),

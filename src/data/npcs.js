@@ -28,7 +28,7 @@ export const NPCS = [
       { time: [0, 24], spot: 'ledge_marta', anim: 'idle', if: { any: ['ledge', 'p12_cargo', 'p12_roxy', 'p12_rope', 'ledge_out'].map((stage) => ({ quest: 'ch7_gorge', stage })) } },
       { time: [6, 12], spot: 'caravan_master', anim: 'idle' }, { time: [12, 17], spot: 'caravan_office_desk', anim: 'sit', seat: 0.5 }, { time: [17, 21], spot: 'caravan_master', anim: 'idle' }, { time: [21, 24], spot: 'tavern_table4', anim: 'sit' }, NIGHT_HOME],
     talk: [
-      { if: [{ flag: 'game_complete' }, { v: 'MARTA_BRIDGE' }], bark: [clipText('V06_006')] },
+      { if: { v: 'MARTA_BRIDGE' }, bark: [clipText('V06_006')] },
       { if: { quest: 'c_cache_tar', status: 'available' }, dialogue: 'B13d' },
       { if: { quest: 's_marta_bridge', status: 'available' }, dialogue: 'B15a' },
       { if: { quest: 's_marta_bridge', stage: 'pay' }, dialogue: 'B15c' },
@@ -82,7 +82,6 @@ export const NPCS = [
       { if: { quest: 'c_cache_bridge', status: 'available' }, dialogue: 'B13a' },
       { if: { quest: 's_lina_day', status: 'available' }, dialogue: 'B23a' },
       { if: { quest: 's_lina_day', stage: 'last' }, dialogue: 'B23c' },
-      { if: { quest: 'ch10_finale', stage: 'epilogue', notFlag: 'C32_DONE' }, dialogue: 'C32' },
       { if: { quest: 'ch8_city', stage: 'shelter' }, dialogue: 'C16' },
       { if: { quest: 'ch8_city', status: 'active', flag: 'C16_DONE' }, bark: ['Пока все не получат воду, я здесь. Хлеб вечером будет холодный.'] },
       { if: { quest: 'prologue_arrival', stage: 'lina', flag: 'A02_LATER' }, dialogue: 'A02b' },
@@ -98,7 +97,7 @@ export const NPCS = [
     look: { skin: 0xe8b890, hair: 0x2a1a12, hairStyle: 'bald', beard: true, top: 0x8a5a3a, sleeves: 'short', apron: 0x3a2a1e, bottom: 0x3a3028, build: 1.25, height: 1.06 },
     schedule: [{ time: [0, 24], spot: 'pump_garret', anim: 'work', if: { any: [{ quest: 'ch8_city', stage: 'pump_talk' }, { quest: 'ch8_city', stage: 'pump_key' }, { quest: 'ch8_city', stage: 'p17_shield' }, { quest: 'ch8_city', stage: 'p17_hold' }, { quest: 'ch8_city', stage: 'p17_flow' }, { quest: 'ch8_city', stage: 'pump_out' }] } }, { time: [7, 19], spot: 'forge_anvil', anim: 'work' }, { time: [19, 22], spot: 'tavern_bar_front', anim: 'idle' }, NIGHT_HOME],
     talk: [
-      { if: [{ flag: 'game_complete' }, { v: 'GARRET_RECORD' }], bark: [clipText('V06_005')] },
+      { if: { v: 'GARRET_RECORD' }, bark: [clipText('V06_005')] },
       { if: { quest: 's_garret_tag', status: 'available' }, dialogue: 'B16a' },
       { if: { quest: 's_garret_tag', stage: 'report' }, dialogue: 'B16c' },
       { if: { quest: 'ch8_city', stage: 'pump_talk' }, dialogue: 'C17' },
@@ -118,7 +117,6 @@ export const NPCS = [
     look: { skin: 0xffe8d8, hair: 0xa06a3a, hairStyle: 'long', top: 0xf2ead8, vest: 0x2f5a8a, dress: true, dressLong: true, dressColor: 0x2f3a5a, chestShape: true },
     schedule: [{ time: [8, 20], spot: 'guild_counter', anim: 'idle' }, { time: [20, 22], spot: 'tavern_table2', anim: 'sit' }, NIGHT_HOME],
     talk: [
-      { if: { quest: 'ch10_finale', stage: 'epilogue', notFlag: 'C30_DONE' }, dialogue: 'C30' },
       { if: { quest: 'ch8_city', stage: 'hq' }, dialogue: 'C15' },
       { if: { quest: 'ch7_gorge', stage: 'luna' }, dialogue: 'C11' },
       { if: { quest: 'join_guild', stage: 'go' }, dialogue: 'A04' },
@@ -201,7 +199,7 @@ export const NPCS = [
     look: { skin: 0xffe8d8, hair: 0xe8789a, hairStyle: 'braids', top: 0xf0a0c0, dress: true, dressColor: 0xf0a0c0, stockings: 0xffffff, height: 0.72 },
     schedule: [{ time: [0, 24], spot: 'shelter_mia', anim: 'idle', if: { any: [{ quest: 'ch8_city', stage: 'shelter' }, { quest: 'ch8_city', stage: 'route_res' }, { quest: 'ch8_city', stage: 'route_rep' }, { quest: 'ch8_city', stage: 'pump_talk' }, { quest: 'ch8_city', stage: 'pump_key' }, { quest: 'ch8_city', stage: 'p17_shield' }, { quest: 'ch8_city', stage: 'p17_hold' }, { quest: 'ch8_city', stage: 'p17_flow' }, { quest: 'ch8_city', stage: 'pump_out' }, { quest: 'ch8_city', stage: 'veyr' }, { quest: 'ch8_city', stage: 'deep' }, { quest: 'ch8_city', stage: 'p19_lever' }, { quest: 'ch8_city', stage: 'p19_latch' }, { quest: 'ch8_city', stage: 'p19_breaker' }, { quest: 'ch8_city', stage: 'deep_out' }, { quest: 'ch8_city', stage: 'link' }, { quest: 'ch8_city', stage: 'link_check' }] } }, { time: [9, 18], spot: 'square_west', anim: 'idle' }, { time: [18, 9], hidden: true }],
     talk: [
-      { if: [{ flag: 'game_complete' }, { v: 'AXEL_SHELTER' }], bark: [clipText('V06_010')] },
+      { if: { v: 'AXEL_SHELTER' }, bark: [clipText('V06_010')] },
       { if: { quest: 's_lina_day', stage: 'bag' }, dialogue: 'B23b' },
       { if: { quest: 'ch8_city', status: 'active' }, bark: ['Уголёк сегодня сидит в корзине. Сам. Это очень подозрительно.', 'Лина нарисовала линию мелом. Мы за неё не заходим.'] },
       { if: { quest: 'c_lost_cat', stage: 'mia' }, dialogue: 'B02a' },
@@ -221,7 +219,6 @@ export const NPCS = [
       : [{ time: [7, 21], spot: 'temple_altar', anim: 'idle' }, NIGHT_HOME]),
     talk: [
       { if: { quest: 's_clara_book', status: 'available' }, bark: ['Агата ждёт за архивным столом: поговори с ней.'] },
-      { if: { quest: 'ch10_finale', stage: 'epilogue', notFlag: 'C31_DONE' }, dialogue: 'C31' },
       { if: { quest: 'ch5_crypt', stage: 'rest' }, bark: ['Водяной знак у шва не потемнел. Отдыхайте. Крипту я открою, когда мы подготовимся.'] },
       { if: { quest: 'ch5_crypt', stage: 'clara' }, dialogue: 'C00' },
       { if: { quest: 'ch5_crypt', stage: 'prep' }, bark: ['Гаррет проверит лестницу. Луна выделит лампы. Нижнюю комнату я прошу осмотреть вас.'] },
@@ -265,7 +262,7 @@ export const NPCS = [
         ? [{ time: [7, 21], spot: 'olkhovka_tobias', anim: 'idle' }, { time: [21, 7], hidden: true }]
         : [{ time: [8, 20], spot: 'tobias_wait', anim: 'idle' }, { time: [20, 8], hidden: true }]),
     talk: [
-      { if: [{ flag: 'game_complete' }, { v: 'TOBIAS_ROAD' }], bark: [clipText('V06_007')] },
+      { if: { v: 'TOBIAS_ROAD' }, bark: [clipText('V06_007')] },
       { if: { quest: 's_tobias_road', status: 'available' }, dialogue: 'B22a' },
       { if: { quest: 's_tobias_road', stage: 'report' }, dialogue: 'B22c' },
       { if: { quest: 'ch6_relay', stage: 'tobias' }, dialogue: 'C06' },
@@ -314,7 +311,7 @@ export const NPCS = [
     look: { skin: 0xe8b890, hair: 0x8a5a2a, hairStyle: 'short', beard: true, top: 0xa0b060, sleeves: 'short', bottom: 0x5a4a3a, hat: 'wide', hatColor: 0xd8b060, build: 1.15 },
     schedule: [{ time: [6, 12], spot: 'field_0', anim: 'work' }, { time: [12, 13], spot: 'farmhouse', anim: 'idle' }, { time: [13, 19], spot: 'field_2', anim: 'work' }, { time: [19, 6], hidden: true }],
     talk: [
-      { if: [{ flag: 'game_complete' }, { v: 'BORIS_GATE' }], bark: [clipText('V06_004')] },
+      { if: { v: 'BORIS_GATE' }, bark: [clipText('V06_004')] },
       { if: { quest: 'c_night_raid', status: 'available' }, dialogue: 'B10a' },
       { if: { quest: 'c_night_raid', stage: 'after' }, dialogue: 'B10b' },
       { if: { quest: 'c_night_raid', status: 'active' }, bark: ['Ночью выйду с лампой на поле. Что надо — расскажи.', 'Телеги и фонарь — всё, что я могу. Остальное за тобой.'] },
@@ -333,7 +330,7 @@ export const NPCS = [
     look: { skin: 0xc89070, hair: 0x3a2418, hairStyle: 'short', top: 0x4a5a3a, vest: 0x6a5040, bottom: 0x3a3a2a, hat: 'hood', hatColor: 0x3a4a2a, cape: 0x3a4a2a, tallBoots: true },
     schedule: [{ time: [6, 20], spot: 'hunter_rann', anim: 'idle' }, { time: [20, 6], spot: 'hunters_fire', anim: 'sit', seat: 0.12 }],
     talk: [
-      { if: [{ flag: 'game_complete' }, { v: 'RANN_NESTS' }], bark: [clipText('V06_003')] },
+      { if: { v: 'RANN_NESTS' }, bark: [clipText('V06_003')] },
       { if: { quest: 'c_cache_oak', status: 'available' }, dialogue: 'B13b' },
       { if: { quest: 's_rann_nests', status: 'available' }, dialogue: 'B19a' },
       { if: { quest: 's_rann_nests', stage: 'report' }, dialogue: 'B19c' },
@@ -389,7 +386,7 @@ export const NPCS = [
     appear: { flag: 'event_caravan' },
     schedule: [{ time: [0, 24], spot: 'caravan_trader', anim: 'idle' }],
     talk: [
-      { if: { flag: 'game_complete' }, bark: [clipText('V06_002')] },
+      { if: { flag: 'B12_DONE' }, bark: [clipText('V06_002')] },
       { if: { flag: 'B12_READY', notFlag: 'B12_DONE' }, dialogue: 'B12b' },
       { if: { item: 'astra_token', notFlag: 'B12_ASKED' }, dialogue: 'B12a' },
       { dialogue: 'trader_main' },
@@ -451,7 +448,7 @@ export const NPCS = [
     look: { skin: 0xf0d0b8, hair: 0x3a2a4a, hairStyle: 'braids', top: 0x4a6a8a, bottom: 0x3a3a48 },
     schedule: [{ time: [8, 20], spot: 'scholar', anim: 'idle' }, { time: [20, 8], hidden: true }],
     talk: [
-      { if: [{ flag: 'game_complete' }, { v: 'EDMUND_TEAM' }], bark: [clipText('V06_008')] },{ bark: ['Журнал сегодня веду я. Эдмунд проверяет, потом поменяемся.', 'Я записываю время и положение. Без этого число ничего не значит.'] }],
+      { if: { v: 'EDMUND_TEAM' }, bark: [clipText('V06_008')] },{ bark: ['Журнал сегодня веду я. Эдмунд проверяет, потом поменяемся.', 'Я записываю время и положение. Без этого число ничего не значит.'] }],
   },
   {
     id: 'agata', name: 'Агата', title: 'Свидетельница',
@@ -460,7 +457,7 @@ export const NPCS = [
     look: { skin: 0xf0d0b8, hair: 0x8a7a6a, hairStyle: 'bun', top: 0x5a4a5a, dress: true, dressColor: 0x5a4a5a },
     schedule: [{ time: [8, 19], spot: 'temple_altar', anim: 'idle' }, { time: [19, 8], hidden: true }],
     talk: [
-      { if: [{ flag: 'game_complete' }, { v: 'CLARA_RECORD' }], bark: [clipText('V06_009')] },
+      { if: { v: 'CLARA_RECORD' }, bark: [clipText('V06_009')] },
       { if: { quest: 's_clara_book', status: 'available' }, dialogue: 'B21a' },
       { if: { quest: 's_clara_book', stage: 'read' }, dialogue: 'B21c' },
       { bark: ['Я принесла письмо того дня. В нём тоже про вёдра.', 'Его имя не сокращайте. Он голосовал, и это тоже правда.'] },

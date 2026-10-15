@@ -6,7 +6,6 @@ const CLIPS = { ...STORY_CLIPS, ...COMBAT_CLIPS };
 import { VOICE } from '../data/story/dsl.js';
 import { TRIGGERS } from '../data/story/triggers.js';
 import { STORY_PROPS, STORY_VOLLEY, STORY_WAVES, STORY_BLASTS } from '../data/story/props.js';
-import { SIDE_EPILOGUES } from '../data/story/epilogues.js';
 import { Clock } from './Clock.js';
 import { QuestManager } from './Quests.js';
 import { DialogueRunner } from './Dialogue.js';
@@ -268,7 +267,6 @@ export class RPG {
     this.game.world.drain?.sync(F);
     this.game.world.pump?.sync(F, this.state.vars);
     this.game.world.core?.sync(F);
-    this.game.world.pumpYard?.sync(F, this.state.vars);
     for (const it of this.game.world.interactables) {
       if (!it.setActive) continue;
       const sp = STORY_PROPS[it.id];
@@ -443,7 +441,6 @@ export class RPG {
       case 'sayChain': this._sayChain(v); break;
       case 'wave': this._startWave(v); break;
       case 'save': this.save(); break;
-      case 'credits': this._credits(); break;
       case 'scene': setTimeout(() => { if (!this.dialogue.active) this.dialogue.start(v, null); }, 400); break;
       case 'startIfAvailable': if (this.quests.canStart(v)) this.quests.start(v); break;
       case 'ritualWave': {
@@ -668,23 +665,6 @@ export class RPG {
     n.escortSpeed = 3.0;
   }
 
-  /** The credits after the last scene of the main line: a summary of the choices (shown as a long text); the world stays as it is. */
-  _credits() {
-    const v = this.state.vars, F = this.state.flags;
-    const L = ['Аксель живёт дальше.'];
-    L.push(v.ENDING === 'rebuild'
-      ? 'Малый контур остался под ограничителем: подача в город только после проверки, два оператора, запись команд. Большой канал зацементирован.'
-      : 'Установка разобрана: воду город берёт из речного рукава и колодцев. Гаррет закончил две новые насосные рукояти.');
-    L.push('Вейр жив: после лечения он даст показания городскому суду.');
-    L.push(v.KHARZ_ROUTE === 'battle' ? 'Харз ушёл ослабленным в дальнюю пещеру: отвод проверяют со стороны дороги.' : 'Харз держит договор с гильдией: дальняя пещера остаётся за ним.');
-    L.push(v.WATER_FIRST === 'repair' ? 'Первую воду получили рабочие насосной, жителей выручил храмовый запас.' : 'Первую воду получили жители; рабочим принесли следующий запас.');
-    L.push(v.PUBLIC_REPORT ? 'Горожане получали отчёты гильдии по мере проверки.' : 'Имя Вейра хранилось в деле гильдии до проверки; для семей погибших назначили отдельную встречу.');
-    L.push((v.ROXY_TRUST ?? 0) >= 3 ? 'Рокси остаётся с Мегумин: назвать цель перед взрывом, назвать причину запрета до заклинания.' : 'Рокси продолжит работу с Мегумин на записанных условиях: цель, проверка, сигнал.');
-    for (const [key, text] of SIDE_EPILOGUES) if (v[key] || F[key]) L.push(text);
-    L.push('', 'Мегумин: Дорога приключений', 'Конец первой истории. Осмотр мира и побочные поручения остаются доступными.');
-    this.setFlag('game_complete');
-    this.game.hud.readBook({ icon: '🌟', name: 'Титры', text: L.join('\n\n') });
-  }
 
   /** V01 / V02: a short cry of the heroine, now and then (not in dialogues, never twice within `gap` seconds). */
   _combatBark(clip, chance, gap) {

@@ -444,68 +444,6 @@ export const QUESTS = Object.fromEntries([
       { id: 'link_check', text: 'Проверь связь на контрольной панели: Эдмунд и Луна на линии.', target: 'spot:deep_hall', objectives: [{ type: 'talk', label: 'Проверить связь' }] },
     ],
     rewards: { eris: 300, xp: 500, flags: ['ch8_done'] },
-    next: 'ch9_capsule',
-  }),
-
-  // =====================================================================================
-  // CHAPTER 9 — the one who called
-  // =====================================================================================
-  Q('ch9_capsule', {
-    title: 'Тот, кто позвал', category: 'story', chapter: 9, giver: 'luna', requires: { quest: 'ch8_city', status: 'done' },
-    summary: 'Сервисный ход открыт. В центральном зале установки ждёт Вейр: его тело лежит в капсуле тридцать лет. Малая проба, бой за управление, выход Вейра и решение об установке.',
-    stages: [
-      { id: 'gallery', text: 'Пройди сервисные галереи (северо-восточный выход глубокой шахты) до центрального зала. Стражи обслуживания охраняют ход.', target: 'spot:core_hall',
-        objectives: [{ type: 'reach', spot: 'core_hall', r: 6, label: 'Дойти до центрального зала' }] },
-      { id: 'veyr', text: 'Подойди к панели Вейра на северной стене зала.', target: 'spot:veyr_panel', objectives: [{ type: 'talk', label: 'Панель Вейра' }] },
-      { id: 'rules', text: 'Включи консоль связи слева у входа: Эдмунд и Луна обсудят правила малой пробы.', target: 'spot:core_hall', objectives: [{ type: 'talk', label: 'Консоль связи' }] },
-      { id: 'mark', text: 'Осмотри и отметь выключатель (слева), нижний кабель (левая стойка) и усилитель старого канала (правая стена).', target: 'spot:core_rack',
-        objectives: [{ type: 'flag', flag: 'core_switch', label: 'Выключатель' }, { type: 'flag', flag: 'core_cable_marked', label: 'Кабель' }, { type: 'flag', flag: 'core_amp', label: 'Усилитель' }] },
-      { id: 'holders', text: 'Поставь три регулятора (осколка) во временные держатели. Они остаются у отряда.', target: 'spot:core_arena',
-        objectives: [{ type: 'flag', flag: 'holder_1', label: 'Первый держатель' }, { type: 'flag', flag: 'holder_2', label: 'Второй держатель' }, { type: 'flag', flag: 'holder_3', label: 'Третий держатель' }] },
-      { id: 'probe', text: 'Проверь малый поток по двум мерным столбам у южной части зала.', target: 'spot:core_arena',
-        objectives: [{ type: 'flag', flag: 'core_gauge_1', label: 'Левый столб' }, { type: 'flag', flag: 'core_gauge_2', label: 'Правый столб' }], onDone: [{ setFlag: 'core_hot' }, { scene: 'C23a' }] },
-      { id: 'breach', manual: true, text: 'Вейр включил старый канал: отбей стражей усилителя, Рокси охлаждает два верхних шва, Мегумин размыкает кабель посохом.', target: 'spot:core_rack',
-        objectives: [{ type: 'flag', flag: 'wd_amp_guards', label: 'Отбить стражей усилителя' }, { type: 'flag', flag: 'core_seam_a', label: 'Левый шов (Рокси)' }, { type: 'flag', flag: 'core_seam_b', label: 'Правый шов (Рокси)' }, { type: 'flag', flag: 'core_cable_cut', label: 'Разомкнуть кабель (Мегумин)' }] },
-      { id: 'battle1', manual: true, text: 'Бой за управление: сервисные стражи держат старую команду. Отбей первую волну.', target: 'spot:core_arena',
-        onStart: [{ wave: 'ctrl_wave1' }, { sayChain: ['C24_001', 'C24_002'] }], objectives: [{ type: 'flag', flag: 'wd_ctrl_wave1', label: 'Первая волна' }] },
-      { id: 'valve', skipIf: { var: ['VEYR_HELP', '==', true] }, text: 'Рокси держит шов: открой клапан под лестницей (левый угол у входа).', target: 'spot:core_hall', objectives: [{ type: 'flag', flag: 'core_valve', label: 'Клапан под лестницей' }] },
-      { id: 'battle2', manual: true, text: 'Последний страж питается от двух боковых постов: сними питание обоих и победи его.', target: 'spot:core_arena',
-        onStart: [{ wave: 'ctrl_wave2' }], objectives: [{ type: 'flag', flag: 'post_l_off', label: 'Левый пост' }, { type: 'flag', flag: 'post_r_off', label: 'Правый пост' }, { type: 'flag', flag: 'wd_ctrl_wave2', label: 'Победить стража' }] },
-      { id: 'capsule', text: 'Выведи Вейра: сбрось давление клапаном справа от капсулы, затем поверни нижнюю ручку.', target: 'spot:core_capsule',
-        objectives: [{ type: 'talk', label: 'Открыть капсулу (клапан, затем нижняя ручка)' }] },
-      { id: 'decision', text: 'Реши судьбу установки: панель отчётов у северной стены справа. Можно осмотреть схему и вернуться к решению.', target: 'spot:veyr_panel', objectives: [{ type: 'talk', label: 'Панель отчётов' }] },
-    ],
-    rewards: { eris: 400, xp: 600, flags: ['ch9_done'] },
-    next: 'ch10_finale',
-  }),
-
-  // =====================================================================================
-  // CHAPTER 10 — work for two mages
-  // =====================================================================================
-  Q('ch10_finale', {
-    title: 'Работа для двух магов', category: 'story', chapter: 10, giver: 'luna', requires: { quest: 'ch9_capsule', status: 'done' },
-    summary: 'Вейр выведен, решение об установке принято. Остаётся выполнить его: финальная операция в центральном зале, безопасный выход, эпилог в городе и разговор героинь у северной дороги.',
-    stages: [
-      { id: 'prep', text: 'Финальная подготовка в центральном зале: включи консоль связи слева у входа, назови цель и скажи, что готова.', target: 'spot:core_hall', objectives: [{ type: 'talk', label: 'Консоль связи' }] },
-      { id: 'c_inflow', skipIf: { not: { var: ['ENDING', '==', 'closure'] } }, text: 'Разбор: Рокси закрывает два внешних притока (боковые стены у входа) и удерживает воду в желобе.', target: 'spot:core_hall',
-        objectives: [{ type: 'flag', flag: 'inflow_a', label: 'Левый приток (Рокси)' }, { type: 'flag', flag: 'inflow_b', label: 'Правый приток (Рокси)' }] },
-      { id: 'r_limiter', skipIf: { not: { var: ['ENDING', '==', 'rebuild'] } }, text: 'Малый контур: Мегумин ставит ограничитель Эдмунда в боковую панель (правая стена).', target: 'spot:core_amp', objectives: [{ type: 'flag', flag: 'limiter_set', label: 'Ограничитель (Мегумин)' }] },
-      { id: 'r_bypass', skipIf: { not: { var: ['ENDING', '==', 'rebuild'] } }, text: 'Малый контур: Рокси направляет воду в обход усилителя (обводной вентиль у правой стены).', target: 'spot:core_amp', objectives: [{ type: 'flag', flag: 'bypass_set', label: 'Обводной вентиль (Рокси)' }] },
-      { id: 'f_wave', text: 'Стражи пытаются восстановить старую связь. Сними питание обоих боковых постов (их щиты погаснут) и отбей стражей.', target: 'spot:core_arena',
-        onStart: [{ wave: 'final_wave' }], objectives: [{ type: 'flag', flag: 'fpost_l_off', label: 'Левый пост' }, { type: 'flag', flag: 'fpost_r_off', label: 'Правый пост' }, { type: 'flag', flag: 'wd_final_wave', label: 'Отбить стражей' }] },
-      { id: 'f_ready', text: 'Сообщи по консоли связи, что цель свободна и можно начинать.', target: 'spot:core_hall', objectives: [{ type: 'talk', label: 'Консоль связи' }] },
-      { id: 'f_blast_c', skipIf: { not: { var: ['ENDING', '==', 'closure'] } }, text: 'Разбор: взрыв в пустой коллектор у северной стены (белый сектор). Взрыв: Q.', target: 'spot:core_white',
-        objectives: [{ type: 'explosion', spot: 'core_white', r: 14, label: 'Взрыв в коллектор' }], onDone: [{ scene: 'C28b' }] },
-      { id: 'f_blast_r', skipIf: { not: { var: ['ENDING', '==', 'rebuild'] } }, text: 'Малый контур: взрыв в старый усилитель у правой стены. Малую линию не задеть. Взрыв: Q.', target: 'spot:core_amp',
-        objectives: [{ type: 'explosion', spot: 'core_amp', r: 12, label: 'Взрыв в усилитель' }], onDone: [{ scene: 'C29b' }] },
-      { id: 'f_exit', text: 'Безопасный выход: Рокси ставит водяной заслон у подъёмника, затем отряд поднимается в город.', target: 'spot:core_hall',
-        objectives: [{ type: 'flag', flag: 'exit_shield', label: 'Водяной заслон (Рокси)' }, { type: 'flag', flag: 'exit_lift', label: 'Подъёмник' }], onDone: [{ setFlag: 'epilogue_on' }] },
-      { id: 'epilogue', text: 'Аксель через несколько недель. Поговори с Луной (гильдия), Кларой (храм) и Линой (пекарня) — в любом порядке.', target: 'npc:luna',
-        objectives: [{ type: 'flag', flag: 'C30_DONE', label: 'Луна' }, { type: 'flag', flag: 'C31_DONE', label: 'Клара' }, { type: 'flag', flag: 'C32_DONE', label: 'Бернард и Лина' }] },
-      { id: 'finale', text: 'Вечером Рокси ждёт у северной дороги. Подойди к указателю за северными воротами.', target: 'spot:north_sign', objectives: [{ type: 'talk', label: 'Указатель у северных ворот' }] },
-    ],
-    rewards: { eris: 500, xp: 800, flags: ['ch10_done'] },
-    onComplete: [{ credits: true }],
   }),
 
   // =====================================================================================
