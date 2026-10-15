@@ -23,6 +23,8 @@ Full description, file map and how-to guides: see `README.md` (Russian). The use
 - Axel lots are checked against `AxelPlan.ENVELOPE` + key-building `annex` rects; street centre lines = `streetLine()` /
   `ringLine()` (not raw STREETS.pts); paving layer heights `PAVE_LIFT`. `tools/city_audit.js` = geometry regression audit
   (page script; all counts must be 0). MAP_REV is 3. Never run two headless SwiftShader browsers at once (OOM).
+  `src/world/AxelLayoutCheck.js` = layout geometry check (houses inside each other / on a street vs the generated plan);
+  editor button «Проверить дома» (tab Слои) and `node tools/layout_check.mjs [layout.json]` (exit 1 on problems).
 - Buildings have LOD: `house()` emits a near model and a far proxy (`world.lodMode`), small parts use
   `detail: true`; distances come from the quality preset (`lod`, `detail`). Terrain is chunked (170 m).
 - Saves: `mapRev` (State.MAP_REV) moves the player of an older-map save to a safe spot; placements.json
@@ -38,6 +40,11 @@ Full description, file map and how-to guides: see `README.md` (Russian). The use
   squares, wall sides, door leaves, steps, barrels, crates, benches and `prop()` furniture are parts. A deleted
   part still runs its builder with all sinks muted (`world._mute`) so the parent's rng stays stable. Editor:
   Alt+click picks a part, Shift+click multi-select, gizmo (TransformControls) 1/2/3, [ ] fine rotation.
+  Every object is editable: wild vegetation (trees, bushes, rocks, stumps, mushrooms, flowers) is RECORDED by Kit.js
+  (`world.veg`, stable id `kind:Model@x,z`) and built in `World._realizeVegetation` with `layout.vegetation` overrides
+  and `layout.erase` circles; named spots / enemy spawn points take `layout.spots[name]` / `layout.camps['camp#n']`
+  (World.spot / World.camp). Signs, bridges, fields and the training field are groups. `src/editor/layers.js` has the
+  layers and `validateLayout` (used on save, import, draft restore). Local draft: localStorage `megumin-editor-draft`.
 - Raw user models go to `model/` (never loaded by the game); optimised copies go to `public/models/`.
   Convert FBX with FBX2glTF (not three's FBXLoader), optimise with gltf-transform. Blender is NOT
   installed any more (the old 4.5 path is gone) — prefer FBX/glTF sources. Scripts: `tools/`
@@ -49,6 +56,11 @@ Full description, file map and how-to guides: see `README.md` (Russian). The use
   Quaternius kits 'village' (house modules, used by `house()`) and 'wilds' (trees/bushes/rocks) are
   multi-material PBR kits; trees/bushes go through `world.trees` (TreeField, instanced + '__lod' copies),
   not the static batches. Bestiary monsters (puglin, imp) use mocap via `MAPS.ue` (`Enemy.js` MOCAP set).
+  Kit 'props' (Fantasy Props MegaKit, real metres: use `prop(F, 'props/Name', …, { s: 1 })`; interiors fall back to
+  primitives when it is absent) and kit 'bits' (KayKit ResourceBits). KayKit Skeletons (warrior/rogue/minion) use
+  `MAPS.kk` (GLTFLoader strips the dots: `upperarm.l` → `upperarml`); gear from `Skeleton_Gear.glb` is parented to the
+  `handslotr/l` bones in `EnemyAssets.instance`. `tools/pack_skeletons.mjs` rebuilds them. NOTE: node_modules and dist
+  are tracked in git here — never run `npm install` in the repo (it rewrites tracked files); `git checkout -- node_modules`.
 - Character animation = mocap clips from `public/models/anim/ual.glb` retargeted at runtime
   (`src/character/Retarget.js` + `CharacterAnimator.js`). Bone maps per skeleton are in `MAPS`
   (ual, mixamo, cc, qp = Quaternius people, demon). The library has no sitting clip: NPC `sit` = idle + legs

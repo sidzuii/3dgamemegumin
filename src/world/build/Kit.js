@@ -386,13 +386,32 @@ function openGround(F, w, d, y0, h, spec) {
     // Shelves along the back wall.
     for (const yy of [0.9, 1.6, 2.3]) F.box(w - 1.4, 0.08, 0.45, 0, y0 + yy, -d / 2 + 0.6, 'plank', deco);
     F.box(w - 0.6, 0.06, d - 0.6, 0, y0 - 0.02, 0, 'plank', { castShadow: false });
-    // Awning.
-    const aw = spec.awningTint ?? 0xb83a3a;
-    F.box(w + 0.6, 0.06, 1.8, 0, y0 + h - 0.35, d / 2 + 0.75, 'cloth', { ...deco, tint: aw, rx: -0.32 });
+    awning(F, w - 0.5, y0 + h - 0.45, d / 2 + 0.05, 1.7, spec.awningTint ?? 0xb83a3a);
   } else {
     F.box(w - 0.6, 0.06, d - 0.6, 0, y0 - 0.02, 0, 'plank', { castShadow: false });
     // Ceiling.
     F.box(w - 0.4, 0.2, d - 0.4, 0, y0 + h - 0.2, 0, 'plank', { tint: 0x8a6a4a });
+  }
+}
+
+/**
+ * Striped canvas awning over a shop front: slopes DOWN away from the wall (from `yTop` at the wall
+ * by 0.55 m over `depth`), alternating stripes, a scalloped valance on the front edge, two wooden
+ * posts at the outer corners and brackets at the wall. `z0` = the wall plane, `width` along x.
+ */
+export function awning(F, width, yTop, z0, depth, tint) {
+  const drop = 0.55, len = Math.hypot(depth, drop), th = Math.atan2(drop, depth);
+  const n = Math.max(3, Math.round(width / 0.6)), sw = width / n;
+  const c = new THREE.Color(tint), cream = new THREE.Color(0xf0e6cc);
+  for (let i = 0; i < n; i++) {
+    const x = -width / 2 + (i + 0.5) * sw, col = i % 2 ? cream : c;
+    F.box(sw + 0.005, 0.05, len, x, yTop - drop / 2, z0 + depth / 2, 'cloth', { castShadow: false, collide: false, tint: col.getHex(), rx: th });
+    // Valance: a short hanging flap per stripe, pointed (a thin cone-ish wedge as a rotated box).
+    F.box(sw * 0.96, 0.22, 0.03, x, yTop - drop - 0.1, z0 + depth - 0.02, 'cloth', { castShadow: false, collide: false, tint: col.getHex() });
+  }
+  for (const s of [-1, 1]) {
+    F.box(0.08, yTop - drop + 0.02, 0.08, s * (width / 2 - 0.05), 0, z0 + depth - 0.06, 'timber', { collide: false, tint: 0x4a3222, castShadow: false });
+    F.box(0.07, 0.07, depth, s * (width / 2 - 0.05), yTop - 0.1, z0 + depth / 2, 'timber', { collide: false, tint: 0x4a3222, castShadow: false, rx: th });
   }
 }
 
@@ -594,14 +613,32 @@ export function cityWall(world, nodes, opts = {}) {
 
 /** Square tower: castle-kit base / mid floors / crenellated top, village tile roof. Base at the frame. */
 function kitTower(world, F, S, height) {
+  houseTower(F, S, S, height);
+}
+
+/**
+ * A masonry tower for a building (guild bell tower, town-hall clock tower, temple belfry,
+ * alchemist's turret): the castle kit's square tower faced with the village stone, a crenellated
+ * crown and the village tiled tower roof. `F` stands on the tower's centre at its base (sunk a bit
+ * into the ground by the caller); sx × sz = footprint, `height` to the crown.
+ * o: { roofTint, clock (face on +z), banner (cloth tint on +z) }.
+ */
+export function houseTower(F, sx, sz, height, o = {}) {
   const baseH = Math.min(5, height * 0.4);
-  F.kit('castle/tower-square-base', 0, 0, 0, { sx: S, sy: baseH / 1.01, sz: S, collide: 'box', retex: STONE });
+  F.kit('castle/tower-square-base', 0, 0, 0, { sx, sy: baseH / 1.01, sz, collide: 'box', retex: STONE });
   const mids = Math.max(1, Math.round((height - baseH - 1) / 4.5));
   const midH = (height - baseH - 0.9) / mids;
-  for (let k = 0; k < mids; k++) F.kit(k === mids - 1 ? 'castle/tower-square-mid-windows' : 'castle/tower-square-mid', 0, baseH + k * midH, 0, { sx: S, sy: midH / 1.01, sz: S, collide: 'box', retex: STONE });
-  F.kit('castle/tower-square-top', 0, height - 0.9, 0, { sx: S * 1.04, sy: 3, sz: S * 1.04, collide: false, retex: STONE });
-  const rs = (S * 1.08) / 5.66;
-  F.kit('village/Roof_Tower_RoundTiles', 0, height - 0.9 + 0.57 * rs + 0.25, 0, { s: rs, collide: false });
+  for (let k = 0; k < mids; k++) F.kit(k === mids - 1 ? 'castle/tower-square-mid-windows' : 'castle/tower-square-mid', 0, baseH + k * midH, 0, { sx, sy: midH / 1.01, sz, collide: 'box', retex: STONE });
+  F.kit('castle/tower-square-top', 0, height - 0.9, 0, { sx: sx * 1.04, sy: 3, sz: sz * 1.04, collide: false, retex: STONE });
+  const rs = (Math.min(sx, sz) * 1.08) / 5.66;
+  F.kit('village/Roof_Tower_RoundTiles', 0, height - 0.9 + 0.57 * rs + 0.25, 0, { sx: (sx * 1.08) / 5.66, sy: rs, sz: (sz * 1.08) / 5.66, collide: false, tint: o.roofTint ?? null });
+  if (o.clock) {
+    const y = height - 3.4;
+    F.cyl(1.0, 0.12, 0, y, sz / 2 + 0.03, 'plaster', { seg: 20, rx: Math.PI / 2, collide: false, tint: 0xf4ecd8, castShadow: false });
+    F.box(0.07, 0.75, 0.05, 0, y + 0.05, sz / 2 + 0.12, 'metal', { collide: false, castShadow: false });
+    F.box(0.5, 0.07, 0.05, 0.2, y + 0.05, sz / 2 + 0.12, 'metal', { collide: false, castShadow: false });
+  }
+  if (o.banner !== undefined) for (const s of [-1, 1]) F.box(0.9, 2.4, 0.05, s * sx * 0.3, baseH + 0.6, sz / 2 + 0.04, 'cloth', { collide: false, tint: o.banner, castShadow: false });
 }
 
 /**
@@ -827,7 +864,7 @@ export function pavePoly(world, pts, opts = {}) {
     _tri(pos, a, a2, b, out);
     _tri(pos, b, a2, b2, out);
   }
-  pavingSolid(world, pos, 'cobble', { castShadow: false, tint: opts.tint ?? 0xbab2a2 });
+  pavingSolid(world, pos, 'plaza', { castShadow: false, tint: opts.tint ?? 0xf0e8d8 });
 }
 
 // -----------------------------------------------------------------------------------------
@@ -1056,49 +1093,94 @@ function kitToHeight(world, F, name, height, opts = {}) {
   return s;
 }
 
-/** Instanced vegetation (or merged into the editor group being built). */
+/** Instanced vegetation (or merged into the editor group being built). Returns the TreeField item. */
 function plant(world, name, x, y, z, rot, height, opts) {
   const b = world.kits.box(name);
   const s = height / Math.max(0.05, b.max.y - b.min.y);
   if (world.editorMode && world._group) {
     new Frame(world, x, y, z, rot).kit(name, 0, -b.min.y * s, 0, { s, collide: false, castShadow: !opts.nearOnly });
-    return s;
+    return null;
   }
   const p = world.xf(new THREE.Vector3(x, y - b.min.y * s, z));
   const g = world._group;
-  world.trees.add(name, p.x, p.y, p.z, rot + (g?.dyaw || 0), s * (g?.ds || 1), { radius: Math.max(b.max.x - b.min.x, b.max.z - b.min.z) / 2, ...opts });
-  return s;
+  return world.trees.add(name, p.x, p.y, p.z, rot + (g?.dyaw || 0), s * (g?.ds || 1), { radius: Math.max(b.max.x - b.min.x, b.max.z - b.min.z) / 2, ...opts });
 }
+
+/**
+ * Wild vegetation outside editable groups (trees, bushes, rocks, stumps, logs, flowers) is
+ * RECORDED first and realised after the whole scatter is done (World._realizeVegetation): every
+ * record has a stable id, so the map editor can move / turn / scale / delete single plants
+ * (layout.vegetation) or erase an area (layout.erase) without shifting the random stream.
+ * A record: { kind, label, model, x, z, rot, s (=1), h (height, for picking), emit(T) } where
+ * T = { x, z, rot, s, dy } is the final placement; emit() builds it and returns the TreeField item
+ * (editor mode) so the editor can move it live.
+ */
+const recordVeg = (world, rec) => {
+  if (world._group) return false; // inside an editable group: part of the group
+  world.vegAdd(rec);
+  return true;
+};
 
 /** Tree: 'oak' | 'pine' | 'birch' | 'dark' (deep forest). Only the trunk collides. */
 export function tree(world, x, z, s, rng, kind = 'oak') {
-  const y = world.heightAt(x, z) - 0.15;
   const name = 'wilds/' + pick(TREES[kind] || TREES.oak, rng);
   const rot = rng() * 6.28;
   const tint = (kind === 'dark' ? 0.72 : 0.9) + rng() * 0.18;
-  plant(world, name, x, y, z, rot, (TREE_H[kind] ?? 8) * s * (0.85 + rng() * 0.3), { tint });
-  new Frame(world, x, y, z, 0).cyl(0.32 * s, 3.4 * s, 0, 0, 0, 'bark', { seg: 6, collideOnly: true });
+  const h = (TREE_H[kind] ?? 8) * s * (0.85 + rng() * 0.3);
+  const emit = (T) => {
+    const y = world.heightAt(T.x, T.z) - 0.15 + T.dy;
+    const item = plant(world, name, T.x, y, T.z, T.rot, h * T.s, { tint });
+    new Frame(world, T.x, y, T.z, 0).cyl(0.32 * s * T.s, 3.4 * s * T.s, 0, 0, 0, 'bark', { seg: 6, collideOnly: true });
+    return item;
+  };
+  const rec = { kind: 'tree', label: { oak: 'Дуб', birch: 'Берёза', pine: 'Сосна', dark: 'Тёмная ель' }[kind] || 'Дерево', model: name, x, z, rot, s: 1, h, emit };
+  if (!recordVeg(world, rec)) emit({ x, z, rot, s: 1, dy: 0 });
 }
 
 export function bush(world, x, z, s, rng) {
-  const y = world.heightAt(x, z) - 0.08;
-  plant(world, 'wilds/' + pick(BUSHES, rng), x, y, z, rng() * 6.28, 1.2 * s, { nearOnly: true, near: 120, tint: 0.85 + rng() * 0.2 });
+  const name = 'wilds/' + pick(BUSHES, rng);
+  const rot = rng() * 6.28, tint = 0.85 + rng() * 0.2, h = 1.2 * s;
+  const emit = (T) => plant(world, name, T.x, world.heightAt(T.x, T.z) - 0.08 + T.dy, T.z, T.rot, h * T.s, { nearOnly: true, near: 120, tint });
+  const rec = { kind: 'bush', label: 'Куст', model: name, x, z, rot, s: 1, h, emit };
+  if (!recordVeg(world, rec)) emit({ x, z, rot, s: 1, dy: 0 });
 }
 
 export function rock(world, x, z, s, rng, mat = 'rock') {
-  const y = world.heightAt(x, z);
-  const F = new Frame(world, x, y - s * 0.15, z, rng() * 6);
-  // Sized by the largest dimension.
+  const rot = rng() * 6;
   const name = 'wilds/' + pick(ROCKS, rng);
   const b = world.kits.box(name);
   const k = (1.8 * s) / Math.max(b.max.x - b.min.x, b.max.y - b.min.y, b.max.z - b.min.z);
-  F.kit(name, 0, -b.min.y * k, 0, { s: k, collide: true, tint: mat === 'rockDark' ? 0x8a8078 : null });
+  const emit = (T) => {
+    const y = world.heightAt(T.x, T.z);
+    const kk = k * T.s;
+    if (world.editorMode && !world._group) {
+      // Editor: an instance (movable live); the game bakes rocks into the static batches.
+      return world.trees.add(name, T.x, y - s * 0.15 * T.s + T.dy - b.min.y * kk, T.z, T.rot, kk, { nearOnly: true, near: 150, radius: 1.8 * s / 2 });
+    }
+    new Frame(world, T.x, y - s * 0.15 * T.s + T.dy, T.z, T.rot).kit(name, 0, -b.min.y * kk, 0, { s: kk, collide: true, tint: mat === 'rockDark' ? 0x8a8078 : null });
+    return null;
+  };
+  const rec = { kind: 'rock', label: 'Камень', model: name, x, z, rot, s: 1, h: 1.8 * s * 0.6, emit };
+  if (!recordVeg(world, rec)) emit({ x, z, rot, s: 1, dy: 0 });
 }
 /** Small ground decoration (flowers, mushrooms, stumps, logs) — no collision, no shadow. */
 export function decor(world, x, z, name, height, rng, opts = {}) {
-  const y = world.heightAt(x, z);
-  const F = new Frame(world, x, y - 0.03, z, rng() * 6.28);
-  kitToHeight(world, F, 'nature/' + name, height, { collide: false, castShadow: false, ...opts });
+  const rot = rng() * 6.28;
+  const mname = 'nature/' + name;
+  const b = world.kits.box(mname);
+  const k = height / Math.max(0.05, b.max.y - b.min.y);
+  const emit = (T) => {
+    const y = world.heightAt(T.x, T.z) - 0.03 + T.dy;
+    const kk = k * T.s;
+    if (world.editorMode && !world._group) {
+      return world.trees.add(mname, T.x, y - b.min.y * kk, T.z, T.rot, kk, { nearOnly: true, near: 60, radius: Math.max(b.max.x - b.min.x, b.max.z - b.min.z) / 2 });
+    }
+    new Frame(world, T.x, y, T.z, T.rot).kit(mname, 0, -b.min.y * kk, 0, { collide: false, castShadow: false, ...opts, s: kk });
+    return null;
+  };
+  const stump = /stump|log/.test(name), flower = /^flower/.test(name);
+  const rec = { kind: stump ? 'stump' : flower ? 'flower' : 'mushroom', label: stump ? (/log/.test(name) ? 'Бревно' : 'Пень') : flower ? 'Цветок' : 'Гриб', model: mname, x, z, rot, s: 1, h: Math.max(0.3, height), emit };
+  if (!recordVeg(world, rec)) emit({ x, z, rot, s: 1, dy: 0 });
 }
 
 export { G as GEOMETRY, gableGeometry, pick };

@@ -211,3 +211,86 @@ export function makeScorchTexture(size = 256, seed = 9) {
   }
   return new THREE.CanvasTexture(canvas);
 }
+
+/**
+ * Paving textures (tileable, procedural): a colour map and a bump map.
+ *  'cobble' — rounded cobblestones in staggered rows with dark mortar (streets);
+ *  'flag'   — large dressed slabs with thin joints, wear and the odd crack (squares).
+ * Both repeat every 2 m (World planar UVs, 0.5 per metre) and are drawn lit from the top left.
+ */
+export function makePavingTextures(kind = 'cobble', size = 512, seed = 11) {
+  const rng = mulberry32(seed);
+  const mk = () => { const c = document.createElement('canvas'); c.width = c.height = size; return c; };
+  const col = mk(), hgt = mk();
+  const C = col.getContext('2d'), Hh = hgt.getContext('2d');
+  C.fillStyle = kind === 'cobble' ? '#4a443c' : '#6a645a';
+  C.fillRect(0, 0, size, size);
+  Hh.fillStyle = '#000';
+  Hh.fillRect(0, 0, size, size);
+  const palette = kind === 'cobble'
+    ? [[150, 144, 132], [168, 160, 146], [136, 134, 130], [158, 148, 130], [124, 122, 120], [176, 168, 150], [142, 136, 122]]
+    : [[186, 178, 164], [176, 170, 160], [196, 188, 172], [168, 164, 156], [182, 174, 158]];
+  const pick = () => palette[Math.floor(rng() * palette.length)];
+  const stone = (x, y, w, h, r, base) => {
+    const j = 0.88 + rng() * 0.24;
+    const [R, G, B] = base.map((v) => Math.min(255, v * j));
+    // Wrap-around copies keep the tile seamless.
+    for (const ox of [-size, 0, size]) for (const oy of [-size, 0, size]) {
+      const X = x + ox, Y = y + oy;
+      if (X + w < 0 || Y + h < 0 || X > size || Y > size) continue;
+      const g = C.createLinearGradient(X, Y, X + w, Y + h);
+      g.addColorStop(0, `rgb(${R * 1.12 | 0},${G * 1.12 | 0},${B * 1.1 | 0})`);
+      g.addColorStop(1, `rgb(${R * 0.84 | 0},${G * 0.84 | 0},${B * 0.84 | 0})`);
+      C.fillStyle = g;
+      C.beginPath(); C.roundRect(X, Y, w, h, r); C.fill();
+      // Height: a soft dome (bright centre, falling to the edges).
+      const hg = Hh.createRadialGradient(X + w / 2, Y + h / 2, 1, X + w / 2, Y + h / 2, Math.max(w, h) * 0.62);
+      hg.addColorStop(0, '#fff'); hg.addColorStop(0.55, '#c8c8c8'); hg.addColorStop(1, '#383838');
+      Hh.fillStyle = hg;
+      Hh.beginPath(); Hh.roundRect(X, Y, w, h, r); Hh.fill();
+    }
+    // Speckle / wear on the stone face.
+    for (let k = 0; k < Math.round(w * h / 90); k++) {
+      const sx = x + rng() * w, sy = y + rng() * h, v = rng() < 0.5 ? 255 : 0;
+      C.fillStyle = `rgba(${v},${v},${v},${0.05 + rng() * 0.07})`;
+      C.fillRect(((sx % size) + size) % size, ((sy % size) + size) % size, 1 + rng() * 2, 1 + rng() * 2);
+    }
+  };
+  if (kind === 'cobble') {
+    const rows = 8, rh = size / rows, gap = 5;
+    for (let r = 0; r < rows; r++) {
+      const n = 5 + Math.floor(rng() * 2);
+      const wts = Array.from({ length: n }, () => 0.7 + rng() * 0.7);
+      const sum = wts.reduce((a, b) => a + b, 0);
+      let x = rng() * size;
+      for (let i = 0; i < n; i++) {
+        const w = (wts[i] / sum) * size;
+        stone(x + gap / 2, r * rh + gap / 2 + (rng() - 0.5) * 2, w - gap, rh - gap - rng() * 3, 11 + rng() * 5, pick());
+        x += w;
+      }
+    }
+  } else {
+    // Slabs: rows of 128 px height, slab widths 128 / 192 / 256, staggered; thin joints.
+    const rows = 4, rh = size / rows, gap = 3;
+    for (let r = 0; r < rows; r++) {
+      let x = (r % 2) * 64;
+      const ws = [];
+      let acc = 0;
+      while (acc < size) { const w = [128, 192, 128, 256][Math.floor(rng() * 4)]; const ww = Math.min(w, size - acc); ws.push(ww); acc += ww; }
+      for (const w of ws) {
+        stone(x + gap / 2, r * rh + gap / 2, w - gap, rh - gap, 4, pick());
+        // The odd hairline crack.
+        if (rng() < 0.18) {
+          C.strokeStyle = 'rgba(40,36,30,0.45)'; C.lineWidth = 1.2;
+          C.beginPath(); const cx = x + rng() * w, cy = r * rh + rng() * rh; C.moveTo(cx, cy); C.lineTo(cx + (rng() - 0.5) * 50, cy + (rng() - 0.5) * 50); C.stroke();
+        }
+        x += w;
+      }
+    }
+  }
+  const map = new THREE.CanvasTexture(col);
+  map.colorSpace = THREE.SRGBColorSpace;
+  const bump = new THREE.CanvasTexture(hgt);
+  for (const t of [map, bump]) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; }
+  return { map, bump };
+}

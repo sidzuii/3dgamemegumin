@@ -37,6 +37,22 @@ export const TYPES = {
     aggro: 15, attackRange: 1.8, damage: 13, windup: 0.45, strike: 0.2, recover: 0.6, lunge: 5,
     poise: 10, knock: 0.8, style: 'dash', hitRadius: 0.6, xp: 18,
   },
+  // KayKit Skeletons (CC0): the undead of the old mines and the dungeon (mocap-driven like the Bestiary).
+  skeleton_minion: {
+    name: 'Скелет-прислужник', model: 'skeleton_minion', hp: 38, speed: 4.6, walk: 1.5, radius: 0.4, height: 1.45,
+    aggro: 12, attackRange: 1.6, damage: 7, windup: 0.45, strike: 0.2, recover: 0.6, lunge: 4.5,
+    poise: 5, knock: 1.3, style: 'hop', hitRadius: 0.5, xp: 9,
+  },
+  skeleton_rogue: {
+    name: 'Скелет-разбойник', model: 'skeleton_rogue', hp: 58, speed: 5.4, walk: 1.7, radius: 0.42, height: 1.7,
+    aggro: 14, attackRange: 1.7, damage: 10, windup: 0.38, strike: 0.18, recover: 0.55, lunge: 5.5,
+    poise: 7, knock: 1.0, style: 'dash', hitRadius: 0.55, xp: 14,
+  },
+  skeleton_warrior: {
+    name: 'Скелет-воин', model: 'skeleton_warrior', hp: 120, speed: 3.7, walk: 1.3, radius: 0.5, height: 1.85,
+    aggro: 14, attackRange: 2.0, damage: 15, windup: 0.7, strike: 0.22, recover: 0.85, lunge: 3,
+    poise: 20, knock: 0.6, style: 'hop', hitRadius: 0.65, xp: 24,
+  },
   // Awakened stone guardians of the Astrarium (the demon body, cold grey-blue).
   guardian: {
     name: 'Каменный страж', model: 'demon', scale: 0.9, hp: 160, speed: 2.6, walk: 1.1, radius: 0.58, height: 2.1,
@@ -56,7 +72,7 @@ export const TYPES = {
 };
 
 /** Models animated by retargeted mocap clips (idle/walk/run/attack/hit/death). */
-const MOCAP = new Set(['demon', 'puglin', 'imp']);
+const MOCAP = new Set(['demon', 'puglin', 'imp', 'skeleton_minion', 'skeleton_rogue', 'skeleton_warrior']);
 const _v = new THREE.Vector3();
 const _v2 = new THREE.Vector3();
 const _move = new THREE.Vector3();

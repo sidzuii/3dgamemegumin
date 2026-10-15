@@ -46,8 +46,9 @@ const H = (W, x, z) => W.heightAt(x, z);
 function bridges(W, rng) {
   const deck = (b) => Math.max(H(W, ...b.a), H(W, ...b.b)) + 0.25;
   for (const b of BRIDGES) {
-    if (b.kind === 'stone') bridge(W, ...b.a, ...b.b, b.width, deck(b));
-    else if (b.kind === 'plank') plankBridge(W, ...b.a, ...b.b, b.width, Math.max(H(W, ...b.a), H(W, ...b.b)) + 0.15);
+    const mx = (b.a[0] + b.b[0]) / 2, mz = (b.a[1] + b.b[1]) / 2;
+    if (b.kind === 'stone') W.group('bridge_' + b.id, { x: mx, z: mz }, () => bridge(W, ...b.a, ...b.b, b.width, deck(b)), b.name);
+    else if (b.kind === 'plank') W.group('bridge_' + b.id, { x: mx, z: mz }, () => plankBridge(W, ...b.a, ...b.b, b.width, Math.max(H(W, ...b.a), H(W, ...b.b)) + 0.15), b.name);
   }
   const moon = BRIDGES.find((b) => b.id === 'moon_bridge');
   W.spot('east_bridge', new THREE.Vector3((moon.a[0] + moon.b[0]) / 2, deck(moon), (moon.a[1] + moon.b[1]) / 2), Math.PI / 2);
@@ -99,11 +100,11 @@ function farmFields(W, rng) {
     { x: -288, z: 286, w: 16, d: 10, crop: 'pumpkin' },
   ];
   W.fields = W.fields || [];
-  fields.forEach((f, i) => {
+  fields.forEach((f, i) => W.group('field_' + i, { x: f.x, z: f.z }, () => {
     const pts = [[f.x - f.w / 2, f.z - f.d / 2], [f.x + f.w / 2, f.z - f.d / 2], [f.x + f.w / 2, f.z + f.d / 2], [f.x - f.w / 2, f.z + f.d / 2], [f.x - f.w / 2, f.z - f.d / 2 + 3]];
     fence(W, pts, { tint: 0x9a7a50 });
     if (f.crop === 'wheat') {
-      W.fields.push({ rect: { x: f.x, z: f.z, w: f.w - 1, d: f.d - 1 }, count: Math.round(f.w * f.d * 9), hue: 0.12, scale: 2.1, sat: 0.55, light: 0.55, crop: true });
+      W.fields.push({ rect: { x: W.xf(new THREE.Vector3(f.x, 0, f.z)).x, z: W.xf(new THREE.Vector3(f.x, 0, f.z)).z, w: f.w - 1, d: f.d - 1 }, count: Math.round(f.w * f.d * 9), hue: 0.12, scale: 2.1, sat: 0.55, light: 0.55, crop: true });
     } else {
       for (let rz = f.z - f.d / 2 + 1.2; rz < f.z + f.d / 2 - 0.8; rz += 1.6) {
         for (let rx = f.x - f.w / 2 + 1.2; rx < f.x + f.w / 2 - 0.8; rx += 1.3) {
@@ -116,8 +117,8 @@ function farmFields(W, rng) {
       }
     }
     W.spot('field_' + i, new THREE.Vector3(f.x, H(W, f.x, f.z), f.z + f.d / 2 - 1), 0);
-  });
-  for (const f of fields) W.addFootprint(f.x, f.z, f.w, f.d, 0, 'field');
+    W.addFootprint(f.x, f.z, f.w, f.d, 0, 'field');
+  }, 'Поле ' + (i + 1)));
   // Scarecrow.
   W.group('scarecrow', { x: -312, z: 254, rot: 0.4 }, () => {
     const S = new Frame(W, -312, H(W, -312, 254), 254, 0.4);
@@ -406,6 +407,12 @@ function woodcutter(W, rng) {
   prop(F, 'nature/log_stackLarge', 4.5, 0, 1, { s: 3 });
   prop(F, 'survival/workbench', -4, 0, 3, { s: 2.6 });
   for (let i = 0; i < 3; i++) prop(F, 'nature/stump_round', 2 + i * 1.6, 0, 4.5, { s: 2, collide: 'box' });
+  // KayKit ResourceBits: sawn planks and a log pile beside the hut.
+  if (W.kits.has('bits/Wood_Planks_Stack_Medium')) {
+    const at = (lx, lz, ry) => { const q = F.at(lx, 0, lz); return new Frame(W, q.x, H(W, q.x, q.z) - 0.04, q.z, F.rot + ry); };
+    prop(at(-5.0, -0.6, 0.2), 'bits/Wood_Planks_Stack_Medium', 0, 0, 0, { s: 1 });
+    prop(at(-5.2, 1.6, -0.3), 'bits/Wood_Log_A', 0, 0, 0, { s: 1.1, collide: false });
+  }
 }
 
 /** Graveyard beside the chapel (Kenney graveyard kit): iron fence, rows of graves, a family crypt. */
@@ -742,6 +749,14 @@ function oldMines(W, rng) {
   for (let i = 0; i < 5; i++) P.box(4, 0.25, 0.1, 0, 0.5 + i * 0.6, 0.3, 'plank', { rz: (rng() - 0.5) * 0.3 });
   for (let i = 0; i < 8; i++) rock(W, c.x + (rng() - 0.5) * 30, c.z - 22 + (rng() - 0.5) * 6, 1 + rng() * 2, rng, 'rockDark');
   W.addChest(new THREE.Vector3(c.x + 2, H(W, c.x + 2, c.z + 2), c.z + 2), 1.2, 'old_mines');
+  // KayKit ResourceBits at the adit: ore piles and a stack of mine timber (after every rng use).
+  if (W.kits.has('bits/Iron_Nuggets')) {
+    const at = (dx, dz, ry) => { const x = c.x + dx, z = c.z + dz; return new Frame(W, x, H(W, x, z) - 0.04, z, ry); };
+    prop(at(-4.2, -15.5, 0.4), 'bits/Iron_Nuggets', 0, 0, 0, { s: 1.5, collide: false });
+    prop(at(3.8, -16.2, -0.5), 'bits/Gold_Nuggets', 0, 0, 0, { s: 1.0, collide: false });
+    prop(at(-6.5, -14, 1.2), 'bits/Stone_Chunks_Small', 0, 0, 0, { s: 1.4 });
+    prop(at(6.5, -13, 0.3), 'bits/Wood_Planks_Stack_Small', 0, 0, 0, { s: 1 });
+  }
 }
 
 function eastPass(W, rng) {

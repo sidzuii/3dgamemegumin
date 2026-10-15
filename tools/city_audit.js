@@ -80,7 +80,7 @@ const push = (self, name, box, m, opts) => {
 rec.addSolid = function (geo, m, mat, opts = {}) {
   const gid = root(this._group);
   // Paving (draped ribbons / squares, kerbs): keep the triangles themselves.
-  if ((mat === 'cobble' || (mat === 'stoneDark' && gid === 'axel_streets')) && !geo.index && geo.attributes.position.count > 6) {
+  if (((mat === 'cobble' || mat === 'plaza') || (mat === 'stoneDark' && gid === 'axel_streets')) && !geo.index && geo.attributes.position.count > 6) {
     const p = geo.attributes.position.array.slice();
     const tmp = new THREE_V();
     for (let i = 0; i < p.length; i += 3) { tmp.set(p[i], p[i + 1], p[i + 2]).applyMatrix4(m); p[i] = tmp.x; p[i + 1] = tmp.y; p[i + 2] = tmp.z; }

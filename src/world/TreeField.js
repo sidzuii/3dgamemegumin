@@ -78,7 +78,17 @@ export class TreeField {
 
   /** Register an instance of a kit model ('wilds/CommonTree_1'); nearOnly = no far copy (bushes). */
   add(model, x, y, z, rot, s, { tint = 1, radius = 5, nearOnly = false, near = NEAR } = {}) {
-    this.items.push({ model, x, y, z, rot, s, tint, r: radius * s, nearOnly, near });
+    const it = { model, x, y, z, rot, s, tint, r: radius * s, nearOnly, near };
+    this.items.push(it);
+    return it;
+  }
+
+  /** Map editor: move / turn / scale one instance live (it.hidden = deleted). */
+  setItem(it, { x = it.x, y = it.y, z = it.z, rot = it.rot, s = it.s } = {}) {
+    const k = it.s ? s / it.s : 1;
+    Object.assign(it, { x, y, z, rot, s, r: it.r * k });
+    it.matrix = new THREE.Matrix4().compose(_p.set(x, y, z), _q.setFromAxisAngle(UP, rot), _s.setScalar(s));
+    this.timer = 0;
   }
 
   _geometry(name) {
@@ -159,6 +169,7 @@ export class TreeField {
     const mid = this.mid ?? MID;
     const far = this.far ?? FAR;
     for (const it of this.items) {
+      if (it.hidden || it.layerHidden) continue;
       const dx = it.x - cp.x, dz = it.z - cp.z;
       const d2 = dx * dx + dz * dz;
       if (d2 > far * far) continue;

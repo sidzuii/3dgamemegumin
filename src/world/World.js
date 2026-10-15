@@ -10,7 +10,7 @@ import { Heightfield, GRID_N, GRID_STEP, roadInfo, riverDistance, surfaceAt, pol
 import { WALL, toWorld } from './AxelPlan.js';
 import { createWaterSurface, riverGeometry, lakeGeometry } from './Water.js';
 import { createLava } from './Surfaces.js';
-import { makeNoiseTexture } from './textures.js';
+import { makeNoiseTexture, makePavingTextures } from './textures.js';
 import { buildTown } from './build/Town.js';
 import { buildCountryside } from './build/Countryside.js';
 import { buildDungeon, DUNGEON } from './build/Dungeon.js';
@@ -69,6 +69,11 @@ export class World {
     this._D = null; // layout delta of the group being built
     this._group = null;
     this.trees = new TreeField(this); // instanced trees / bushes with LOD
+    this.veg = []; // recorded wild vegetation (see Kit.js recordVeg)
+    this.spotBase = {}; // named spots as the builders placed them (editor: before layout.spots)
+    this.campBase = {}; // enemy spawn points as built (before layout.camps)
+    this._campN = {};
+    this._vegIds = new Map();
     this.collider = null;
     this.dynamicColliders = [];
     this.interactables = [];
@@ -106,7 +111,13 @@ export class World {
       const p = this.xf(new THREE.Vector3(x, y ?? this.heightAt(x, z), z));
       x = p.x; z = p.z; y = y === undefined ? undefined : p.y;
     }
-    this.campSpawns.push({ type, x, z, camp, y });
+    // Editor layout (layout.camps['<camp>#<n>'] = { x, z }) moves single spawn points.
+    const n = (this._campN[camp] = (this._campN[camp] || 0) + 1);
+    const key = `${camp}#${n}`;
+    this.campBase[key] = { x, z, type };
+    const o = this.layout.camps?.[key];
+    if (o) { x = o.x; z = o.z; y = undefined; }
+    this.campSpawns.push({ type, x, z, camp, y, key });
   }
 
   addChest(pos, rotY, id) {
@@ -170,7 +181,13 @@ export class World {
   /** Named spot for NPC schedules / quest markers. */
   spot(name, pos, yaw = 0) {
     if (this._mute) return;
-    this.npcSpots[name] = { pos: this.xf(pos.clone()), yaw: yaw + (this._D ? this._group.dyaw : 0) };
+    const sp = { pos: this.xf(pos.clone()), yaw: yaw + (this._D ? this._group.dyaw : 0) };
+    // Editor layout (layout.spots[name] = { x, z, yaw }) moves a single named point; the height
+    // above the ground (floor level inside a building) is kept.
+    this.spotBase[name] = { x: sp.pos.x, z: sp.pos.z, yaw: sp.yaw, y: sp.pos.y - this.heightAt(sp.pos.x, sp.pos.z) };
+    const o = this.layout.spots?.[name];
+    if (o) { sp.pos.set(o.x, this.heightAt(o.x, o.z) + this.spotBase[name].y, o.z); sp.yaw = o.yaw ?? sp.yaw; }
+    this.npcSpots[name] = sp;
     this._markLogic();
   }
 
@@ -271,9 +288,10 @@ export class World {
     buildCountryside(this);
     buildDungeon(this);
     for (const a of this.layout.added || []) buildPlacement(this, a);
-    for (const [x, z, rot, lines] of SIGNS) this.addSign(new THREE.Vector3(x, 0, z), rot, lines);
+    SIGNS.forEach(([x, z, rot, lines], i) => this.group('sign_' + i, { x, z, rot }, () => this.addSign(new THREE.Vector3(x, 0, z), rot, lines), 'Указатель: ' + lines[0].slice(0, 34)));
     for (const c of CAMPS) this.camp(c.type, c.x, c.z, c.camp);
     this._buildVegetation();
+    this._realizeVegetation();
     this._flushVisualBatches();
     this.trees.build(this.scene);
     this._buildCollider();
@@ -360,6 +378,7 @@ export class World {
     const noise2 = makeNoiseTexture(128, 21, 0.5);
     noise2.wrapS = noise2.wrapT = THREE.RepeatWrapping;
     this.noiseTex = noise;
+    const cob = makePavingTextures('cobble', 512, 11), flag = makePavingTextures('flag', 512, 23);
     // Materials are white; their colour lives in the vertex tint (default = the colour below)
     // so a per-piece tint replaces the colour instead of darkening it.
     this.baseTint = {};
@@ -372,8 +391,8 @@ export class World {
     this.mats = {
       stone: M({ color: 0xb4ab9c, roughness: 0.92, map: noise }),
       stoneDark: M({ color: 0x8a8378, roughness: 0.95, map: noise }),
-      cobble: M({ color: 0xa79f90, roughness: 0.9, map: noise2 }),
-      plaza: M({ color: 0xa79f90, roughness: 0.88, map: noise2 }),
+      cobble: M({ color: 0xffffff, roughness: 0.88, map: cob.map, bumpMap: cob.bump, bumpScale: 2.2 }),
+      plaza: M({ color: 0xffffff, roughness: 0.84, map: flag.map, bumpMap: flag.bump, bumpScale: 1.4 }),
       wood: M({ color: 0xffffff, roughness: 0.8, map: noise2 }),
       plank: M({ color: 0x9a7a54, roughness: 0.85, map: noise2 }),
       timber: M({ color: 0xffffff, roughness: 0.85, map: noise2 }),
@@ -751,6 +770,32 @@ export class World {
       }
     }
     return this._fpGrid.get(Math.floor(x / S) * 10007 + Math.floor(z / S)) || EMPTY;
+  }
+
+  /** Record one wild plant (Kit.js); the id is stable: kind + model + rounded position. */
+  vegAdd(rec) {
+    const base = `${rec.kind}:${rec.model.split('/').pop()}@${Math.round(rec.x)},${Math.round(rec.z)}`;
+    const n = (this._vegIds.get(base) || 0) + 1;
+    this._vegIds.set(base, n);
+    rec.id = n > 1 ? base + '#' + n : base;
+    this.veg.push(rec);
+  }
+
+  /** Build the recorded vegetation: layout.vegetation overrides (move / turn / scale / delete) and
+   * layout.erase circles apply here. In the editor deleted plants are kept hidden so they can come back. */
+  _realizeVegetation() {
+    const L = this.layout;
+    const over = L.vegetation || {}, erase = L.erase || [];
+    for (const r of this.veg) {
+      const o = over[r.id];
+      const erased = erase.some((c) => Math.hypot(r.x - c.x, r.z - c.z) < c.r);
+      const gone = !!o?.deleted || (erased && !o);
+      if (gone && !this.editorMode) continue;
+      const T = { x: o?.x ?? r.x, z: o?.z ?? r.z, rot: o?.rot ?? r.rot, s: o?.s ?? 1, dy: o?.dy ?? 0 };
+      r.item = r.emit(T);
+      if (r.item) { r.item.rec = r; if (gone) r.item.hidden = true; }
+      r.gone = gone;
+    }
   }
 
   _buildVegetation() {

@@ -123,6 +123,13 @@ function normalize(scene, height, { skinnedOnly = false } = {}) {
   return wrap;
 }
 
+/** Hand gear of the KayKit skeletons: slot ('r' / 'l') -> piece of Skeleton_Gear.glb. */
+const SKELETON_GEAR = {
+  skeleton_warrior: { r: 'Blade', l: 'Shield_Large_A' },
+  skeleton_rogue: { r: 'Axe', l: 'Shield_Small_B' },
+  skeleton_minion: { r: 'Axe' },
+};
+
 export class EnemyAssets {
   constructor() {
     this.templates = {};
@@ -132,14 +139,24 @@ export class EnemyAssets {
   async load(onProgress) {
     const loader = new GLTFLoader();
     let done = 0;
-    const tick = () => onProgress?.(++done / 5);
-    const [gob, mush, demon, puglin, imp] = await Promise.all([
+    const tick = () => onProgress?.(++done / 9);
+    const [gob, mush, demon, puglin, imp, skW, skM, skR, skGear] = await Promise.all([
       loader.loadAsync('/models/enemies/Little_Hooded_Goblin.glb').then((g) => (tick(), g)),
       loader.loadAsync('/models/enemies/Mushroom.glb').then((g) => (tick(), g)),
       loader.loadAsync('/models/enemies/DemonRig.glb').then((g) => (tick(), g)),
       loader.loadAsync('/models/enemies/Puglin.glb').then((g) => (tick(), g)),
       loader.loadAsync('/models/enemies/Imp.glb').then((g) => (tick(), g)),
+      loader.loadAsync('/models/enemies/Skeleton_Warrior.glb').then((g) => (tick(), g)),
+      loader.loadAsync('/models/enemies/Skeleton_Minion.glb').then((g) => (tick(), g)),
+      loader.loadAsync('/models/enemies/Skeleton_Rogue.glb').then((g) => (tick(), g)),
+      loader.loadAsync('/models/enemies/Skeleton_Gear.glb').then((g) => (tick(), g)),
     ]);
+    // KayKit Skeletons (CC0): rigged (Rig_Medium), no clips of their own -> mocap; hand-held gear
+    // is separate pieces parented to the hand slots per instance.
+    this.templates.skeleton_warrior = normalize(skW.scene, 1.85, { skinnedOnly: true });
+    this.templates.skeleton_minion = normalize(skM.scene, 1.45, { skinnedOnly: true });
+    this.templates.skeleton_rogue = normalize(skR.scene, 1.7, { skinnedOnly: true });
+    this.gear = Object.fromEntries(skGear.scene.children.map((n) => [n.name, n]));
     // Quaternius Bestiary (CC0): rigged, no clips of their own -> mocap.
     this.templates.puglin = normalize(puglin.scene, 1.05, { skinnedOnly: true });
     this.templates.imp = normalize(imp.scene, 1.7, { skinnedOnly: true });
@@ -183,6 +200,21 @@ export class EnemyAssets {
       lib.restore(c);
       this.strike[model] = strikeTime(lib, attack, 'r') / lib.clips[attack].duration;
     }
+    // KayKit skeletons (Rig_Medium, bone map 'kk').
+    for (const [model, attack] of [['skeleton_minion', 'Punch_Cross'], ['skeleton_rogue', 'Sword_Attack'], ['skeleton_warrior', 'Sword_Attack']]) {
+      const c = lib.prepareTarget(this.templates[model], 'kk');
+      const b = (src, name, opts) => lib.bake(c, src, { name: model + '_' + name, levelHead: 0.5, ...opts });
+      this.clips[model] = {
+        idle: b('Idle_Loop', 'idle'),
+        walk: b('Walk_Loop', 'walk'),
+        run: b('Jog_Fwd_Loop', 'run'),
+        attack: b(attack, 'attack', { hipsY: 'down' }),
+        hit: b('Hit_Chest', 'hit'),
+        death: b('Death01', 'death'),
+      };
+      lib.restore(c);
+      this.strike[model] = strikeTime(lib, attack, 'r') / lib.clips[attack].duration;
+    }
     this.demonStrike = this.strike.demon;
   }
 
@@ -192,6 +224,14 @@ export class EnemyAssets {
     const tpl = this.templates[model];
     const rigged = model !== 'goblin';
     const obj = rigged ? cloneSkinned(tpl) : tpl.clone(true);
+    const hands = SKELETON_GEAR[model];
+    if (hands && this.gear) {
+      // Weapons / shields on the hand slots (the pack's gear is modelled for them, grip at the origin).
+      for (const [slot, piece] of Object.entries(hands)) {
+        const bone = obj.getObjectByName(slot === 'r' ? 'handslotr' : 'handslotl');
+        if (bone && this.gear[piece]) bone.add(this.gear[piece].clone(true));
+      }
+    }
     const uniforms = createEnemyUniforms(model === 'demon' ? 5 : 9);
     const mats = new Map();
     obj.traverse((o) => {

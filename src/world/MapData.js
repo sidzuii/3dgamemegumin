@@ -239,6 +239,10 @@ export const CAMPS = [
   ...[[422, -591], [430, -575], [414, -581]].map(([x, z]) => ({ type: 'demon', x, z, camp: 'crimson_gorge' })),
   ...[[408, -565], [434, -559]].map(([x, z]) => ({ type: 'imp', x, z, camp: 'crimson_gorge' })),
   ...[[-521, -586], [-511, -574]].map(([x, z]) => ({ type: 'imp', x, z, camp: 'old_mines' })),
+  // The dead miners (KayKit skeletons) among the ruined cottages.
+  ...[[-512, -583], [-531, -583]].map(([x, z]) => ({ type: 'skeleton_minion', x, z, camp: 'old_mines' })),
+  { type: 'skeleton_warrior', x: -520, z: -596, camp: 'old_mines' },
+  { type: 'skeleton_rogue', x: -509, z: -589, camp: 'old_mines' },
   { type: 'archdemon', x: 438, z: -597, camp: 'crimson_boss' },
 ];
 
