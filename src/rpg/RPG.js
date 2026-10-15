@@ -3,7 +3,7 @@ import { EventBus, freshState, loadSave, writeSave, check, MAP_REV, STORY_REV } 
 import { CLIPS } from '../data/story/clips.js';
 import { VOICE } from '../data/story/dsl.js';
 import { TRIGGERS } from '../data/story/triggers.js';
-import { STORY_PROPS, STORY_VOLLEY, STORY_WAVES } from '../data/story/props.js';
+import { STORY_PROPS, STORY_VOLLEY, STORY_WAVES, STORY_BLASTS } from '../data/story/props.js';
 import { SIDE_EPILOGUES } from '../data/story/epilogues.js';
 import { Clock } from './Clock.js';
 import { QuestManager } from './Quests.js';
@@ -68,7 +68,14 @@ export class RPG {
         else this.setFlag('ritual_sector_hit');
       }
     });
-    this.events.on('volley', (e) => this._volleyStory(e));
+    this.events.on('volley', (e) => { this._volleyStory(e); this._combatBark('V02_001', 0.35, 6); });
+    this.events.on('explosion', () => this._combatBark('V01_003', 0.5, 8));
+    this.events.on('explosion', (e) => {
+      for (const t of STORY_BLASTS) {
+        const s = this.spotPos(t.spot);
+        if (s && !this.state.flags[t.flag] && check(this, t.when) && Math.hypot(e.pos.x - s.x, e.pos.z - s.z) <= t.r) this.setFlag(t.flag);
+      }
+    });
     // C03: Roxy's volley flies where she aims; a latch in the cone (about 20 degrees, 32 m) is knocked off.
     this.events.on('volley', (e) => {
       if (this.quests.stageId('ch5_crypt') !== 'water') return;
@@ -660,6 +667,26 @@ export class RPG {
     this.game.hud.readBook({ icon: '🌟', name: 'Титры', text: L.join('\n\n') });
   }
 
+  /** V01 / V02: a short cry of the heroine, now and then (not in dialogues, never twice within `gap` seconds). */
+  _combatBark(clip, chance, gap) {
+    const t = performance.now() / 1000;
+    if (this.dialogue.active || t - (this._cbT?.[clip] ?? -99) < gap || Math.random() > chance) return;
+    (this._cbT ||= {})[clip] = t;
+    this.say(clip);
+  }
+
+  /** V03 / V04: on the road, Megumin and Roxy talk now and then (by the level of trust). */
+  _roadBark(dt) {
+    if (!this.state.flags.roxy_companion || this.game.inDungeon || this.dialogue.active) return;
+    this._roadT = (this._roadT ?? 120 + Math.random() * 120) - dt;
+    if (this._roadT > 0) return;
+    this._roadT = 180 + Math.random() * 180;
+    const hi = (this.getVar('ROXY_TRUST') ?? 0) >= 3;
+    const groups = hi ? [[1, 2, 3, 4], [5, 6, 7], [8, 9, 10]] : [[1, 2], [3, 4, 5], [6, 7]];
+    const g = groups[Math.floor(Math.random() * groups.length)];
+    this._sayChain(g.map((n) => `${hi ? 'V03' : 'V04'}_${String(n).padStart(3, '0')}`));
+  }
+
   /** A story prop from data/story/props.js used by the player. */
   _storyProp(sp, id, prop) {
     const hud = this.game.hud;
@@ -816,6 +843,7 @@ export class RPG {
     this.game.hud.fade?.(1.2);
     this.notify('info', `Вы хорошо выспались. ${this.clock.label()}`);
     if (this.quests.stageId('ch5_crypt') === 'rest') this.setFlag('C_RESTED');
+    if (this.getVar('RANN_NESTS')) this.setFlag('rann_slept'); // B19: the note in the camp box appears after a rest
     this.npcs?.refresh();
     this.gathering?.update();
     this.markDirty(true);
@@ -888,6 +916,7 @@ export class RPG {
       }
     }
     this.worldEvents.update(dt);
+    this._roadBark(dt);
     this._updateEscort(dt);
     // Saving.
     this.autosave -= dt;

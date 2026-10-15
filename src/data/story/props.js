@@ -15,6 +15,9 @@ const AT = (quest, ...stages) => (stages.length === 1 ? { quest, stage: stages[0
 const PLAN = (v) => ({ var: ['C07_PLAN', '==', v] });
 
 export const STORY_PROPS = {
+  // V05: a locked passage answers with a line of the package
+  crypt_sealed: { when: { notFlag: 'crypt_open' }, say: ['V05_001'] },
+
   // ---- chapter 6: the relay post
   relay_gate: { when: { any: [{ quest: 'ch6_relay', status: 'done' }, [{ quest: 'ch6_relay', status: 'active' }, { not: { quest: 'ch6_relay', stage: 'tobias' } }]] } },
   relay_lift: { when: { flag: 'relay_projection' } },
@@ -170,6 +173,75 @@ export const STORY_PROPS = {
   exit_shield: { when: AT('ch10_finale', 'f_exit'), once: 'exit_shield', char: 'roxy', wrong: 'Заслон ставит Рокси (Tab).', toast: 'Рокси держит водяной заслон: подъёмник свободен.', vfx: 'magicPop' },
   exit_lift: { when: AT('ch10_finale', 'f_exit'), need: { flag: 'exit_shield' }, locked: 'Подъёмник закрыт: Рокси должна поставить водяной заслон (Tab).', once: 'exit_lift', do: [{ travel: 'pump_gate_out' }] },
   north_sign: { when: AT('ch10_finale', 'finale'), scene: 'C33' },
+  // ---- side stories (docs/story/04): B10, B13, B14-B23
+  field_cart_a: { when: AT('c_night_raid', 'prep_carts'), once: 'field_cart_a', toast: 'Телега подкачена к проходу: грибы пойдут через сухой участок.', vfx: 'magicPop' },
+  field_cart_b: { when: AT('c_night_raid', 'prep_carts'), once: 'field_cart_b', toast: 'Вторая телега встала рядом: проход перекрыт, остался сухой путь.', vfx: 'magicPop' },
+  field_lantern: { when: AT('c_night_raid', 'prep_lantern'), once: 'field_lantern', toast: 'Фонарь повешен у камня: грибы выйдут на пустой участок.', vfx: 'magicPop' },
+  cache_bridge_lever: {
+    when: AT('c_cache_bridge', 'find'), once: 'cache_bridge_lever', toast: 'Платформа встала под нишу: ящик выше воды.', vfx: 'magicPop',
+    do: [{ read: { icon: '📜', title: 'Записка владельца', text: 'Если вода поднялась, не прыгай к ящику. Крути платформу с берега.' } }],
+  },
+  cache_oak_clear: { when: AT('c_cache_oak', 'find'), once: 'cache_oak_cleared', toast: 'Подход расчищен руками: корень раскрывается с северной стороны.', vfx: 'magicPop' },
+  cache_oak_latch: { when: AT('c_cache_oak', 'find'), need: { flag: 'cache_oak_cleared' }, locked: 'Подход зарос: сначала расчисти его руками.', once: 'cache_oak_open', toast: 'Защёлка найдена, крышка поднялась: внутри карта безопасного спуска.', vfx: 'magicPop' },
+  cache_pond_block: { when: AT('c_cache_pond', 'find'), once: 'cache_pond_done', toast: 'Верёвка через береговой блок: бочка пошла к берегу.', vfx: 'magicPop' },
+  cache_tar_part_a: { when: AT('c_cache_tar', 'find'), once: 'cache_tar_part_a', toast: 'Первая часть рукояти найдена среди печей.', vfx: 'magicPop' },
+  cache_tar_part_b: { when: AT('c_cache_tar', 'find'), once: 'cache_tar_part_b', toast: 'Вторая часть рукояти найдена.', vfx: 'magicPop' },
+  cache_tar_lid: {
+    when: AT('c_cache_tar', 'find'), need: [{ flag: 'cache_tar_part_a' }, { flag: 'cache_tar_part_b' }], locked: 'Рукоять не собрана: найди обе части у печей.', once: 'cache_tar_open',
+    toast: 'Рукоять встала, крышка поднялась: инструменты смолокуров сухие.', vfx: 'magicPop',
+    do: [{ read: { icon: '📜', title: 'Смена печей', text: 'Первая печь — утро. Вторая — полдень. Третья — вечер.\n\nКто работает ночью, тот не спит. Под крышкой — инструменты: не оставляй их под дождём.' } }],
+  },
+  spring_gate: { when: AT('s_roxy_water', 'p_gate', 'p_blast'), once: 'spring_gate', char: 'megumin', wrong: 'Затвор перекрывает Мегумин (Tab).', toast: 'Верхний затвор перекрыт: напор на источнике упал.', vfx: 'magicPop' },
+  spring_valve: { when: AT('s_roxy_water', 'p_wash'), once: 'spring_valve', toast: 'Дальний желоб закрыт руками.', vfx: 'magicPop' },
+  spring_seam_prop: { when: AT('s_roxy_water', 'p_gate'), toast: 'Дальний шов течёт. Закрыть его может водяной залп Рокси (Tab, затем Q).' },
+  spring_flume_prop: { when: AT('s_roxy_water', 'p_wash'), toast: 'Желоб забит солью. Смыть её малым потоком может Рокси (Tab, затем Q).' },
+  spring_sample: {
+    when: AT('s_roxy_water', 'p_gate', 'p_wash', 'p_blast'), once: 'spring_sample', char: 'roxy', wrong: 'Пробу берёт Рокси (Tab).',
+    need: { any: [[{ flag: 'spring_gate' }, { flag: 'spring_seam' }], [{ flag: 'spring_wash' }, { flag: 'spring_valve' }], [{ flag: 'spring_gate' }, { flag: 'spring_blast' }]] },
+    locked: 'Напор ещё высокий: сначала сделай то, о чём договорились у шкалы.', scene: 'B14d', vfx: 'magicPop',
+  },
+  bridge_clip: { when: AT('s_marta_bridge', 'p_clip', 'p_edge'), once: 'bridge_clip', toast: 'Скоба поставлена: настил больше не звенит.', vfx: 'magicPop' },
+  bridge_branch: { when: AT('s_marta_bridge', 'p_clip', 'p_edge'), once: 'bridge_branch', toast: 'Упавшая ветка убрана с подхода руками.', vfx: 'magicPop' },
+  bridge_board_prop: { when: AT('s_marta_bridge', 'p_edge'), toast: 'Нижнюю доску придержит поток Рокси (Tab, затем Q).' },
+  bridge_cart: { when: AT('s_marta_bridge', 'p_clip', 'p_edge'), need: [{ flag: 'bridge_clip' }, { flag: 'bridge_branch' }], locked: 'Сначала скоба и ветка на подходе.', once: 'bridge_cart', toast: 'Марта сама ведёт лошадь; Рокси проверяет опоры под нагрузкой. Прошла!', vfx: 'magicPop' },
+  shift_tag: { when: AT('s_garret_tag', 'room'), once: 'shift_tag', toast: 'Бирка номер семь: смена учеников.', vfx: 'magicPop' },
+  shift_log: { when: AT('s_garret_tag', 'room'), need: { flag: 'shift_tag' }, locked: 'Сначала найди бирку смены (комната отдыха).', once: 'shift_log', scene: 'B16b', vfx: 'magicPop' },
+  exit_grate: { when: AT('s_garret_tag', 'exit'), once: 'exit_grate', toast: 'Ручная решётка открыта. Дальше низкая галерея залита.', vfx: 'magicPop' },
+  exit_flood_prop: { when: AT('s_garret_tag', 'exit'), toast: 'Низкая галерея залита. Слить воду может залп Рокси (Tab, затем Q).' },
+  exit_stamp: {
+    when: AT('s_garret_tag', 'exit'), once: 'exit_stamp', need: [{ flag: 'exit_grate' }, { flag: 'exit_flooded_drained' }], locked: 'До стены не добраться: открой решётку и слей воду.',
+    say: ['B16b_009'], toast: 'Штамп на стене: «Восемь вышедших. Смена семь».', vfx: 'magicPop',
+  },
+  temple_list: { when: AT('s_fenrik_names', 'temple'), once: 'temple_list', toast: 'Имя Орина Селла в храмовом списке: написано полностью, без сокращений.', vfx: 'magicPop' },
+  measure_a: { when: AT('s_boris_gate', 'measure'), once: 'measure_a', toast: 'Нижний рукав замерен: напор выше обычного.', vfx: 'magicPop' },
+  measure_b: { when: AT('s_boris_gate', 'measure'), once: 'measure_b', toast: 'Верхний рукав замерен: русло заросло, вода почти не идёт.', vfx: 'magicPop' },
+  upper_gate_wheel: {
+    when: AT('s_boris_gate', 'p_far', 'p_wash'), once: 'upper_gate_open',
+    need: { any: [{ var: ['B18_PLAN', '==', 'far'] }, [{ flag: 'drain_washed' }, { flag: 'extra_valve' }]] }, locked: 'Сначала промой пустой отвод и поставь клапан на обход.',
+    toast: 'Верхний затвор открыт: вода пошла в оба рукава.', vfx: 'magicPop',
+  },
+  lower_flow_prop: { when: AT('s_boris_gate', 'p_far'), toast: 'Нижний рукав слишком напорный. Снизить напор может залп Рокси (Tab, затем Q).' },
+  wash_drain_prop: { when: AT('s_boris_gate', 'p_wash'), toast: 'Пустой отвод забит грязью. Промыть его может залп Рокси (Tab, затем Q).' },
+  extra_valve: { when: AT('s_boris_gate', 'p_wash'), need: { flag: 'drain_washed' }, locked: 'Сначала промой отвод.', once: 'extra_valve', toast: 'Клапан на обход поставлен.', vfx: 'magicPop' },
+  gate_wheel: { when: AT('s_boris_gate', 'manual'), once: 'gate_wheel', toast: 'Положение ручного колеса отмечено: четверть оборота.', vfx: 'magicPop' },
+  nest_a: { when: AT('s_rann_nests', 'nests'), once: 'nest_a', toast: 'Гнёзда пусты: перья давно не трогали.', vfx: 'magicPop' },
+  nest_b: { when: AT('s_rann_nests', 'nests'), once: 'nest_b', toast: 'Второй участок пуст. Тон здесь слышен сильнее.', vfx: 'magicPop' },
+  quiet_check: { when: AT('s_rann_nests', 'nests'), once: 'quiet_check', toast: 'Тихий участок: птицы поют, гула нет. Разница ясна.', vfx: 'magicPop' },
+  pipe_net: { when: AT('s_rann_nests', 'p_net', 'p_lure', 'p_rope'), once: 'pipe_net', toast: 'Сетка встала на трубу.', vfx: 'magicPop' },
+  pipe_valve_prop: { when: AT('s_rann_nests', 'p_net', 'p_lure', 'p_rope'), toast: 'Заслонка открыта до конца. Закрыть её до малого расхода может залп Рокси (Tab, затем Q).' },
+  pipe_ring_prop: { when: AT('s_rann_nests', 'p_rope'), toast: 'Кольцо над оврагом: канат закрепит водяная стрела Рокси (Tab, затем Q).' },
+  rann_box: { when: [{ v: 'RANN_NESTS' }, { flag: 'rann_slept' }], toast: 'Записка Ранна: «Два гнезда заняли снова. Остальные пока пусты».' },
+  edm_m1: { when: AT('s_edmund_team', 'measure'), once: 'edm_m1', scene: 'B20b', vfx: 'magicPop' },
+  edm_m2: { when: AT('s_edmund_team', 'measure'), need: { flag: 'edm_m1' }, locked: 'Сначала первое сравнение у склона.', once: 'edm_m2', toast: 'Второе сравнение: Тера и Эдмунд меняются приборами. Тринадцать.', vfx: 'magicPop' },
+  edm_m3: { when: AT('s_edmund_team', 'measure'), need: { flag: 'edm_m2' }, locked: 'Сначала второе сравнение.', once: 'edm_m3', toast: 'Третье сравнение у вентиляционного канала: помехи заметны, но шкала держится.', vfx: 'magicPop' },
+  water_ledger: { when: AT('s_clara_book', 'ledger'), once: 'water_ledger', scene: 'B21b', vfx: 'magicPop' },
+  council_protocol: { when: AT('s_clara_book', 'compare'), once: 'council_protocol', toast: 'Ведомость сходится с протоколом совета: выбор у них был, дорогой и медленный.', vfx: 'magicPop' },
+  road_debris: { when: AT('s_tobias_road', 'tasks'), once: 'road_debris', toast: 'Обломок телеги убран с дороги.', vfx: 'magicPop' },
+  road_sign: { when: AT('s_tobias_road', 'tasks'), once: 'road_sign', toast: 'Указатель восстановлен: «Ольховка. Проезд свободен».', vfx: 'magicPop' },
+  post_panel: { when: AT('s_tobias_road', 'tasks'), once: 'post_panel', toast: 'Панель холодная, кабель снят: страж больше не получит питание.', vfx: 'magicPop' },
+  shelter_food: { when: AT('s_lina_day', 'w_bread'), once: 'shelter_food', toast: 'Обед роздан: детям маленькие тарелки, взрослым большие.', vfx: 'magicPop' },
+  shelter_lamps: { when: AT('s_lina_day', 'w_lamps'), once: 'shelter_lamps', toast: 'Лампы стоят у дальней стены: свечи в стекле.', vfx: 'magicPop' },
+  lost_bag: { when: AT('s_lina_day', 'bag'), toast: 'Под столом сумка: внутри бумага с рисунком колеса. Позови Мию.' },
 };
 
 export const STORY_VOLLEY = [
@@ -186,6 +258,15 @@ export const STORY_VOLLEY = [
   { id: 'deep_latch', spot: 'deep_latch', when: AT('ch8_city', 'p19_lever', 'p19_latch'), flag: 'deep_latch_hit', do: [{ setFlag: 'deep_grate_open' }], toast: 'Защёлка сбита: решётка у нижнего шва поднялась.' },
   { id: 'core_seam_a', spot: 'core_seam_a', when: AT('ch9_capsule', 'breach'), flag: 'core_seam_a', toast: 'Левый шов охлаждён.' },
   { id: 'core_seam_b', spot: 'core_seam_b', when: AT('ch9_capsule', 'breach'), flag: 'core_seam_b', toast: 'Правый шов охлаждён.' },
+  { id: 'cache_pond_barrel', spot: 'cache_pond_barrel', when: AT('c_cache_pond', 'find'), flag: 'cache_pond_done', toast: 'Водяной залп подхватил бочку: она пошла к берегу.' },
+  { id: 'spring_seam', spot: 'spring_seam', when: AT('s_roxy_water', 'p_gate'), flag: 'spring_seam', toast: 'Дальний шов закрыт.' },
+  { id: 'spring_flume', spot: 'spring_flume', when: AT('s_roxy_water', 'p_wash'), flag: 'spring_wash', toast: 'Малый поток смыл соль из желоба.' },
+  { id: 'bridge_board', spot: 'bridge_board', when: AT('s_marta_bridge', 'p_edge'), flag: 'bridge_board', toast: 'Поток держит нижнюю доску.' },
+  { id: 'exit_flood', spot: 'exit_flood', when: AT('s_garret_tag', 'exit'), flag: 'exit_flooded_drained', toast: 'Вода ушла: низкая галерея свободна.' },
+  { id: 'lower_flow', spot: 'lower_flow', when: AT('s_boris_gate', 'p_far'), flag: 'lower_flow_low', toast: 'Напор нижнего рукава снижен.' },
+  { id: 'wash_drain', spot: 'wash_drain', when: AT('s_boris_gate', 'p_wash'), flag: 'drain_washed', toast: 'Пустой отвод промыт.' },
+  { id: 'pipe_valve', spot: 'rann_pipe', when: AT('s_rann_nests', 'p_net', 'p_lure', 'p_rope'), flag: 'pipe_valve', toast: 'Заслонка закрыта до малого расхода.' },
+  { id: 'pipe_ring', spot: 'pipe_ring', when: AT('s_rann_nests', 'p_rope'), flag: 'pipe_ring', toast: 'Канат закреплён у кольца.' },
 ];
 
 export const STORY_WAVES = {
@@ -202,4 +283,12 @@ export const STORY_WAVES = {
   ctrl_wave1: { spot: 'core_arena', camp: 'ctrl_w1', enemies: [['guardian', -6, 0], ['watcher', 6, 2], ['imp', 0, -5]], onClear: [{ scene: 'C24b' }] },
   ctrl_wave2: { spot: 'core_arena', camp: 'ctrl_w2', enemies: [['guardian', 0, 5, { shield: ['post_l_off', 'post_r_off'] }], ['watcher', -6, -2]], onClear: [{ scene: 'C24c' }] },
   final_wave: { spot: 'core_arena', camp: 'final_w', enemies: [['guardian', -5, 3, { shield: ['fpost_l_off', 'fpost_r_off'] }], ['guardian', 5, 3, { shield: ['fpost_l_off', 'fpost_r_off'] }], ['watcher', 0, -5]], onClear: [] },
+  raid1: { spot: 'night_field', camp: 'raid_w1', enemies: [['mushroom', -6, 0], ['mushroom', 0, 5], ['mushroom', 6, 0]], onClear: [{ wave: 'raid2' }], say: [] },
+  raid2: { spot: 'night_field', camp: 'raid_w2', enemies: [['mushroom', -8, 2], ['mushroom', 8, 2], ['mushroom', 0, 8], ['puglin', 0, -4]], onClear: [] },
+  gate_mushrooms: { spot: 'upper_gate', camp: 'gate_mush', enemies: [['mushroom', -4, 3], ['mushroom', 4, 3], ['mushroom', 0, 6]], onClear: [] },
 };
+
+/** Directed blasts that set a flag: { spot, r, when, flag } (the explosion handler in rpg/RPG.js). */
+export const STORY_BLASTS = [
+  { spot: 'spring_partition', r: 10, when: AT('s_roxy_water', 'p_blast'), flag: 'spring_blast' },
+];

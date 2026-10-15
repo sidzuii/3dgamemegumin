@@ -19,6 +19,7 @@ import { buildRelay } from './build/Relay.js';
 import { buildDrain } from './build/Drain.js';
 import { buildPump } from './build/Pump.js';
 import { buildCore } from './build/Core.js';
+import { buildSideProps } from './build/SideProps.js';
 import { buildPlacement } from './build/Placements.js';
 import { TreeField } from './TreeField.js';
 import { tree, bush, rock, decor, pick } from './build/Kit.js';
@@ -297,6 +298,7 @@ export class World {
     buildDrain(this);
     buildPump(this);
     buildCore(this);
+    buildSideProps(this);
     for (const a of this.layout.added || []) buildPlacement(this, a);
     SIGNS.forEach(([x, z, rot, lines], i) => this.group('sign_' + i, { x, z, rot }, () => this.addSign(new THREE.Vector3(x, 0, z), rot, lines), 'Указатель: ' + lines[0].slice(0, 34)));
     for (const c of CAMPS) this.camp(c.type, c.x, c.z, c.camp);

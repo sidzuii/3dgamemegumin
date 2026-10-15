@@ -479,6 +479,199 @@ export const QUESTS = Object.fromEntries([
   }),
 
   // =====================================================================================
+  // SIDE STORIES of the scenario package (docs/story/04): B10, B13-B23. Started by the giver's dialogue (`noAuto`).
+  // =====================================================================================
+  Q('c_night_raid', {
+    title: 'Ночной налёт', category: 'side', chapter: 2, giver: 'boris', noAuto: true, requires: { rank: 'E' },
+    summary: 'Борис видел у лампы тени: грибы ходят на поле по ночам. Он ставит сторожа и просит помочь.',
+    stages: [
+      { id: 'brief', text: 'Поговори с Борисом на ферме о ночном налёте.', target: 'npc:boris', objectives: [{ type: 'talk', label: 'Поговорить с Борисом' }] },
+      { id: 'prep_carts', skipIf: { not: { var: ['B10_PLAN', '==', 'carts'] } }, text: 'Подкати две пустые телеги к проходу (у фермы): грибы пойдут через сухой проход.', target: 'spot:farmhouse',
+        objectives: [{ type: 'flag', flag: 'field_cart_a', label: 'Первая телега' }, { type: 'flag', flag: 'field_cart_b', label: 'Вторая телега' }] },
+      { id: 'prep_lantern', skipIf: { not: { var: ['B10_PLAN', '==', 'lantern'] } }, text: 'Повесь фонарь у камня за амбаром: грибы выйдут на пустой участок.', target: 'spot:barn', objectives: [{ type: 'flag', flag: 'field_lantern', label: 'Фонарь у камня' }] },
+      { id: 'night', text: 'Дождись ночи (после 21:00) и встреть налёт на поле Бориса: две волны. Спать можно в таверне.', target: 'spot:night_field',
+        objectives: [{ type: 'flag', flag: 'wd_raid2', label: 'Отбить две волны' }], hint: 'Первая волна — три гриба: отвлекай их. Во второй защищай ограждение.' },
+      { id: 'after', text: 'Поговори с Борисом: ночь прошла.', target: 'npc:boris', objectives: [{ type: 'talk', label: 'Поговорить с Борисом' }] },
+    ],
+    rewards: { eris: 80, xp: 90 },
+  }),
+  Q('c_cache_bridge', {
+    title: 'Тайник под Лунным мостом', category: 'side', chapter: 1, giver: 'lina', noAuto: true, requires: { member: true },
+    summary: 'Лина заметила под Лунным мостом старую лестницу и ящик бесхозного склада. Нужно направить рычагом старую платформу под нишу.',
+    stages: [
+      { id: 'brief', text: 'Поговори с Линой о лестнице под Лунным мостом.', target: 'npc:lina', objectives: [{ type: 'talk', label: 'Поговорить с Линой' }] },
+      { id: 'find', text: 'Под Лунным мостом (южный берег) поверни рычаг старой платформы с берега.', target: 'spot:east_bridge', objectives: [{ type: 'flag', flag: 'cache_bridge_lever', label: 'Платформа под нишу' }] },
+    ],
+    rewards: { eris: 30, xp: 40, items: [['rope_kit', 1], ['iron_ore', 2]] },
+  }),
+  Q('c_cache_oak', {
+    title: 'Холм с дубом', category: 'side', chapter: 1, giver: 'rann', noAuto: true, requires: { member: true },
+    summary: 'Ранн вспомнил детский тайник под дубом на гребне между Развилкой и рощей.',
+    stages: [
+      { id: 'brief', text: 'Поговори с Ранном о тайнике под дубом.', target: 'npc:rann', objectives: [{ type: 'talk', label: 'Поговорить с Ранном' }] },
+      { id: 'find', text: 'У одинокого дуба на гребне расчисти подход и найди защёлку на деревянной крышке.', target: 'spot:hill_oak',
+        objectives: [{ type: 'flag', flag: 'cache_oak_cleared', label: 'Расчистить подход' }, { type: 'flag', flag: 'cache_oak_open', label: 'Открыть крышку' }] },
+    ],
+    rewards: { eris: 60, xp: 45, flags: ['safe_descent_map'] },
+  }),
+  Q('c_cache_pond', {
+    title: 'Камышовый пруд', category: 'side', chapter: 1, giver: 'boris', noAuto: true, requires: { member: true },
+    summary: 'В камышах у пруда у Ольховки привязана бочка со знаком старого снабжения.',
+    stages: [
+      { id: 'brief', text: 'Поговори с Борисом о бочке в камышах.', target: 'npc:boris', objectives: [{ type: 'talk', label: 'Поговорить с Борисом' }] },
+      { id: 'find', text: 'У камышового пруда подними бочку: ручным блоком с берега или водяным залпом Рокси (Tab, Q).', target: 'spot:cache_pond_barrel', objectives: [{ type: 'flag', flag: 'cache_pond_done', label: 'Поднять бочку' }] },
+    ],
+    rewards: { eris: 40, xp: 40, items: [['waterproof_case', 1], ['hp_potion', 1]] },
+  }),
+  Q('c_cache_tar', {
+    title: 'Поляна смолокуров', category: 'side', chapter: 1, giver: 'marta', noAuto: true, requires: { member: true },
+    summary: 'У старых печей смолокуров осталась кладовая инструментов под каменной крышкой.',
+    stages: [
+      { id: 'brief', text: 'Поговори с Мартой о старых печах.', target: 'npc:marta', objectives: [{ type: 'talk', label: 'Поговорить с Мартой' }] },
+      { id: 'find', text: 'На поляне смолокуров (в бору севернее Развилки) собери рукоять из двух частей и подними каменную крышку. Без огня.', target: 'spot:tar_camp_door',
+        objectives: [{ type: 'flag', flag: 'cache_tar_part_a', label: 'Первая часть' }, { type: 'flag', flag: 'cache_tar_part_b', label: 'Вторая часть' }, { type: 'flag', flag: 'cache_tar_open', label: 'Поднять крышку' }] },
+    ],
+    rewards: { eris: 40, xp: 45, items: [['tar_tools', 1]] },
+  }),
+  Q('s_roxy_water', {
+    title: 'Рокси: работа вдвоём', category: 'side', chapter: 5, giver: 'wiss', noAuto: true, requires: [{ quest: 'ch5_crypt', status: 'done' }, { flag: 'roxy_companion' }],
+    summary: 'Вода северного источника изменила вкус: в пробе много соли. Висс просит Рокси проверить источник, а Мегумин — закрыть затвор.',
+    stages: [
+      { id: 'brief', text: 'Поговори с Висс: проба воды с севера.', target: 'npc:wiss', objectives: [{ type: 'talk', label: 'Поговорить с Висс' }] },
+      { id: 'spring', manual: true, text: 'Дойди до северного источника у северной дороги (за поворотом к пещере).', target: 'spot:north_spring', objectives: [{ type: 'reach', spot: 'north_spring', r: 12, label: 'Дойти до источника' }] },
+      { id: 'p_gate', skipIf: { not: { var: ['B14_PLAN', '==', 'gate'] } }, text: 'Перекрой верхний затвор (Мегумин), Рокси закрывает дальний шов залпом, затем она берёт пробу.', target: 'spot:north_spring',
+        objectives: [{ type: 'flag', flag: 'spring_gate', label: 'Верхний затвор (Мегумин)' }, { type: 'flag', flag: 'spring_seam', label: 'Дальний шов (Рокси: Tab, Q)' }, { type: 'flag', flag: 'spring_sample', label: 'Проба (Рокси)' }] },
+      { id: 'p_wash', skipIf: { not: { var: ['B14_PLAN', '==', 'wash'] } }, text: 'Другой порядок: смой соль малым потоком (Рокси), закрой дальний желоб руками и возьми пробу.', target: 'spot:north_spring',
+        objectives: [{ type: 'flag', flag: 'spring_wash', label: 'Смыть соль (Рокси: Tab, Q)' }, { type: 'flag', flag: 'spring_valve', label: 'Закрыть дальний желоб' }, { type: 'flag', flag: 'spring_sample', label: 'Проба (Рокси)' }] },
+      { id: 'p_blast', skipIf: { not: { var: ['B14_PLAN', '==', 'blast'] } }, text: 'Сначала останови источник верхним затвором, затем разрушь пустую перегородку взрывом (Мегумин, Q) и возьми пробу.', target: 'spot:spring_partition',
+        objectives: [{ type: 'flag', flag: 'spring_gate', label: 'Верхний затвор (Мегумин)' }, { type: 'explosion', spot: 'spring_partition', r: 10, label: 'Взрыв в пустую перегородку' }, { type: 'flag', flag: 'spring_sample', label: 'Проба (Рокси)' }] },
+      { id: 'back', text: 'Вернись к Висс с результатом.', target: 'npc:wiss', objectives: [{ type: 'talk', label: 'Поговорить с Висс' }] },
+    ],
+    rewards: { eris: 120, xp: 150 },
+  }),
+  Q('s_marta_bridge', {
+    title: 'Марта: лошади и мост', category: 'side', chapter: 4, giver: 'marta', noAuto: true, requires: [{ quest: 'ch4_return', status: 'done' }, { flag: 'roxy_companion' }],
+    summary: 'На мостике у Ольховой рощи отошла доска: лошадь не идёт по звенящему настилу. Марте нужен мост, а не обход.',
+    stages: [
+      { id: 'brief', text: 'Поговори с Мартой на караванной стоянке.', target: 'npc:marta', objectives: [{ type: 'talk', label: 'Поговорить с Мартой' }] },
+      { id: 'bridge', manual: true, text: 'Дойди до мостика у Ольховой рощи (Марта ждёт у въезда).', target: 'spot:alder_west', objectives: [{ type: 'reach', spot: 'alder_west', r: 10, label: 'Дойти до моста' }] },
+      { id: 'p_clip', skipIf: { not: { var: ['B15_PLAN', '==', 'clip'] } }, text: 'Сними звенящую скобу, убери ветку с подхода и выведи пустую телегу по настилу.', target: 'spot:alder_west',
+        objectives: [{ type: 'flag', flag: 'bridge_clip', label: 'Звенящая скоба' }, { type: 'flag', flag: 'bridge_branch', label: 'Ветка на подходе' }, { type: 'flag', flag: 'bridge_cart', label: 'Пустая телега' }] },
+      { id: 'p_edge', skipIf: { not: { var: ['B15_PLAN', '==', 'edge'] } }, text: 'Рокси держит доску водяным потоком, ты закрепляешь скобы, убираешь ветку и выводишь телегу.', target: 'spot:bridge_board',
+        objectives: [{ type: 'flag', flag: 'bridge_board', label: 'Придержать доску (Рокси: Tab, Q)' }, { type: 'flag', flag: 'bridge_clip', label: 'Крепление' }, { type: 'flag', flag: 'bridge_branch', label: 'Ветка на подходе' }, { type: 'flag', flag: 'bridge_cart', label: 'Пустая телега' }] },
+      { id: 'pay', text: 'Поговори с Мартой: мост прошли.', target: 'npc:marta', objectives: [{ type: 'talk', label: 'Поговорить с Мартой' }] },
+    ],
+    rewards: { eris: 80, xp: 100 },
+  }),
+  Q('s_garret_tag', {
+    title: 'Гаррет: сменная бирка', category: 'side', chapter: 6, giver: 'garret', noAuto: true, requires: [{ quest: 'c_ore_for_garret', status: 'done' }, { quest: 'ch6_relay', status: 'done' }],
+    summary: 'Гаррет хочет узнать, вывел ли его отец учеников из старой шахты до закрытия. Нужны бирка смены, журнал ламп и штамп у аварийного выхода.',
+    stages: [
+      { id: 'brief', text: 'Поговори с Гарретом в кузнице: план старой шахты.', target: 'npc:garret', objectives: [{ type: 'talk', label: 'Поговорить с Гарретом' }] },
+      { id: 'room', manual: true, text: 'В старой шахте, в комнате отдыха шахтёров (восточный боковой тоннель), найди бирку смены и журнал расхода ламп.', target: 'spot:dungeon_entry',
+        objectives: [{ type: 'flag', flag: 'shift_tag', label: 'Бирка номер семь' }, { type: 'flag', flag: 'shift_log', label: 'Журнал ламп' }] },
+      { id: 'exit', text: 'У аварийного выхода (кристальный зал, западная стена): открой ручную решётку, Рокси сбивает воду залпом, найди штамп.', target: 'spot:dungeon_deep',
+        objectives: [{ type: 'flag', flag: 'exit_grate', label: 'Ручная решётка' }, { type: 'flag', flag: 'exit_flooded_drained', label: 'Слить воду (Рокси: Tab, Q)' }, { type: 'flag', flag: 'exit_stamp', label: 'Штамп на стене' }] },
+      { id: 'report', text: 'Принеси Гаррету ответ.', target: 'npc:garret', objectives: [{ type: 'talk', label: 'Поговорить с Гарретом' }] },
+    ],
+    rewards: { eris: 100, xp: 120 },
+  }),
+  Q('s_fenrik_names', {
+    title: 'Фенрик: имена в песне', category: 'side', chapter: 6, giver: 'fenrik', noAuto: true, requires: { quest: 'ch6_relay', status: 'done' },
+    summary: 'Фенрик хочет обновить песню о звёздах и назвать людей, а не рифму. Нужны свидетель, храмовый список и проверенное имя Орина.',
+    stages: [
+      { id: 'brief', text: 'Поговори с Фенриком в таверне.', target: 'npc:fenrik', objectives: [{ type: 'talk', label: 'Поговорить с Фенриком' }] },
+      { id: 'witness', text: 'Послушай свидетеля у караванной стоянки: Марта помнит ведро и два ужина. Фенрик ждёт там.', target: 'npc:marta', objectives: [{ type: 'talk', label: 'Поговорить с Мартой' }] },
+      { id: 'temple', text: 'В храме проверь имя Орина в храмовом списке (у алтаря).', target: 'spot:temple_altar', objectives: [{ type: 'flag', flag: 'temple_list', label: 'Имя Орина' }] },
+      { id: 'verse', text: 'Выслушай новый куплет у Фенрика.', target: 'npc:fenrik', objectives: [{ type: 'talk', label: 'Поговорить с Фенриком' }] },
+    ],
+    rewards: { eris: 60, xp: 80 },
+  }),
+  Q('s_boris_gate', {
+    title: 'Борис: верхний затвор', category: 'side', chapter: 5, giver: 'boris', noAuto: true, requires: { quest: 'ch5_crypt', status: 'done' },
+    summary: 'На речном рукаве у фермы поднялась вода без дождя: на верхнем затворе отметка Астрариума. Нужно отключить автоматику и поставить ручной режим.',
+    stages: [
+      { id: 'brief', text: 'Поговори с Борисом на ферме.', target: 'npc:boris', objectives: [{ type: 'talk', label: 'Поговорить с Борисом' }] },
+      { id: 'measure', text: 'Измерь оба рукава у фермы (две мерные рейки на берегу, северо-восточнее дома).', target: 'spot:farmhouse', objectives: [{ type: 'flag', flag: 'measure_a', label: 'Нижний рукав' }, { type: 'flag', flag: 'measure_b', label: 'Верхний рукав' }] },
+      { id: 'upper', manual: true, text: 'Поднимись к верхнему затвору (тропа с берега, северо-восток от фермы).', target: 'spot:upper_gate', objectives: [{ type: 'reach', spot: 'upper_gate', r: 10, label: 'Дойти до затвора' }] },
+      { id: 'p_far', skipIf: { not: { var: ['B18_PLAN', '==', 'far'] } }, text: 'Дальнему полю: открой верхний затвор, Рокси снижает напор снизу.', target: 'spot:upper_gate',
+        objectives: [{ type: 'flag', flag: 'upper_gate_open', label: 'Верхний затвор' }, { type: 'flag', flag: 'lower_flow_low', label: 'Снизить напор (Рокси: Tab, Q)' }] },
+      { id: 'p_wash', skipIf: { not: { var: ['B18_PLAN', '==', 'wash'] } }, text: 'Сначала промой пустой отвод (Рокси), поставь клапан на обход, затем открой верхний затвор.', target: 'spot:wash_drain',
+        objectives: [{ type: 'flag', flag: 'drain_washed', label: 'Промыть отвод (Рокси: Tab, Q)' }, { type: 'flag', flag: 'extra_valve', label: 'Клапан на обход' }, { type: 'flag', flag: 'upper_gate_open', label: 'Верхний затвор' }] },
+      { id: 'mush', text: 'Из воды вышли грибы. Отбей их у затвора.', target: 'spot:upper_gate', onStart: [{ wave: 'gate_mushrooms' }], objectives: [{ type: 'flag', flag: 'wd_gate_mushrooms', label: 'Отбить грибов' }] },
+      { id: 'manual', text: 'Отметь положение ручного колеса у затвора.', target: 'spot:upper_gate', objectives: [{ type: 'flag', flag: 'gate_wheel', label: 'Ручное колесо' }] },
+      { id: 'report', text: 'Вернись к Борису.', target: 'npc:boris', objectives: [{ type: 'talk', label: 'Поговорить с Борисом' }] },
+    ],
+    rewards: { eris: 110, xp: 130 },
+  }),
+  Q('s_rann_nests', {
+    title: 'Ранн: пустые гнёзда', category: 'side', chapter: 5, giver: 'rann', noAuto: true, requires: { quest: 'ch5_crypt', status: 'done' },
+    summary: 'Птицы покинули участок у дальнего оврага. Возможно, туда идёт гул из старой вентиляционной трубы.',
+    stages: [
+      { id: 'brief', text: 'Поговори с Ранном в лагере охотников.', target: 'npc:rann', objectives: [{ type: 'talk', label: 'Поговорить с Ранном' }] },
+      { id: 'nests', text: 'Осмотри два участка с гнёздами и сравни с тихим участком.', target: 'spot:quiet_site',
+        objectives: [{ type: 'flag', flag: 'nest_a', label: 'Первое гнездовье' }, { type: 'flag', flag: 'nest_b', label: 'Второе гнездовье' }, { type: 'flag', flag: 'quiet_check', label: 'Тихий участок' }] },
+      { id: 'pipe', manual: true, text: 'Дойди до старой вентиляционной трубы у оврага.', target: 'spot:rann_pipe', objectives: [{ type: 'reach', spot: 'rann_pipe', r: 8, label: 'Дойти до трубы' }] },
+      { id: 'p_net', skipIf: { not: { var: ['B19_PLAN', '==', 'net'] } }, text: 'Поставь сетку на трубу, Рокси закрывает заслонку до малого расхода.', target: 'spot:rann_pipe',
+        objectives: [{ type: 'flag', flag: 'pipe_net', label: 'Сетка' }, { type: 'flag', flag: 'pipe_valve', label: 'Заслонка (Рокси: Tab, Q)' }] },
+      { id: 'p_lure', skipIf: { not: { var: ['B19_PLAN', '==', 'lure'] } }, text: 'Сначала увези стража от оврага на сухую площадку и победи его, затем сетка и заслонка.', target: 'spot:rann_pipe',
+        objectives: [{ type: 'kill', camp: 'pipe_guard', n: 1, label: 'Страж у трубы' }, { type: 'flag', flag: 'pipe_net', label: 'Сетка' }, { type: 'flag', flag: 'pipe_valve', label: 'Заслонка (Рокси: Tab, Q)' }] },
+      { id: 'p_rope', skipIf: { not: { var: ['B19_PLAN', '==', 'rope'] } }, text: 'Обойди стража сверху: Рокси закрепляет канат у кольца, сетку подай канатом, заслонка до малого расхода.', target: 'spot:pipe_ring',
+        objectives: [{ type: 'flag', flag: 'pipe_ring', label: 'Канат у кольца (Рокси: Tab, Q)' }, { type: 'flag', flag: 'pipe_net', label: 'Сетка' }, { type: 'flag', flag: 'pipe_valve', label: 'Заслонка (Рокси: Tab, Q)' }] },
+      { id: 'report', text: 'Вернись к Ранну.', target: 'npc:rann', objectives: [{ type: 'talk', label: 'Поговорить с Ранном' }] },
+    ],
+    rewards: { eris: 90, xp: 110 },
+  }),
+  Q('s_edmund_team', {
+    title: 'Эдмунд: доверить измерение', category: 'side', chapter: 6, giver: 'edmund', noAuto: true, requires: { quest: 'ch6_relay', status: 'done' },
+    summary: 'Тера принесла показания, которые Эдмунд отклонил. Нужно сравнить приборы по трём точкам маршрута.',
+    stages: [
+      { id: 'brief', text: 'Поговори с Эдмундом: у него Тера со своими показаниями.', target: 'npc:edmund', objectives: [{ type: 'talk', label: 'Поговорить с Эдмундом' }] },
+      { id: 'measure', text: 'Проведи три сравнения по маршруту у западного склона, последнее — у вентиляционного канала.', target: 'spot:edmund_route',
+        objectives: [{ type: 'flag', flag: 'edm_m1', label: 'Первая площадка' }, { type: 'flag', flag: 'edm_m2', label: 'Вторая площадка' }, { type: 'flag', flag: 'edm_m3', label: 'У канала' }] },
+      { id: 'sign', text: 'Вернись к Эдмунду и Тере.', target: 'npc:edmund', objectives: [{ type: 'talk', label: 'Поговорить с Эдмундом' }] },
+    ],
+    rewards: { eris: 100, xp: 120 },
+  }),
+  Q('s_clara_book', {
+    title: 'Клара: книга свидетельств', category: 'side', chapter: 7, giver: 'clara', noAuto: true, requires: { quest: 'ch7_gorge', status: 'done' },
+    summary: 'Клара собирает показания о засухе. Агата просит записать, что её брат голосовал в совете, и не стереть его имя.',
+    stages: [
+      { id: 'brief', text: 'Поговори с Агатой за архивным столом в храме.', target: 'npc:agata', objectives: [{ type: 'talk', label: 'Поговорить с Агатой' }] },
+      { id: 'ledger', text: 'Найди в городском шкафу у гильдии ведомость выдачи воды: Луна даст доступ.', target: 'spot:guild_table', objectives: [{ type: 'flag', flag: 'water_ledger', label: 'Ведомость воды' }] },
+      { id: 'compare', text: 'Сравни ведомость с копией протокола совета на столе у алтаря.', target: 'spot:temple_altar', objectives: [{ type: 'flag', flag: 'council_protocol', label: 'Протокол совета' }] },
+      { id: 'read', text: 'Вернись к Агате: Клара прочитает ей готовую запись.', target: 'npc:agata', objectives: [{ type: 'talk', label: 'Поговорить с Агатой' }] },
+    ],
+    rewards: { eris: 90, xp: 110 },
+  }),
+  Q('s_tobias_road', {
+    title: 'Тобиас: открытая дорога', category: 'side', chapter: 7, giver: 'tobias', noAuto: true, requires: [{ quest: 'c_escort_tobias', status: 'done' }, { quest: 'ch7_gorge', status: 'done' }],
+    summary: 'Люди объезжают старый каменный пост на восточной дороге, хотя его страж выключен. Нужно показать дорогу и провести небольшой обоз.',
+    stages: [
+      { id: 'brief', text: 'Поговори с Тобиасом (Ольховка).', target: 'npc:tobias', objectives: [{ type: 'talk', label: 'Поговорить с Тобиасом' }] },
+      { id: 'post', manual: true, text: 'Дойди до старого поста у Восточного перевала: Тобиас приведёт возчиков.', target: 'spot:relay_gate_out', objectives: [{ type: 'reach', spot: 'relay_gate_out', r: 14, label: 'Дойти до поста' }] },
+      { id: 'tasks', text: 'У поста: убери обломок телеги, восстанови указатель и осмотри холодную панель.', target: 'spot:relay_gate_out',
+        objectives: [{ type: 'flag', flag: 'road_debris', label: 'Обломок телеги' }, { type: 'flag', flag: 'road_sign', label: 'Указатель' }, { type: 'flag', flag: 'post_panel', label: 'Холодная панель' }] },
+      { id: 'convoy', text: 'Проведи обоз до Ольховки.', target: 'region:olkhovka', objectives: [{ type: 'reach', region: 'olkhovka', label: 'Дойти до Ольховки' }] },
+      { id: 'report', text: 'Поговори с Тобиасом.', target: 'npc:tobias', objectives: [{ type: 'talk', label: 'Поговорить с Тобиасом' }] },
+    ],
+    rewards: { eris: 90, xp: 100 },
+  }),
+  Q('s_lina_day', {
+    title: 'День на площади', category: 'side', chapter: 8, giver: 'lina', noAuto: true,
+    requires: { any: [{ quest: 'ch8_city', status: 'done' }, ...['veyr', 'deep', 'p19_lever', 'p19_latch', 'p19_breaker', 'deep_out', 'link', 'link_check'].map((stage) => ({ quest: 'ch8_city', stage }))] },
+    summary: 'Лина просит помочь с обедом и лампами в убежище, пока вода уже идёт. Один час без угрозы взрыва.',
+    stages: [
+      { id: 'brief', text: 'Поговори с Линой: убежище, обед, лампы.', target: 'npc:lina', objectives: [{ type: 'talk', label: 'Поговорить с Линой' }] },
+      { id: 'w_bread', skipIf: { not: { var: ['B23_PLAN', '==', 'bread'] } }, text: 'Раздай обед у столов (убежище у ратуши); Рокси проверяет лампы.', target: 'spot:shelter', objectives: [{ type: 'flag', flag: 'shelter_food', label: 'Обед раздан' }] },
+      { id: 'w_lamps', skipIf: { not: { var: ['B23_PLAN', '==', 'lamps'] } }, text: 'Поставь лампы у дальней стены убежища; Рокси раздаёт обед.', target: 'spot:shelter', objectives: [{ type: 'flag', flag: 'shelter_lamps', label: 'Лампы поставлены' }] },
+      { id: 'bag', text: 'Мия нашла под столом забытую сумку. Поговори с ней.', target: 'npc:mia', objectives: [{ type: 'talk', label: 'Поговорить с Мией' }] },
+      { id: 'last', text: 'Поговори с Линой: последний стол.', target: 'npc:lina', objectives: [{ type: 'talk', label: 'Поговорить с Линой' }] },
+    ],
+    rewards: { eris: 70, xp: 90 },
+  }),
+
+  // =====================================================================================
   // SIDE QUESTS
   // =====================================================================================
   Q('s_bard_song', {

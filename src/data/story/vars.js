@@ -32,6 +32,7 @@ export const VARS = {
   WATER_FIRST: ['residents', 'repair'],
   VEYR_HELP: 'bool',
   ENDING: ['closure', 'rebuild'],
+  B10_PLAN: ['carts', 'lantern'], B14_PLAN: ['gate', 'wash', 'blast'], B15_PLAN: ['clip', 'edge'], B18_PLAN: ['far', 'wash'], B19_PLAN: ['net', 'lure', 'rope'], B23_PLAN: ['bread', 'lamps'],
   // side stories (set when the order is handed in; they change support and epilogues only)
   ROXY_WATER: 'bool',
   MARTA_BRIDGE: 'bool',

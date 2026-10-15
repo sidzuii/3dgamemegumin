@@ -10,5 +10,12 @@ export const TRIGGERS = [
   // C12: Marta's cart on the ledge; C14: before the directed blast.
   { id: 'C12', if: { quest: 'ch7_gorge', stage: 'ledge' }, spot: 'ledge_marta', r: 12, dialogue: 'C12' },
   { id: 'C14a', if: { quest: 'ch7_gorge', stage: 'explosion' }, spot: 'drain_wall', r: 12, say: ['C14_001', 'C14_002'] },
+  // Side stories: the night raid starts at night on the field (B10); scenes at the places of B14, B15, B18, B19, B22.
+  { id: 'B10_raid', if: [{ quest: 'c_night_raid', stage: 'night' }, { hour: [21, 5] }], spot: 'night_field', r: 36, do: [{ wave: 'raid1' }] },
+  { id: 'B14b', if: { quest: 's_roxy_water', stage: 'spring' }, spot: 'north_spring', r: 12, dialogue: 'B14b' },
+  { id: 'B15b', if: { quest: 's_marta_bridge', stage: 'bridge' }, spot: 'alder_west', r: 10, dialogue: 'B15b' },
+  { id: 'B18b', if: { quest: 's_boris_gate', stage: 'upper' }, spot: 'upper_gate', r: 12, dialogue: 'B18b' },
+  { id: 'B19b', if: { quest: 's_rann_nests', stage: 'pipe' }, spot: 'rann_pipe', r: 10, dialogue: 'B19b' },
+  { id: 'B22b', if: { quest: 's_tobias_road', stage: 'post' }, spot: 'relay_gate_out', r: 14, dialogue: 'B22b' },
   { id: 'B09_kids', if: { flag: 'ballad' }, spot: 'square', r: 18, say: ['B09b_014', 'B09b_015', 'B09b_016'] },
 ];

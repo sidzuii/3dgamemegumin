@@ -343,6 +343,7 @@ function crypt() {
   W.spot('crypt_door', C.at(0, 0, 2.6), rot + Math.PI);
   // C02: Clara breaks the seal (flag crypt_open); the stair leads down to the crypt level (build/Crypt.js).
   W.addInteractable(new Door({ id: 'crypt_gate', name: 'Спуск в крипту', prompt: 'Спуститься', position: C.at(0, 0, 1.3), target: 'crypt_in', rotY: rot }));
+  W.addInteractable(new QuestProp({ id: 'crypt_sealed', name: 'Запертая крипта', prompt: 'Осмотреть дверь', position: C.at(0, 1.0, 1.6), shape: 'none' }));
 }
 
 /** Town hall: a two-storey stone hall with a clock tower over the door. */
