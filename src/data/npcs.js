@@ -83,6 +83,7 @@ export const NPCS = [
     talk: [
       { if: { quest: 'first_delivery', stage: 'deliver' }, dialogue: 'A03' },
       { if: { quest: 'ch3_lights', stage: 'garret' }, dialogue: 'A18' },
+      { if: { quest: 'ch5_crypt', stage: 'prep', notFlag: 'C00_GARRET' }, dialogue: 'C01' },
       { if: { quest: 'c_ore_for_garret', stage: 'brief' }, dialogue: 'B05a' },
       { if: { quest: 'c_ore_for_garret', stage: 'turnin' }, dialogue: 'B05b' },
       { dialogue: 'garret_main' },
@@ -98,6 +99,8 @@ export const NPCS = [
       { if: { quest: 'join_guild', stage: 'potion' }, bark: ['Регистрационный флакон ждёт тебя у Висс. Принеси его и взнос.'] },
       { if: { quest: 'join_guild', stage: 'register' }, dialogue: 'A06' },
       { if: { quest: 'ch1_name', stage: 'board' }, dialogue: 'A08' },
+      { if: { quest: 'ch5_crypt', stage: 'prep', notFlag: 'C00_LAMPS' }, dialogue: 'lamps' },
+      { if: { quest: 'ch5_crypt', stage: 'report' }, dialogue: 'C05' },
       { if: { quest: 'ch1_name', stage: 'promote' }, dialogue: 'A09' },
       { if: { quest: 'c_goblin_scouts', stage: 'brief' }, dialogue: 'B03a' },
       { if: { quest: 'c_goblin_scouts', stage: 'report' }, dialogue: 'B03b' },
@@ -180,8 +183,14 @@ export const NPCS = [
     id: 'clara', name: 'Сестра Клара', title: 'Жрица храма Эрис',
     model: F(['Medieval_Head', 'Formal_Body', 'Formal_Legs', 'Formal_Feet'], { 'Medieval_Head:Brown': 0x8ab0e0, 'Medieval_Head:DarkBrown': 0x6a90c0, 'Medieval_Head:White': 0xe8d8a0, LimeGreen: 0xf4f0e8, Gold: 0x8ab0e0, 'Formal_Feet:Red': 0xd8c8a8 }),
     look: { skin: 0xffe8d8, hair: 0xe8d8a0, hairStyle: 'long', top: 0xf4f0e8, dress: true, dressLong: true, dressColor: 0xf4f0e8, hat: 'hood', hatColor: 0x8ab0e0, cape: 0x8ab0e0, chestShape: true },
-    schedule: [{ time: [7, 21], spot: 'temple_altar', anim: 'idle' }, NIGHT_HOME],
+    schedule: (rpg) => (rpg.check({ quest: 'ch5_crypt', stage: 'seal' })
+      ? [{ time: [0, 24], spot: 'crypt_door', anim: 'idle' }]
+      : [{ time: [7, 21], spot: 'temple_altar', anim: 'idle' }, NIGHT_HOME]),
     talk: [
+      { if: { quest: 'ch5_crypt', stage: 'rest' }, bark: ['Водяной знак у шва не потемнел. Отдыхайте. Крипту я открою, когда мы подготовимся.'] },
+      { if: { quest: 'ch5_crypt', stage: 'clara' }, dialogue: 'C00' },
+      { if: { quest: 'ch5_crypt', stage: 'prep' }, bark: ['Гаррет проверит лестницу. Луна выделит лампы. Нижнюю комнату я прошу осмотреть вас.'] },
+      { if: { quest: 'ch5_crypt', stage: 'seal' }, dialogue: 'C02' },
       { if: { quest: 'ch2_people', status: 'active', notFlag: 'A11_DONE' }, dialogue: 'A11' },
       { if: { quest: 'ch4_return', stage: 'clara' }, dialogue: 'A29' },
       { dialogue: 'clara_main' },

@@ -14,6 +14,7 @@ import { makeNoiseTexture, makePavingTextures } from './textures.js';
 import { buildTown } from './build/Town.js';
 import { buildCountryside } from './build/Countryside.js';
 import { buildDungeon, DUNGEON } from './build/Dungeon.js';
+import { buildCrypt } from './build/Crypt.js';
 import { buildPlacement } from './build/Placements.js';
 import { TreeField } from './TreeField.js';
 import { tree, bush, rock, decor, pick } from './build/Kit.js';
@@ -287,6 +288,7 @@ export class World {
     buildTown(this);
     buildCountryside(this);
     buildDungeon(this);
+    buildCrypt(this);
     for (const a of this.layout.added || []) buildPlacement(this, a);
     SIGNS.forEach(([x, z, rot, lines], i) => this.group('sign_' + i, { x, z, rot }, () => this.addSign(new THREE.Vector3(x, 0, z), rot, lines), 'Указатель: ' + lines[0].slice(0, 34)));
     for (const c of CAMPS) this.camp(c.type, c.x, c.z, c.camp);

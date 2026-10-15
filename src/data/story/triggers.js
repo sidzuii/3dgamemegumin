@@ -5,5 +5,7 @@
  */
 export const TRIGGERS = [
   // B09: the children sing the ballad at the Fountain square.
+  // C03: the flooded passage in the crypt: who does what.
+  { id: 'C03', if: { quest: 'ch5_crypt', stage: 'water' }, spot: 'crypt_water', r: 8, dialogue: 'C03' },
   { id: 'B09_kids', if: { flag: 'ballad' }, spot: 'square', r: 18, say: ['B09b_014', 'B09b_015', 'B09b_016'] },
 ];

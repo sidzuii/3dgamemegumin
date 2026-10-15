@@ -177,6 +177,11 @@ export const DIALOGUES = {
   trader_main: D({
     start: { text: 'Сайрус, к вашим услугам! Редкости с юга, востока и даже с моря. Цены — справедливые. Ну, почти.', choices: [{ text: 'Торговать', do: { openShop: 'caravan' } }, BYE] },
   }),
+  // Luna hands out the lamps for the crypt (glue, not in the package).
+  lamps: D({
+    start: { text: 'Клара просила лампы для спуска. Две, с запасом масла. Развесьте их у развилок: это будут ваши отметки на обратном пути.', next: 'end', do: [{ give: [['crypt_lamp', 2]] }, { setFlag: 'C00_LAMPS' }] },
+  }),
+
   // ======================================================================== STORY (scenario package, data/story)
   ...STORY_SCENES,
 };

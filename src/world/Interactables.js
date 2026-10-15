@@ -312,6 +312,11 @@ export class Door extends Interactable {
     }
   }
 
+  /** A door can be shut for the story (the crypt before the seal is opened): no prompt while inactive. */
+  canInteract() { return this.active !== false; }
+
+  setActive(on) { this.active = on; }
+
   interact(game) {
     game.travel(this.target);
   }

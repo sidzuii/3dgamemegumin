@@ -46,6 +46,7 @@ export const REGIONS = [
   { id: 'east_pass', name: 'Восточный перевал', sub: 'Дорога завалена', center: v(822, -192), r: 26, icon: '⛰', tier: 2, spawn: v(798, -176), spawnYaw: Math.PI / 2 },
   { id: 'thicket', name: 'Чаща', sub: 'Тёмная часть леса', center: v(-585, 360), r: 46, icon: '♠', tier: 2, spawn: v(-560, 330), spawnYaw: -Math.PI / 2 },
   { id: 'dungeon', name: 'Старая шахта', sub: 'Подземелье', center: v(0, 1160), r: 70, icon: '◒', tier: 0, interior: true },
+  { id: 'crypt', name: 'Крипта Эрис', sub: 'Нижние помещения храма', center: v(0, 1306), r: 86, icon: '◒', tier: 0, interior: true },
 ];
 export const REGION = Object.fromEntries(REGIONS.map((r) => [r.id, r]));
 

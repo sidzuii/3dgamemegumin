@@ -12,11 +12,15 @@ import { QuestProp, Door } from '../Interactables.js';
  *  B  → tunnel blocked by a cave-in (only an Explosion clears it) →
  *  D  crystal chamber (guardian, the second star shard, chest, mine lift back to the surface)
  */
+/** The crypt under the temple of Eris (build/Crypt.js) is a second interior beyond the map edge. */
+export const CRYPT_ZONE = { minX: -40, maxX: 40, minZ: 1226, maxZ: 1390 };
+
 export const DUNGEON = {
   minX: -50, maxX: 50, minZ: 1090, maxZ: 1210,
   floor: 0,
   contains(x, z) {
-    return x > this.minX && x < this.maxX && z > this.minZ && z < this.maxZ;
+    return (x > this.minX && x < this.maxX && z > this.minZ && z < this.maxZ)
+      || (x > CRYPT_ZONE.minX && x < CRYPT_ZONE.maxX && z > CRYPT_ZONE.minZ && z < CRYPT_ZONE.maxZ);
   },
 };
 

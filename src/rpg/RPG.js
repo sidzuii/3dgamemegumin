@@ -66,6 +66,29 @@ export class RPG {
         else this.setFlag('ritual_sector_hit');
       }
     });
+    // C03: Roxy's volley flies where she aims; a latch in the cone (about 20 degrees, 32 m) is knocked off.
+    this.events.on('volley', (e) => {
+      if (this.quests.stageId('ch5_crypt') !== 'water') return;
+      const F = this.state.flags;
+      let any = false;
+      for (let i = 0; i < 3; i++) {
+        const s = this.spotPos('crypt_latch_' + i);
+        if (!s || F['crypt_latch_' + i]) continue;
+        const dx = s.x - e.from.x, dz = s.z - e.from.z, L = Math.hypot(dx, dz);
+        if (L > 32 || L < 1) continue;
+        const dot = (dx * e.dir.x + dz * e.dir.z) / (L * (Math.hypot(e.dir.x, e.dir.z) || 1));
+        if (dot < Math.cos(0.36)) continue;
+        this.setFlag('crypt_latch_' + i);
+        this.game.vfx.burst('waterSplash', s.clone(), 24);
+        any = true;
+      }
+      if (!any) return;
+      const n = [0, 1, 2].filter((i) => F['crypt_latch_' + i]).length;
+      if (n >= 3) {
+        this.setFlag('crypt_gate_open');
+        this.notify('event', 'Все три защёлки сбиты: решётка галереи поднялась.');
+      } else this.notify('info', `Защёлка сбита (${n}/3).`);
+    });
     // The ritual: the second pair of guardians comes when the first two are down (A25).
     this.events.on('kill', (e) => {
       if (e.camp !== 'rift_wave' || this.quests.stageId('roxy_trust') !== 'defend') return;
@@ -208,12 +231,19 @@ export class RPG {
   /** Story props: hide taken shards, etc. */
   _syncProps() {
     const F = this.state.flags;
+    this.game.world.crypt?.sync(F);
     for (const it of this.game.world.interactables) {
       if (!it.setActive) continue;
       if (it.id === 'glade_shard') it.setActive(!F.glade_shard_taken);
       if (it.id === 'deep_shard') it.setActive(!F.deep_shard_taken);
       if (it.id?.startsWith('rift_crystal_')) it.setActive(!F[it.id] && this.quests.stageId('roxy_trust') === 'crystals');
       if (it.id === 'astra_lever') it.setActive(this.quests.stageId('roxy_trust') === 'repair');
+      if (it.id === 'crypt_gate') it.setActive(!!F.crypt_open);
+      if (it.id === 'temple_room') it.setActive(this.quests.stageId('ch5_crypt') === 'prep' && !F.C00_ROOM);
+      if (it.id?.startsWith('crypt_lamp_')) it.setActive(!F[it.id + '_hung'] && this.quests.status('ch5_crypt') === 'active');
+      if (it.id?.startsWith('crypt_latch_')) it.setActive(this.quests.stageId('ch5_crypt') === 'water' && !F[it.id]);
+      if (it.id === 'crypt_winch') it.setActive(this.quests.stageId('ch5_crypt') === 'water' && !F.crypt_drained);
+      if (it.id === 'crypt_pedestal') it.setActive(this.quests.stageId('ch5_crypt') === 'shard' && !F.crypt_projection);
       if (it.id === 'return_camp') it.setActive(this.quests.stageId('ch4_return') === 'camp');
       if (it.id === 'cave_in') it.setActive(!F.rubble_cleared);
       if (it.id === 'cat_ugolek') it.setActive(this.quests.status('c_lost_cat') === 'active' && !F.cat_found);
@@ -473,6 +503,46 @@ export class RPG {
         if (this.quests.stageId('c_watchtower') === 'log' && !this.dialogue.active) this.dialogue.start('B07b', null);
         else if (text) this.apply({ read: text });
         break;
+      case 'temple_room':
+        if (this.quests.stageId('ch5_crypt') === 'prep' && !F.C00_ROOM) {
+          this.setFlag('C00_ROOM');
+          this.notify('info', 'Нижняя комната пуста: работница сказала, что все ушли в западный зал.');
+        } else this.game.hud.toast('Служебная комната под лестницей. Пусто.', 3);
+        break;
+      case 'crypt_lamp_a':
+      case 'crypt_lamp_b':
+        if (!F[id + '_hung'] && this.inventory.count('crypt_lamp') > 0) {
+          this.inventory.remove('crypt_lamp', 1);
+          this.setFlag(id + '_hung');
+          const p = prop.root.getWorldPosition(new THREE.Vector3());
+          this.game.player.setCheckpoint(new THREE.Vector3(p.x, 0.05, p.z), this.game.player.controller.yaw);
+          this.game.vfx.burst('magicPop', p, 24);
+          this.notify('info', 'Лампа повешена: это отметка на обратном пути.');
+        } else this.game.hud.toast(F[id + '_hung'] ? 'Лампа уже висит.' : 'Нужна лампа гильдии.', 3);
+        break;
+      case 'crypt_latch_0':
+      case 'crypt_latch_1':
+      case 'crypt_latch_2':
+        this.game.hud.toast(F[id] ? 'Защёлка сбита.' : 'Защёлка высоко над полом. Руками не достать: нужен водяной залп Рокси (Tab, затем Q).', 4);
+        break;
+      case 'crypt_winch':
+        if (F.crypt_drained) this.game.hud.toast('Вода ушла в сток.', 3);
+        else if (!F.crypt_gate_open) this.game.hud.toast('Галерея заперта: сначала три защёлки.', 3);
+        else if (this.game.player.character !== 'megumin') this.game.hud.toast('Рукоять заедает. Тут нужен посох Мегумин (Tab).', 4);
+        else {
+          this.setFlag('crypt_drained');
+          this.notify('event', 'Рукоять провернулась: вода уходит в сток.');
+          this._sayChain(['C03_013', 'C03_014']);
+        }
+        break;
+      case 'crypt_pedestal':
+        if (this.quests.stageId('ch5_crypt') === 'shard' && !F.crypt_projection && !this.dialogue.active) {
+          this.inventory.add('star_shard', 1, false, true);
+          this.setFlag('crypt_projection');
+          this.game.vfx.burst('magicPop', prop.root.getWorldPosition(new THREE.Vector3()), 60);
+          this.dialogue.start('C04', null);
+        } else this.game.hud.toast(F.C04_DONE ? 'Постамент пуст. Осколки у вас.' : 'Постамент для осколков: подойди, когда спустишься до ниши.', 4);
+        break;
       case 'return_camp':
         if (this.quests.stageId('ch4_return') === 'camp' && !this.dialogue.active) this.dialogue.start('A27', null);
         else this.game.hud.toast('Костёр. Здесь можно присесть.', 3);
@@ -640,6 +710,7 @@ export class RPG {
     pl.restoreStamina(100);
     this.game.hud.fade?.(1.2);
     this.notify('info', `Вы хорошо выспались. ${this.clock.label()}`);
+    if (this.quests.stageId('ch5_crypt') === 'rest') this.setFlag('C_RESTED');
     this.npcs?.refresh();
     this.gathering?.update();
     this.markDirty(true);
@@ -686,6 +757,7 @@ export class RPG {
       this.setFlag(key);
       if (t.say) this._sayChain(t.say);
       if (t.do) this.apply(t.do);
+      if (t.dialogue) this.dialogue.start(t.dialogue, null);
     }
   }
 

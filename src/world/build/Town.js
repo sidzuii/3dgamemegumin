@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mulberry32 } from '../../core/math.js';
 import { Frame, house, houseTower, cityWall, paveRibbon, pavePoly, lamp, lantern, barrel, crate, stall, well, bench, wagon, haystack, fence, tree, bush, food, prop, tableware } from './Kit.js';
-import { HealingCrystal, Brazier, QuestProp } from '../Interactables.js';
+import { HealingCrystal, Brazier, QuestProp, Door } from '../Interactables.js';
 import { TrainingDummy } from '../TrainingDummy.js';
 import { ROOF_COLORS } from '../KitLibrary.js';
 import { REGION, offsetPolygon } from '../MapData.js';
@@ -328,6 +328,8 @@ function temple(rng) {
   W.addLightSource(F.at(0, fy + 2.5, back + 0.5), { color: 0x9ff0ff, intensity: 5, distance: 12, always: true });
   W.addLightSource(F.at(0, 5.2, 0), { color: 0xffd8a0, intensity: 6, distance: 16, always: true });
   W.addInteractable(new HealingCrystal(F.at(0, fy + 0.5, back - 0.3)));
+  // C00: the service room under the stairs (people must be led out before the crypt is opened).
+  W.addInteractable(new QuestProp({ id: 'temple_room', name: 'Служебная комната', prompt: 'Проверить, не остался ли кто внизу', position: F.at(3.2, fy + 0.9, back - 0.3), shape: 'none' }));
   inside(() => templeExtras(F, w, d));
   W.spot('temple_door', F.at(0, fy, d / 2 + 2.4), rot);
 }
@@ -339,6 +341,8 @@ function crypt() {
   C.kit('graveyard/crypt-small', 0, 0, 0, { s: 2.8 });
   C.kit('graveyard/crypt-small-roof', 0, 2.8, 0, { s: 2.8, collide: false });
   W.spot('crypt_door', C.at(0, 0, 2.6), rot + Math.PI);
+  // C02: Clara breaks the seal (flag crypt_open); the stair leads down to the crypt level (build/Crypt.js).
+  W.addInteractable(new Door({ id: 'crypt_gate', name: 'Спуск в крипту', prompt: 'Спуститься', position: C.at(0, 0, 1.3), target: 'crypt_in', rotY: rot }));
 }
 
 /** Town hall: a two-storey stone hall with a clock tower over the door. */
