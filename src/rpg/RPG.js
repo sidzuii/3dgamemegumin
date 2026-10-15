@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { EventBus, freshState, loadSave, writeSave, check, MAP_REV, STORY_REV } from './State.js';
 import { CLIPS } from '../data/story/clips.js';
 import { VOICE } from '../data/story/dsl.js';
+import { TRIGGERS } from '../data/story/triggers.js';
 import { Clock } from './Clock.js';
 import { QuestManager } from './Quests.js';
 import { DialogueRunner } from './Dialogue.js';
@@ -467,6 +468,11 @@ export class RPG {
         else if (!F.A19_SEEN && this.quests.status('ch3_lights') === 'active' && !this.dialogue.active) this.dialogue.start('A19', null);
         else this.game.hud.toast('Завал. Игла показывает за него. Отойти к каменной арке и ударить взрывом (Q).', 5);
         break;
+      case 'tower_logbook':
+        // B07b: Megumin reads the old logbook aloud (a dialogue while the order is open, the plain text afterwards).
+        if (this.quests.stageId('c_watchtower') === 'log' && !this.dialogue.active) this.dialogue.start('B07b', null);
+        else if (text) this.apply({ read: text });
+        break;
       case 'return_camp':
         if (this.quests.stageId('ch4_return') === 'camp' && !this.dialogue.active) this.dialogue.start('A27', null);
         else this.game.hud.toast('Костёр. Здесь можно присесть.', 3);
@@ -666,6 +672,23 @@ export class RPG {
   }
 
   // ---------------------------------------------------------------------------------------
+  /** Story place triggers (data/story/triggers.js): once per save, when the condition holds and the player is near. */
+  _updateTriggers(dt) {
+    this._trgT = (this._trgT || 0) - dt;
+    if (this._trgT > 0 || this.dialogue.active) return;
+    this._trgT = 0.6;
+    const pp = this.game.player.position;
+    for (const t of TRIGGERS) {
+      const key = 'trg_' + t.id;
+      if (this.state.flags[key] || !check(this, t.if)) continue;
+      const s = this.spotPos(t.spot);
+      if (!s || Math.hypot(pp.x - s.x, pp.z - s.z) > (t.r ?? 10)) continue;
+      this.setFlag(key);
+      if (t.say) this._sayChain(t.say);
+      if (t.do) this.apply(t.do);
+    }
+  }
+
   update(dt) {
     const newDay = this.clock.update(dt);
     if (newDay) {
@@ -678,6 +701,7 @@ export class RPG {
       const pp = this.game.player.position;
       this._explore(pp);
       this.quests.update(pp);
+      this._updateTriggers(0.5);
       this.gathering.update();
       // Schedules change on the hour.
       const hour = Math.floor(this.clock.hour);

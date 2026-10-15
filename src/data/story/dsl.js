@@ -11,8 +11,9 @@ import { CLIPS } from './clips.js';
  *   $.CH(id, [options])    answers shown after the previous line; options = $.O(clipNo, program, { if, do })
  *   $.IF(cond, then, else) silent branch (conditions: rpg/State.js `check`, incl. { var: [name, op, value] })
  *   $.DO(effects)          silent effects (quest steps, rewards, variables...)
- *   $.MENU(id, options, exit) like CH, but every answer returns to the menu (answered ones disappear) until
- *                          `exit` ($.O, or $.X(label, program) for a button that is not a line of the package) is picked
+ *   $.MENU(id, options, exit) like CH, but every answer returns to the menu (answered ones disappear) until an
+ *                          `exit` ($.O, or $.X(label, program) for a button that is not a line of the package; one or a
+ *                          list, each with its own { if }) is picked
  *   $.N(text)              narrator line that is not part of the package (game glue)
  *   $.T(who, text)         line of an npc id that is not part of the package (game glue, not voiced)
  *   $.JUMP(sceneId)        end this scene and start another one with the same NPC
@@ -100,13 +101,15 @@ class Compiler {
           const say = this.put(oid, { clip: oid, who: 'megumin', text: oc[1], next: this.resolve(body), do: o.opts?.do });
           choices.push({ text: oc[1], clip: oid, next: say, if: o.opts?.if ? [{ not: { seen: oid } }, o.opts.if] : { not: { seen: oid } } });
         }
-        if (it.exit.label) {
-          // Not a line of the package: the player simply ends the questions.
-          choices.push({ text: it.exit.label, next: this.resolve(this.seq(it.exit.prog, cont)) });
-        } else {
-          const [xid, xc] = this.clip(it.exit.no);
-          const out = this.put(xid, { clip: xid, who: 'megumin', text: xc[1], next: this.seq(it.exit.prog, cont), do: it.exit.opts?.do });
-          choices.push({ text: xc[1], clip: xid, next: out });
+        for (const x of [].concat(it.exit)) {
+          if (x.label) {
+            // Not a line of the package: the player simply ends the questions.
+            choices.push({ text: x.label, next: this.resolve(this.seq(x.prog, cont)), if: x.opts?.if });
+          } else {
+            const [xid, xc] = this.clip(x.no);
+            const out = this.put(xid, { clip: xid, who: 'megumin', text: xc[1], next: this.resolve(this.seq(x.prog, cont)), do: x.opts?.do });
+            choices.push({ text: xc[1], clip: xid, next: out, if: x.opts?.if });
+          }
         }
         return host;
       }

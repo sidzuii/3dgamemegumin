@@ -159,8 +159,9 @@ export const QUESTS = Object.fromEntries([
     title: 'Огни на старой башне', category: 'contract', kind: 'Исследование', chapter: 1, giver: 'luna', rank: 'E',
     summary: 'По ночам на заброшенной сторожевой башне к северо-востоку видели огни. Гильдия хочет знать, кто там.',
     stages: [
+      { id: 'brief', text: 'Поговори с Луной о заказе: журнал дозорного на старой башне.', target: 'npc:luna', objectives: [{ type: 'talk', label: 'Поговорить с Луной' }] },
       { id: 'reach', text: 'Доберись до старой сторожевой башни (тропа от северной дороги).', target: 'region:watchtower', objectives: [{ type: 'reach', region: 'watchtower', label: 'Дойти до башни' }] },
-      { id: 'log', text: 'Поднимись наверх и найди, что оставили дозорные.', target: 'spot:watchtower_top', objectives: [{ type: 'interact', id: 'tower_logbook', label: 'Осмотреть журнал' }] },
+      { id: 'log', text: 'Поднимись наверх и найди журнал дозорного.', target: 'spot:watchtower_top', objectives: [{ type: 'flag', flag: 'B07_LOG', label: 'Осмотреть журнал' }] },
       { id: 'report', text: 'Доложи Луне.', target: 'npc:luna', objectives: [{ type: 'talk', label: 'Доложить' }] },
     ],
     rewards: { eris: 70, xp: 60, rankPoints: 2, flags: ['lore_tower'] },
@@ -170,7 +171,8 @@ export const QUESTS = Object.fromEntries([
     requires: { flag: 'glade_known' },
     summary: 'Висс нужны лунные цветы. Они раскрываются только ночью — например, на скрытой поляне в лесу.',
     stages: [
-      { id: 'gather', text: 'Собери 3 лунных цветка (ночью, Скрытая поляна).', target: 'region:glade', objectives: [{ type: 'collect', item: 'moonflower', n: 3, label: 'Лунный цветок' }],
+      { id: 'brief', text: 'Поговори с Висс: ей нужны лунные цветы.', target: 'npc:wiss', objectives: [{ type: 'talk', label: 'Поговорить с Висс' }] },
+      { id: 'gather', text: 'Собери 3 раскрывшихся лунных цветка (ночью, Скрытая поляна). Закрытые бутоны оставь.', target: 'region:glade', objectives: [{ type: 'collect', item: 'moonflower', n: 3, label: 'Лунный цветок' }],
         hint: 'Если не хочется ждать ночи — можно снять комнату в таверне и выспаться.' },
       { id: 'turnin', text: 'Отнеси цветы Висс.', target: 'npc:wiss', objectives: [{ type: 'talk', label: 'Отдать цветы' }] },
     ],
@@ -276,12 +278,13 @@ export const QUESTS = Object.fromEntries([
   // SIDE QUESTS
   // =====================================================================================
   Q('s_bard_song', {
-    title: 'Баллада для архимага', category: 'side', chapter: 2, giver: 'fenrik', requires: { quest: 'ch2_people', status: 'done' },
-    summary: 'Фенрик ищет вдохновение для новой баллады. Ему нужно что-нибудь… сияющее.',
+    title: 'Баллада для архимага', category: 'side', chapter: 2, giver: 'fenrik', requires: [{ flag: 'A10_DONE' }, { flag: 'glade_known' }],
+    summary: 'Фенрик пишет балладу о Мегумин. Для куплета ему нужна вещь, которую она принесёт сама: лунный цветок.',
     stages: [
-      { id: 'flower', text: 'Принеси Фенрику лунный цветок.', target: 'npc:fenrik', objectives: [{ type: 'collect', item: 'moonflower', n: 1, label: 'Лунный цветок' }] },
-      { id: 'give', text: 'Отдай цветок Фенрику (таверна, вечером).', target: 'npc:fenrik', objectives: [{ type: 'talk', label: 'Поговорить с Фенриком' }] },
+      { id: 'brief', text: 'Поговори с Фенриком о песне (таверна, вечером).', target: 'npc:fenrik', objectives: [{ type: 'talk', label: 'Поговорить с Фенриком' }] },
+      { id: 'flower', text: 'Принеси Фенрику отдельный лунный цветок (не из трёх для Висс).', target: 'region:glade', objectives: [{ type: 'collect', item: 'moonflower', n: 1, label: 'Лунный цветок' }] },
+      { id: 'give', text: 'Отдай цветок Фенрику и послушай первый куплет.', target: 'npc:fenrik', objectives: [{ type: 'talk', label: 'Поговорить с Фенриком' }] },
     ],
-    rewards: { eris: 30, xp: 50, rel: [['fenrik', 20]], flags: ['ballad'] },
+    rewards: { eris: 30, xp: 50, rel: [['fenrik', 20]] },
   }),
 ].map(([id, q]) => [id, q]));

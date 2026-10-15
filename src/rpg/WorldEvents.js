@@ -48,6 +48,8 @@ export class WorldEvents {
     if (caravanOn !== !!rpg.state.flags.event_caravan && (!caravanOn || this.active() < MAX_ACTIVE)) {
       rpg.setFlag('event_caravan', caravanOn);
       this.wagon.visible = caravanOn;
+      // B12: the catalogue he promised is ready at his next arrival.
+      if (caravanOn && rpg.state.flags.B12_WAIT) { rpg.setFlag('B12_WAIT', false); rpg.setFlag('B12_READY'); }
       changed = true;
     }
     if (caravanOn) {

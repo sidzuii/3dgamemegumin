@@ -101,7 +101,8 @@ export const NPCS = [
       { if: { quest: 'ch1_name', stage: 'promote' }, dialogue: 'A09' },
       { if: { quest: 'c_goblin_scouts', stage: 'brief' }, dialogue: 'B03a' },
       { if: { quest: 'c_goblin_scouts', stage: 'report' }, dialogue: 'B03b' },
-      { if: { quest: 'c_watchtower', stage: 'report' }, dialogue: 'luna_tower' },
+      { if: { quest: 'c_watchtower', stage: 'brief' }, dialogue: 'B07a' },
+      { if: { quest: 'c_watchtower', stage: 'report' }, dialogue: 'B07c' },
       { dialogue: 'luna_main' },
     ],
   },
@@ -127,7 +128,9 @@ export const NPCS = [
     talk: [
       { if: { quest: 'ch2_people', status: 'active', notFlag: 'A10_DONE', hour: [18, 24] }, dialogue: 'A10' },
       { if: { quest: 'ch2_people', status: 'active', notFlag: 'A10_DONE' }, bark: ['Песни вечером, в таверне. Днём я только настраиваюсь.'] },
-      { if: { quest: 's_bard_song', stage: 'give' }, dialogue: 'fenrik_ballad' },
+      { if: { quest: 's_bard_song', stage: 'brief' }, dialogue: 'B09a' },
+      { if: { quest: 's_bard_song', stage: 'give' }, dialogue: 'B09b' },
+      { if: { quest: 's_bard_song', status: 'available' }, dialogue: 'B09a' },
       { dialogue: 'fenrik_idle' },
     ],
   },
@@ -140,7 +143,8 @@ export const NPCS = [
       { if: { quest: 'join_guild', stage: 'potion' }, dialogue: 'A05' },
       { if: { quest: 'c_herbs', stage: 'brief' }, dialogue: 'B01a' },
       { if: { quest: 'c_herbs', stage: 'turnin' }, dialogue: 'B01b' },
-      { if: { quest: 'c_moonflowers', stage: 'turnin' }, dialogue: 'wiss_moon' },
+      { if: { quest: 'c_moonflowers', stage: 'brief' }, dialogue: 'B08a' },
+      { if: { quest: 'c_moonflowers', stage: 'turnin' }, dialogue: 'B08b' },
       { dialogue: 'wiss_main' },
     ],
   },
@@ -309,7 +313,7 @@ export const NPCS = [
     look: { skin: 0xf6d0b0, hair: 0x3a2418, hairStyle: 'short', top: 0x7a6a5a, cape: 0x5a6a7a, bottom: 0x4a4038, bag: 0x6a4a30 },
     appear: [{ flag: 'event_traveler' }, { notFlag: 'traveler_helped' }],
     schedule: [{ time: [0, 24], spot: 'injured_traveler', anim: 'sit', seat: 0.12 }],
-    talk: [{ dialogue: 'ivo_help' }],
+    talk: [{ if: { flag: 'ivo_bandaged' }, dialogue: 'B11b' }, { dialogue: 'B11a' }],
   },
   {
     id: 'caravan_trader', name: 'Сайрус', title: 'Странствующий торговец',
@@ -317,7 +321,11 @@ export const NPCS = [
     look: { skin: 0xc89070, hair: 0x1a1418, hairStyle: 'short', beard: true, top: 0xa04a3a, vest: 0xd8b060, bottom: 0x3a2a4a, hat: 'wide', hatColor: 0x8a3a2a, cape: 0xd8b060 },
     appear: { flag: 'event_caravan' },
     schedule: [{ time: [0, 24], spot: 'caravan_trader', anim: 'idle' }],
-    talk: [{ dialogue: 'trader_main' }],
+    talk: [
+      { if: { flag: 'B12_READY', notFlag: 'B12_DONE' }, dialogue: 'B12b' },
+      { if: { item: 'astra_token', notFlag: 'B12_ASKED' }, dialogue: 'B12a' },
+      { dialogue: 'trader_main' },
+    ],
   },
   // ------------------------------------------------------------------ Roxy (chapter 4)
   {

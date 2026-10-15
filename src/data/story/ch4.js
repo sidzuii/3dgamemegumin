@@ -91,6 +91,7 @@ export const CH4 = {
   ...S('A28', ($) => [
     $.L(1, 6),
     $.CH('A28.1', [$.O(7, [$.L(8)]), $.O(9, [$.L(10, 11)]), $.O(12, [$.L(13, 15)])]),
+    $.IF({ quest: 'c_watchtower', status: 'done' }, [$.LX('B07c', 4)]),
     $.L(16),
     $.DO([{ take: [['edmund_device', 1]] }, { advance: 'ch4_return' }]),
   ]),
