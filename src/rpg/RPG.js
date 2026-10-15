@@ -476,8 +476,6 @@ export class RPG {
     for (const [id, d] of Object.entries(this.quests.defs)) {
       if (d.giver === npc.id && d.category === 'story' && !d.noAuto && this.quests.canStart(id)) this.quests.start(id);
     }
-    // An offer of a side contract never hides a story step of the same person: offers come after the conditional
-    // entries (story stages, barks) and before the unconditional default.
     for (const t of talkOrder(def)) {
       if (!t.if || this.check(t.if)) {
         if (t.dialogue) {
@@ -1052,12 +1050,18 @@ function roadRoute(id, from) {
 export { REGIONS };
 
 const _talkOrder = new WeakMap();
+/** An offer of a side contract (`status: 'available'`) never hides a story step of the same person: the offers move behind
+ *  the last conversation that belongs to a quest stage; everything else keeps the order of data/npcs.js. */
 function talkOrder(def) {
   let list = _talkOrder.get(def);
   if (!list) {
     const talk = def.talk || [];
     const offer = (t) => !!t.dialogue && JSON.stringify(t.if || '').includes('"status":"available"');
-    list = [...talk.filter((t) => t.if && !offer(t)), ...talk.filter(offer), ...talk.filter((t) => !t.if && !offer(t))];
+    const step = (t) => !!t.dialogue && !offer(t) && JSON.stringify(t.if || '').includes('"stage"');
+    const rest = talk.filter((t) => !offer(t));
+    let at = -1;
+    rest.forEach((t, i) => { if (step(t)) at = i; });
+    list = at < 0 ? talk : [...rest.slice(0, at + 1), ...talk.filter(offer), ...rest.slice(at + 1)];
     _talkOrder.set(def, list);
   }
   return list;
