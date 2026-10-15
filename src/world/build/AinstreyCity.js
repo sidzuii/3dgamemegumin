@@ -2,8 +2,11 @@ import * as THREE from 'three';
 import { mulberry32, fbm } from '../../core/math.js';
 import { Frame, cityWall, paveRibbon, pavePoly, lamp, tree, stall, wagon, well, bench, barrel, crate, fence } from './Kit.js';
 import { lightHouse, keyBuilding, toW } from './AinstreyBuildings.js';
+import { interiorBuilding, INTERIOR_IDS } from './AinstreyInteriors.js';
+import { pumpHouse } from './AinstreyPump.js';
 import { cityPlan, CLASS, PIERS, BRIDGES, GARDEN_ALLEYS, eastWallU, nearStreet, rectCorners, polyDist } from '../AinstreyCityPlan.js';
 import { buildPort } from './AinstreyPort.js';
+import { QuestProp } from '../Interactables.js';
 import * as AIN from '../AinstreyPlan.js';
 
 /**
@@ -44,10 +47,12 @@ export function buildCity(W) {
   terraces(W, P);
   quarters(W, P);
   keys(W, P);
+  capitalSpots(W, P);
   wall(W);
   buildPort(W);
   garden(W, P, rng0);
   citadel(W);
+  northIntake(W, P);
   signs(W, P);
   lamps(W, P);
 }
@@ -336,11 +341,40 @@ const pointNear = (r, u, v, m) => {
   return Math.abs(dx * c - dz * s) <= r.w / 2 + m && Math.abs(dx * s + dz * c) <= r.d / 2 + m;
 };
 
+/** The named places of the story outside the halls: the people at the gate and the yards, the bench of the garden, the store of the port, the houses of N01. */
+function capitalSpots(W, P) {
+  const lotFront = (r, dx = 0, out = 2.2) => { const c = Math.cos(r.rot), sn = Math.sin(r.rot), lz = r.d / 2 + out; return [r.u + dx * c + lz * sn, r.v - dx * sn + lz * c]; };
+  const sp = (name, u, v, yaw = 0) => { const [x, z] = w2(u, v); W.spot(name, new THREE.Vector3(x, H(W, x, z), z), yaw); };
+  sp('oskar_post', -9, 1062, Math.PI);
+  const kg = (id) => P.keys.find((k) => k.id === id);
+  { const k = kg('guild_hall'); const [u, v] = lotFront(k, 8, 5.5); sp('guild_yard_nera', u, v, k.rot + Math.PI); }
+  { // a bench in the garden near the pair of fountains (the short talk D28)
+    const [bx, bz] = w2(-47, -748);
+    W.group('ain_garden_bench', { x: bx, z: bz }, () => bench(W, new Frame(W, bx, H(W, bx, bz), bz, Math.PI), 0, 0, 0), 'Скамья в саду');
+    sp('garden_bench', -47, -752, 0);
+  }
+  { // the river store: a first-row warehouse of the quay by the square of the cargo; the people of D20 stand before its doors
+    const stores = P.lots.filter((l) => l.warehouse && l.side === 0).sort((a, b) => Math.hypot(a.u - 740, a.v - 330) - Math.hypot(b.u - 740, b.v - 330));
+    const l = stores[0];
+    if (l) for (const [name, dx] of [['port_store_varlen', 0], ['port_store_nera', -4.5], ['port_store_selia', 4.5]]) { const [u, v] = lotFront(l, dx, 3.2); sp(name, u, v, l.rot + Math.PI); }
+  }
+  { // N01: the old house of the family (a workshop now) and the new house by the boat yard
+    const homes = P.lots.filter((l) => !l.warehouse && l.w >= 7 && (l.district === 'port' || l.district === 'posad'));
+    const nearest = (u, v, skip) => homes.filter((l) => l !== skip).sort((a, b) => Math.hypot(a.u - u, a.v - v) - Math.hypot(b.u - u, b.v - v))[0];
+    const old = nearest(470, 520), nw = nearest(615, 430, old);
+    for (const [name, l] of [['n01_old_workshop', old], ['n01_new_house', nw]]) if (l) { const [u, v] = lotFront(l, 0, 2.0); sp(name, u, v, l.rot + Math.PI); }
+  }
+  { // N02: the chimney of the inn from the yard
+    const k = kg('inn_tavia'), c = Math.cos(k.rot), sn = Math.sin(k.rot), lx = k.w / 2 + 2.4, lz = -4;
+    sp('n02_roof', k.u + lx * c + lz * sn, k.v - lx * sn + lz * c, k.rot + Math.PI / 2);
+  }
+}
+
 function keys(W, P) {
   for (const k of P.keys) {
     const [x, z] = w2(k.u, k.v);
     W.group('ain_key_' + k.id, { x, z, rot: k.rot }, () => {
-      const r = keyBuilding(W, k);
+      const r = INTERIOR_IDS.includes(k.id) ? interiorBuilding(W, k) : k.id === 'pump_house' ? pumpHouse(W, k) : keyBuilding(W, k);
       W.addFootprint(x, z, k.w, k.d, k.rot, 'public');
       W.spot(k.id + '_door', new THREE.Vector3(r.door.x, H(W, r.door.x, r.door.z), r.door.z), k.rot + Math.PI);
     }, k.name);
@@ -423,6 +457,42 @@ function garden(W, P, rng0) {
   void rng0;
 }
 
+/** The lower Northern intake: a closed portal in the north-east corner of the city (a future part): bars, a lock, a notice; nothing inside. */
+function northIntake(W, P) {
+  // a spot near the wall of the north-east corner with no lot, street or square within reach
+  const wallPts = AIN.CITY_WALL.map((n) => [n.u, n.v]);
+  let best = null;
+  for (let i = 0; i < wallPts.length; i++) {
+    const [a, b] = [wallPts[i], wallPts[(i + 1) % wallPts.length]];
+    if (!(a[1] < -700 && a[0] > 300) || !(b[1] < -700 && b[0] > 300)) continue; // the north-east stretch of the wall
+    for (let t = 0.2; t <= 0.8; t += 0.1) {
+      const u = a[0] + (b[0] - a[0]) * t, v = a[1] + (b[1] - a[1]) * t;
+      const dx = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dx, dz), nx = -dz / L, nz = dx / L; // normal (to the inside it points toward the city)
+      for (const sgn of [1, -1]) {
+        const pu = u + nx * sgn * 9, pv = v + nz * sgn * 9;
+        if (!insideWall(pu, pv)) continue;
+        if (P.lots.some((l) => Math.hypot(l.u - pu, l.v - pv) < 22) || nearStreet(pu, pv, 8) || P.keys.some((k) => Math.hypot(k.u - pu, k.v - pv) < 40)) continue;
+        if (!best) best = { u: pu, v: pv, face: Math.atan2(-nx * sgn, -nz * sgn) + Math.PI, wu: u, wv: v };
+      }
+    }
+  }
+  if (!best) return;
+  const [x, z] = w2(best.u, best.v);
+  W.group('ain_north_intake', { x, z, rot: best.face }, () => {
+    const F = new Frame(W, x, H(W, x, z), z, best.face);
+    F.box(9, 4.6, 4, 0, 0, 0, 'stone', { tint: 0xa89e8c });
+    F.box(5.2, 0.5, 4.4, 0, 3.6, 0, 'stone', { tint: 0xcfc4a8, collide: false });
+    F.box(3.0, 3.2, 0.5, 0, 0, 2.05, 'stoneDark', { collide: false, tint: 0x2a2a2e }); // the dark mouth
+    for (let i = 0; i < 7; i++) F.box(0.1, 3.2, 0.1, -1.35 + i * 0.45, 0, 2.3, 'metal', { collide: false }); // the bars
+    F.box(3.0, 0.1, 0.12, 0, 1.2, 2.3, 'metal', { collide: false });
+    F.box(0.3, 0.36, 0.14, 0.9, 1.1, 2.38, 'metal', { collide: false, tint: 0xa8903a }); // the lock
+    const front = F.at(0, 0, 4.4);
+    W.spot('north_intake_gate', new THREE.Vector3(front.x, H(W, front.x, front.z), front.z), best.face + Math.PI);
+    W.addSign(new THREE.Vector3(front.x + 3.4 * Math.cos(best.face), 0, front.z - 3.4 * Math.sin(best.face)), best.face + Math.PI, ['Нижний Северный водозабор: закрыто', 'Служба готовит отдельное обследование', 'Внутри нет задач для отряда']);
+    W.addInteractable(new QuestProp({ id: 'north_intake_gate', name: 'Решётка водозабора', prompt: 'Осмотреть решётку', position: new THREE.Vector3(front.x, H(W, front.x, front.z) + 1.3, front.z), shape: 'none' }));
+  }, 'Нижний Северный водозабор (закрыт)');
+}
+
 /** The inner citadel: a high wall, a closed gate facing the garden, the roofs of its keep over the wall. A future part of the game. */
 function citadel(W) {
   const pts = AIN.CITADEL.pts;
@@ -443,6 +513,8 @@ function citadel(W) {
     const front = frame.at(0, 0, -7);
     W.spot('ain_citadel_gate', new THREE.Vector3(front.x, H(W, front.x, front.z), front.z), frame.rot + Math.PI);
     W.addSign(new THREE.Vector3(front.x + 4, 0, front.z), frame.rot + Math.PI, ['Внутренняя цитадель закрыта', 'Проход откроется в одном из следующих обновлений']);
+    // the leaf answers when examined (the status of the closed part: it is shown on the map as well)
+    W.addInteractable(new QuestProp({ id: 'citadel_gate', name: 'Ворота цитадели', prompt: 'Осмотреть закрытые ворота', position: new THREE.Vector3(front.x, H(W, front.x, front.z) + 1.4, front.z), shape: 'none' }));
   }
   // the roofs of the keep over the wall: a tall tower and two lower halls (no collision: nobody gets there)
   const [kx, kz] = toW(0, -1010);

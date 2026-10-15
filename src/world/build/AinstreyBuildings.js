@@ -43,13 +43,46 @@ export function lightHouse(W, lot, opt = {}) {
   const warehouse = lot.kind === 'warehouse', shed = lot.kind === 'shed';
   const floorH = warehouse ? 4.6 : shed ? 3.0 : 3.15;
   const yBase = lo - 0.5;
-  const yF = hi + 0.2; // the floor of the ground storey (the door sill)
+  const I = opt.interior; // { floorH, doorW, doorH, doorX }: a walk-in ground storey (hollow, with a doorway)
+  const yF = hi + 0.2 + (opt.podium || 0); // the floor of the ground storey (the door sill)
   const lowPart = yF - yBase;
-  const H = lowPart + lot.floors * floorH + (lot.shop ? 0.5 : 0);
+  const gfH = I ? I.floorH : floorH;
+  const H = lowPart + (I ? gfH + (lot.floors - 1) * floorH : lot.floors * floorH) + (lot.shop ? 0.5 : 0);
   const F = new Frame(W, x, yBase, z, rot);
+  const storeyY = (f) => lowPart + (f === 0 ? 0 : gfH + (f - 1) * floorH);
   // body + plinth + cornice
-  F.box(w, H, d, 0, 0, 0, 'plaster', { tint: lot.wall });
-  F.box(w + 0.3, lowPart + 0.85, d + 0.3, 0, 0, 0, 'stone', { tint: opt.plinth ?? 0xb4aa94, collide: false });
+  if (I) {
+    // a solid podium up to the floor, the walls of the ground storey round the hall, a ceiling, the solid upper storeys above
+    const t = 0.6, top = lowPart + gfH, dX = I.doorX ?? 0, dW = I.doorW ?? 3.4, dH = I.doorH ?? 3.4;
+    const pit = I.pit; // { x0, x1, z0, z1 }: a sunk pit with a ramp (the pump hall): the podium is split round it
+    if (pit) {
+      const pd = opt.podium || 2.8, bot = lowPart - pd;
+      F.box(w, lowPart, pit.z0 + d / 2, 0, 0, (-d / 2 + pit.z0) / 2, 'stone', { tint: 0xa89e8c });
+      F.box(w, lowPart, d / 2 - pit.z1, 0, 0, (pit.z1 + d / 2) / 2, 'stone', { tint: 0xa89e8c });
+      F.box(pit.x0 + w / 2, lowPart, pit.z1 - pit.z0, (-w / 2 + pit.x0) / 2, 0, (pit.z0 + pit.z1) / 2, 'stone', { tint: 0xa89e8c });
+      F.box(w / 2 - pit.x1, lowPart, pit.z1 - pit.z0, (pit.x1 + w / 2) / 2, 0, (pit.z0 + pit.z1) / 2, 'stone', { tint: 0xa89e8c });
+      F.box(pit.x1 - pit.x0, bot, pit.z1 - pit.z0, (pit.x0 + pit.x1) / 2, 0, (pit.z0 + pit.z1) / 2, 'stoneDark', { tint: 0x6a6458 });
+      const run = pit.z1 - pit.z0, len = Math.hypot(run, pd), ang = Math.atan2(pd, run);
+      F.box(pit.x1 - pit.x0 - 0.2, 0.4, len, (pit.x0 + pit.x1) / 2, bot + pd / 2 - 0.2, (pit.z0 + pit.z1) / 2, 'plank', { rx: -ang, tint: 0x7a6a50 });
+      for (let k = 0; k < 6; k++) { const f = pit.z0 + 0.5 + k * ((run - 1) / 5); F.box(pit.x1 - pit.x0 - 0.3, 0.05, 0.12, (pit.x0 + pit.x1) / 2, bot + pd * ((f - pit.z0) / run) + 0.04, f, 'metal', { ...{ collide: false, castShadow: false }, rx: -ang, tint: 0x4a4a4a }); }
+    } else F.box(w, lowPart, d, 0, 0, 0, 'stone', { tint: opt.plinth ?? 0xb4aa94 });
+    F.box(w, gfH, t, 0, lowPart, -d / 2 + t / 2, 'plaster', { tint: lot.wall });
+    for (const sx of [-1, 1]) F.box(t, gfH, d - 2 * t, sx * (w / 2 - t / 2), lowPart, 0, 'plaster', { tint: lot.wall });
+    const l0 = -w / 2, l1 = dX - dW / 2, r0 = dX + dW / 2, r1 = w / 2;
+    F.box(l1 - l0, gfH, t, (l0 + l1) / 2, lowPart, d / 2 - t / 2, 'plaster', { tint: lot.wall });
+    F.box(r1 - r0, gfH, t, (r0 + r1) / 2, lowPart, d / 2 - t / 2, 'plaster', { tint: lot.wall });
+    F.box(dW, gfH - dH, t, dX, lowPart + dH, d / 2 - t / 2, 'plaster', { tint: lot.wall });
+    for (const sx of [-1, 1]) F.box(0.45, dH, 0.7, dX + sx * (dW / 2 + 0.22), lowPart, d / 2 - 0.1, 'stone', { tint: 0xd8ccb0, collide: false });
+    F.box(dW + 1.2, 0.45, 0.8, dX, lowPart + dH, d / 2 - 0.05, 'stone', { tint: 0xd8ccb0, collide: false });
+    if (!pit) F.box(w - 2 * t, 0.05, d - 2 * t, 0, lowPart, 0, 'plank', { tint: opt.floorTint ?? 0x8a6a44, collide: false, castShadow: false });
+    F.box(w - 2 * t, 0.3, d - 2 * t, 0, top - 0.3, 0, 'plank', { tint: 0x6a4e34, castShadow: false });
+    F.box(w, H - top, d, 0, top, 0, 'plaster', { tint: lot.wall });
+  } else F.box(w, H, d, 0, 0, 0, 'plaster', { tint: lot.wall });
+  if (I) { // a hall: the plinth is a ring round the walls (a solid box would be a slab above the floor inside)
+    const ph = lowPart + 0.85, pc = { tint: opt.plinth ?? 0xb4aa94, collide: false };
+    for (const sz of [-1, 1]) F.box(w + 0.3, ph, 0.18, 0, 0, sz * (d / 2 + 0.06), 'stone', pc);
+    for (const sx of [-1, 1]) F.box(0.18, ph, d, sx * (w / 2 + 0.06), 0, 0, 'stone', pc);
+  } else F.box(w + 0.3, lowPart + 0.85, d + 0.3, 0, 0, 0, 'stone', { tint: opt.plinth ?? 0xb4aa94, collide: false });
   if (!shed) F.box(w + 0.5, 0.32, d + 0.5, 0, H - 0.32, 0, 'stone', { tint: opt.cornice ?? 0xcfc4a8, collide: false });
   // roof
   const kind = lot.roof;
@@ -78,12 +111,21 @@ export function lightHouse(W, lot, opt = {}) {
   // door
   const sill = yF - yBase;
   const frontZ = d / 2;
+  let stepsLen = 0; // the length of the steps in front of a walk-in door
   if (warehouse) {
     const n = Math.max(2, Math.round(w / 12));
     for (let k = 0; k < n; k++) {
       const dx = -w / 2 + (k + 0.5) * (w / n);
       F.box(3.0, 3.6, 0.2, dx, sill, frontZ + 0.02, 'door', { tint: 0x5a4a38, collide: false });
       F.box(3.5, 0.35, 0.35, dx, sill + 3.6, frontZ + 0.05, 'stone', { collide: false });
+    }
+  } else if (I) {
+    // an open doorway (the frame is part of the shell): steps down to the ground in front (a sill on a slope or a podium may be high)
+    const fg = groundUnder(W, x, z, w, d, rot)[3] - yBase, drop = sill - fg, n = I.noSteps ? 0 : drop > 0.25 ? Math.ceil(drop / 0.2) : 1;
+    stepsLen = n > 1 ? n * 0.55 : 1.4;
+    for (let i = 0; i < n; i++) {
+      const top = sill - (n === 1 ? 0.0 : (i + 1) * (drop / n)), base = Math.min(fg, sill - 0.2) - 0.35;
+      F.box((I.doorW ?? 3.4) + 1.4, top - base, n === 1 ? 1.4 : 0.55, I.doorX ?? 0, base, frontZ + (n === 1 ? 0.6 : 0.2 + i * 0.55 + 0.275), 'stone', { tint: 0xb4aa94 });
     }
   } else if (!shed) {
     F.box(1.6, 2.6, 0.2, 0, sill, frontZ + 0.02, 'door', { tint: lot.shop ? 0x4a3a2c : 0x5a3c28, collide: false });
@@ -99,10 +141,10 @@ export function lightHouse(W, lot, opt = {}) {
   const cols = Math.max(1, Math.floor((w - 1.6) / 3.4));
   const shut = SHUTTER[Math.floor(rng() * SHUTTER.length)];
   for (let f = 0; f < lot.floors; f++) {
-    const wy = sill + f * floorH + (f === 0 && warehouse ? 2.6 : 1.1);
+    const wy = storeyY(f) + (f === 0 && warehouse ? 2.6 : f === 0 && I ? (I.winY ?? 1.5) : 1.1);
     for (let k = 0; k < cols; k++) {
       const wx = -w / 2 + (k + 0.5) * (w / cols);
-      const skip = f === 0 && !warehouse && Math.abs(wx) < 1.7;
+      const skip = f === 0 && !warehouse && Math.abs(wx - (I?.doorX ?? 0)) < (I ? (I.doorW ?? 3.4) / 2 + 0.9 : 1.7);
       if (!skip && !(warehouse && f === 0)) {
         win(wx, wy, frontZ + 0.02);
         if (!lot.shop || f > 0) for (const s of [-1, 1]) F.box(0.42, 1.4, 0.08, wx + s * 0.72, wy, frontZ + 0.04, 'wood', { tint: shut, collide: false, castShadow: false, detail: true });
@@ -123,8 +165,8 @@ export function lightHouse(W, lot, opt = {}) {
       F.box(0.2, 0.3, 0.2, -w * 0.3, sill + 2.7, frontZ + 0.25, 'lampGlass', { collide: false, detail: true, castShadow: false });
     }
   }
-  const door = F.at(0, sill, frontZ + 1.6);
-  return { frame: F, door, top, sill: yF, size: [w, d] };
+  const door = F.at(I?.doorX ?? 0, sill, frontZ + 1.6 + (I ? stepsLen : 0));
+  return { frame: F, door, top, sill: yF, size: [w, d], localSill: sill, base: yBase };
 }
 
 /** The tall tower of a public building: a masonry shaft with a clock or a bell and a pyramidal roof. */
@@ -139,9 +181,9 @@ function tower(F, lx, lz, s, h, o = {}) {
  * A key building of the plan: a bigger light house with the features of its kind (towers, dome, colonnade, arcade).
  * k: { u, v, w, d, rot, floors, kind, tower, dome }; returns { frame, door, top }.
  */
-export function keyBuilding(W, k, seedBase = 7) {
+export function keyBuilding(W, k, seedBase = 7, extra = {}) {
   const lot = { ...k, wall: PAL[k.kind]?.wall ?? 0xd8ccb0, roofColor: PAL[k.kind]?.roof ?? 0x6a7c92, roof: k.kind === 'academy' || k.kind === 'theatre' ? 'gable' : k.kind === 'arcade' ? 'flat' : 'gable', shop: false, district: k.district, seed: seedBase + k.id.length * 31 };
-  const r = lightHouse(W, lot, { plinth: 0xb4aa94, cornice: 0xd8ccb0 });
+  const r = lightHouse(W, lot, { plinth: 0xb4aa94, cornice: 0xd8ccb0, ...extra });
   const F = r.frame, [w, d] = r.size;
   const H = r.top;
   if (k.tower) tower(F, w / 2 - 3.2, d / 2 - 3.5, 5.2, H + 7, { clock: k.kind === 'guild', roof: k.kind === 'archive' ? 0x5d7189 : 0x6a7c92 });

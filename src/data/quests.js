@@ -3,6 +3,8 @@
  * come from people. Stage objectives: see rpg/Quests.js. `target` points the compass/map.
  * `hint` appears as a gentle tutorial note when the stage begins.
  */
+import { CAPITAL_QUESTS } from './quests_capital.js';
+
 const Q = (id, q) => [id, { id, ...q }];
 
 export const QUESTS = Object.fromEntries([
@@ -381,14 +383,14 @@ export const QUESTS = Object.fromEntries([
       { id: 'dam', text: 'Южная дамба: Лисса ждёт у моста перед постом.', target: 'npc:lissa', objectives: [{ type: 'talk', label: 'Поговорить с Лиссой' }] },
     ],
     rewards: { xp: 400, flags: ['ainstrey_road_done'] },
-    next: 'ch6_relay',
+    next: 'ainstrey_city',
   }),
 
   // =====================================================================================
   // CHAPTER 6 — beyond the ridge
   // =====================================================================================
   Q('ch6_relay', {
-    title: 'По другую сторону хребта', category: 'story', chapter: 6, giver: 'tobias', requires: { quest: 'ainstrey_road', status: 'done' },
+    title: 'По другую сторону хребта', category: 'story', chapter: 6, giver: 'tobias', requires: { quest: 'ainstrey_city', status: 'done' },
     summary: 'Вейр отправил за отчётом на восток. Тобиас знает дорогу к восточному посту Астрариума. На посту остались двое работников.',
     stages: [
       { id: 'tobias', text: 'Поговори с Тобиасом о восточной дороге и перевале.', target: 'npc:tobias', objectives: [{ type: 'talk', label: 'Поговорить с Тобиасом' }] },
@@ -703,4 +705,5 @@ export const QUESTS = Object.fromEntries([
     ],
     rewards: { eris: 30, xp: 50, rel: [['fenrik', 20]] },
   }),
+  ...CAPITAL_QUESTS,
 ].map(([id, q]) => [id, q]));

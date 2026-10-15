@@ -13,6 +13,7 @@
  */
 const AT = (quest, ...stages) => (stages.length === 1 ? { quest, stage: stages[0] } : { any: stages.map((stage) => ({ quest, stage })) });
 const PLAN = (v) => ({ var: ['C07_PLAN', '==', v] });
+const CITY = (...stages) => AT('ainstrey_city', ...stages);
 
 export const STORY_PROPS = {
   // V05: a locked passage answers with a line of the package; V07: the gorge after the finale
@@ -191,6 +192,79 @@ export const STORY_PROPS = {
   mill_debris: {
     when: AT('ainstrey_road', 'mills_task'), once: 'wheel_debris', need: { flag: 'wheel_stopped' }, locked: 'Колесо ещё крутится: сначала рычаг.', scene: 'D12b', vfx: 'magicPop',
   },
+  // ---- version 2.0: the capital (D14-D28): the pump of the port (world/build/AinstreyPump.js), the closed future parts
+  port_note: {
+    when: CITY('prep'),
+    do: [{ read: { icon: '📝', title: 'Записка рабочих', text: 'Нас трое внизу. Боковая муфта заклинила, стражи у ручного поста закрыли проход. Мы поднялись на верхний мосток по левой лестнице.\n\nНеполная схема: у нас на копии одной заслонки нет. Просим вывести нас без паники: мосток надо переставить к лестнице, защёлку открывают посохом.\n\nСухой выход: площадка вывода у ворот, зелёная стрелка.' } }],
+  },
+  port_gangway: { when: CITY('prep'), once: 'port_gangway', toast: 'Мосток переставлен к лестнице: рабочие выходят сухим путём на площадку вывода.', vfx: 'magicPop' },
+  port_latch: { when: CITY('prep'), once: 'port_latch_free', char: 'megumin', wrong: 'Защёлку освобождает посохом Мегумин (Tab).', toast: 'Защёлка открыта посохом: боковая задвижка свободна.', vfx: 'magicPop' },
+  port_leak_prop: { when: CITY('prep'), toast: 'Протечка в левом стыке. Удержать её может только водяной поток Рокси (Tab, затем Q).' },
+  port_pipe_left_prop: { when: CITY('prep'), toast: 'Левая труба: стрелка выше белой черты. Снизить давление водяным залпом может Рокси (Tab, затем Q).' },
+  port_gauge_right: { when: CITY('prep'), once: 'port_gauge_right', toast: 'Правая труба: стрелка на синей риске, заслонку отключила Мирена. Показание проверено.', vfx: 'magicPop' },
+  port_rest: { when: CITY('coupling', 'p_expl', 'p_mech'), do: [{ heal: true }], toast: 'Безопасная передышка у отключённой панели: силы и мана восстановлены.' },
+  port_upper: { when: CITY('p_top'), once: 'port_upper', toast: 'Верхний мосток: сухо, панель и обоих стражей видно сверху. Мегумин держит лестницу.', vfx: 'magicPop' },
+  port_panel: {
+    when: CITY('p_top'), once: 'port_panel_off', char: 'roxy', wrong: 'К панели подходит Рокси (Tab), Мегумин держит лестницу.',
+    need: { flag: 'port_upper' }, locked: 'Панель наверху: сначала поднимись на верхний мосток.', toast: 'Питание панели снято: сервисные стражи остались стоять.', vfx: 'magicPop',
+  },
+  port_hold: { when: CITY('p_expl'), once: 'port_hold', char: 'roxy', wrong: 'Поток у отвода держит Рокси (Tab).', toast: 'Рокси держит поток у отвода: давление ровное.', vfx: 'waterSplash' },
+  port_white_prop: { when: CITY('p_expl'), toast: 'Белая отметка на боковой муфте: бить только сюда. Для Взрыва нужен поток Рокси у отвода и обычные 100 маны Мегумин (Q).' },
+  port_jack: {
+    when: CITY('p_mech'), once: 'port_jack', char: 'megumin', wrong: 'Домкрат вращает Мегумин (Tab): Нэра держит упор.',
+    toast: 'Нэра держит упор. Домкрат повёрнут до метки.', vfx: 'magicPop',
+  },
+  port_lever: { when: CITY('p_mech'), once: 'port_lever', need: { flag: 'port_jack' }, locked: 'Рано: сначала домкрат до метки.', toast: 'Боковой рычаг отпущен по знаку: муфта разошлась.', vfx: 'magicPop' },
+  port_flow: {
+    when: CITY('p_expl', 'p_mech'), once: 'port_flow_after', char: 'roxy', wrong: 'Отводом управляет Рокси (Tab).',
+    need: { any: [{ flag: 'port_coupling_blasted' }, { flag: 'port_lever' }] }, locked: 'Муфта ещё держит: сначала отдели её.',
+    toast: 'Рокси берёт управление отводом: вода идёт в рабочий канал.', vfx: 'waterSplash',
+  },
+  port_gate: { when: CITY('check_gate'), once: 'port_gate_ok', char: 'roxy', wrong: 'Заслонку пробует Рокси (Tab).', toast: 'Нижняя заслонка отвечает: вода остаётся в рабочем канале.', vfx: 'waterSplash' },
+  citadel_gate: { toast: 'Ворота цитадели закрыты. Внутренняя цитадель Айнстрея открывается по отдельному приглашению: это будущая часть игры.' },
+  north_intake_gate: { toast: 'Нижний Северный водозабор закрыт решёткой и замком службы. Обследование готовит отдельная служба; цели внутри нет.' },
+  // N01: the letter from the other bank
+  n01_shelf: {
+    when: [AT('n01_letter', 'record'), { var: ['N01_PLAN', '==', 'list'] }], once: 'n01_shelf_used', do: [{ setFlag: 'n01_record' }],
+    toast: 'В городском списке: та же семья, номер дома тот же, улица другая. Рядом отметка о переезде.', vfx: 'magicPop',
+  },
+  n01_workshop: {
+    when: [AT('n01_letter', 'record'), { var: ['N01_PLAN', '==', 'street'] }], once: 'n01_workshop_used', do: [{ setFlag: 'n01_record' }],
+    toast: 'Хозяин мастерской: «Жильцы уехали к лодочному двору после паводка, адрес я Лиссе оставил». Запись получена.', vfx: 'magicPop',
+  },
+  n01_sign: { when: AT('n01_letter', 'deliver'), once: 'n01_signed', toast: 'Получательница ставит подпись. Письмо дошло.', vfx: 'magicPop' },
+  // N02: two stoves (the inn: attic, roof, lower exit)
+  n02_attic: { when: AT('n02_ovens', 'inspect'), once: 'n02_attic', toast: 'Чердак: заслонку держит доска новой полки. Открывается не до конца.', vfx: 'magicPop' },
+  n02_roof: { when: AT('n02_ovens', 'inspect'), once: 'n02_roof', toast: 'Крыша: труба цела, ветер с реки бьёт сбоку.', vfx: 'magicPop' },
+  n02_exit: { when: AT('n02_ovens', 'inspect'), once: 'n02_exit', toast: 'Нижний выход: зола, но тяга есть.', vfx: 'magicPop' },
+  n02_support: { when: AT('n02_ovens', 'p_prop'), once: 'n02_support', toast: 'Опора встала под полку: дом держит.', vfx: 'magicPop' },
+  n02_board: { when: AT('n02_ovens', 'p_prop'), once: 'n02_board', need: { flag: 'n02_support' }, locked: 'Сначала подопри полку.', toast: 'Доска снята: заслонка открывается до конца.', vfx: 'magicPop' },
+  n02_flue_prop: { when: AT('n02_ovens', 'p_prop'), toast: 'Выход печи: проверить его малым потоком холодной воды может Рокси (Tab, затем Q).' },
+  n02_wood: { when: AT('n02_ovens', 'p_move'), once: 'n02_wood', toast: 'Дрова убраны с полки.', vfx: 'magicPop' },
+  n02_shelf: { when: AT('n02_ovens', 'p_move'), once: 'n02_shelf', need: { flag: 'n02_wood' }, locked: 'Сначала убери дрова с полки.', toast: 'Полка перенесена на другую стену: заслонка свободна.', vfx: 'magicPop' },
+  // N04: the price of a bucket (the White mills)
+  n04_measure_a: { when: AT('n04_bucket', 'measure'), once: 'n04_measure_a', toast: 'Верхний рукав: расход два ведра в счёт, дворы у дороги берут больше своей доли.', vfx: 'magicPop' },
+  n04_measure_b: { when: AT('n04_bucket', 'measure'), once: 'n04_measure_b', toast: 'Нижний затвор: до огородов доходит треть. Половина потери уходит через стык.', vfx: 'magicPop' },
+  n04_leak_prop: { when: AT('n04_bucket', 'leak'), toast: 'Стык течёт. Удержать воду на время работы может водяной поток Рокси (Tab, затем Q).' },
+  n04_seal: { when: AT('n04_bucket', 'leak'), once: 'n04_seal', need: { flag: 'n04_leak_held' }, locked: 'Течёт: пока Рокси не удержит воду, уплотнение не заменить.', toast: 'Уплотнение заменено: стык сухой.', vfx: 'magicPop' },
+  n04_stmt_a: { when: AT('n04_bucket', 'statements'), once: 'n04_stmt_a', do: [{ read: { icon: '📜', title: 'Заявление: верхний двор', text: 'Мы просим вернуть старый график. Нас поставили в список последними, а цистерна пуста к полудню. Подпись: Мара, старшая верхнего двора.' } }] },
+  n04_stmt_b: { when: AT('n04_bucket', 'statements'), once: 'n04_stmt_b', do: [{ read: { icon: '📜', title: 'Заявление: двор у дороги', text: 'Мы берём воду по новому графику, но полив в жару нужен утром. Согласны на два окна, если нижним огородам оставят запас. Подпись: Корд, двор у дороги.' } }] },
+  n04_stmt_c: { when: AT('n04_bucket', 'statements'), once: 'n04_stmt_c', do: [{ read: { icon: '📜', title: 'Заявление: нижние огороды', text: 'Нас в списке нет. Двое семей добавлены, мы забыты. Просим запас воды и отдельное окно вечером. Подпись: семья Лесс.' } }] },
+  // N05: the watch at the White mills
+  n05_post_a: { when: AT('n05_patrol', 'posts'), once: 'n05_post_a', toast: 'Первый пост: навес цел, фонаря на столбе нет.', vfx: 'magicPop' },
+  n05_post_b: { when: AT('n05_patrol', 'posts'), once: 'n05_post_b', toast: 'Второй пост: следы колёс сворачивают на мокрый склон.', vfx: 'magicPop' },
+  n05_post_c: { when: AT('n05_patrol', 'posts'), once: 'n05_post_c', toast: 'Дальний пост: в траве следы сапог и обрывок цепи. Они ведут за ограду, к лагерю.', vfx: 'magicPop' },
+  n05_top: { when: AT('n05_patrol', 'p_top'), once: 'n05_top', toast: 'Верхний край над лагерем: все четверо у костра, к фонарю можно подойти сбоку.', vfx: 'magicPop' },
+  n05_lantern: { when: AT('n05_patrol', 'p_lure', 'p_top', 'p_reserve'), once: 'n05_lantern_back', toast: 'Украденный фонарь у тебя. Масло цело.', vfx: 'magicPop' },
+  n05_reserve: {
+    when: AT('n05_patrol', 'p_reserve'), once: 'n05_reserve', need: { item: 'n05_reserve_lantern' }, locked: 'Запасной фонарь остался у Рокси? Проверь сумку.',
+    do: [{ take: [['n05_reserve_lantern', 1]] }], toast: 'Запасной фонарь стоит у поворота: ночью его будет видно.', vfx: 'magicPop',
+  },
+  n05_hang: { when: AT('n05_patrol', 'light'), once: 'n05_hung', need: { flag: 'n05_lantern_back' }, locked: 'Фонарь ещё у гоблинов: сначала верни его из лагеря.', toast: 'Фонарь повешен у поворота.', vfx: 'magicPop' },
+  n05_night: {
+    when: AT('n05_patrol', 'light'), once: 'n05_night', need: [{ flag: 'n05_hung' }, { hour: [20, 5] }], locked: 'Свет проверяют ночью: повесь фонарь и дождись вечера (после 20:00).',
+    toast: 'Свет виден от дальнего столба. Возчик, проходящий поворот, не сбавляет шаг.', vfx: 'magicPop',
+  },
   // ---- side stories (docs/story/04): B10, B13, B14-B23
   field_cart_a: { when: AT('c_night_raid', 'prep_carts'), once: 'field_cart_a', toast: 'Телега подкачена к проходу: грибы пойдут через сухой участок.', vfx: 'magicPop' },
   field_cart_b: { when: AT('c_night_raid', 'prep_carts'), once: 'field_cart_b', toast: 'Вторая телега встала рядом: проход перекрыт, остался сухой путь.', vfx: 'magicPop' },
@@ -271,6 +345,10 @@ export const STORY_VOLLEY = [
   { id: 'service_flush', spot: 'ledge_service_outlet', when: AT('ainstrey_road', 'p_service'), flag: 'service_flush', toast: 'Глина смыта: служебный сток открыт.' },
   { id: 'winch_flow_a', spot: 'ledge_slab_edge', when: [AT('ainstrey_road', 'p_winch'), { flag: 'winch_turn_a' }], flag: 'winch_flow_a', toast: 'Поток прошёл по нижнему краю плиты.' },
   { id: 'winch_flow_b', spot: 'ledge_slab_edge', when: [AT('ainstrey_road', 'p_winch'), { flag: 'winch_turn_b' }], flag: 'winch_flow_b', toast: 'Нижний край плиты смочен: можно уходить за шесты.' },
+  { id: 'port_leak', spot: 'port_leak', when: CITY('prep'), flag: 'port_leak_held', toast: 'Протечка удержана водяным потоком: стык больше не бьёт.' },
+  { id: 'port_gauge_left', spot: 'port_pipe_left', when: CITY('prep'), flag: 'port_gauge_left', toast: 'Давление в левой трубе опустилось ниже белой черты.' },
+  { id: 'n02_flue', spot: 'n02_flue', when: [AT('n02_ovens', 'p_prop'), { flag: 'n02_board' }], flag: 'n02_flue', toast: 'Малый поток холодной воды прошёл по выходу печи: канал чист, дым уходит.' },
+  { id: 'n04_leak', spot: 'n04_leak', when: AT('n04_bucket', 'leak'), flag: 'n04_leak_held', toast: 'Рокси удерживает воду у стыка.' },
   { id: 'ledge_crack', spot: 'ledge_crack', when: AT('ch7_gorge', 'p12_roxy', 'p12_rope'), flag: 'ledge_crack_fixed', toast: 'Водяной заслон схватил край уступа: он держит.' },
   { id: 'drain_cool_a', spot: 'drain_cool_a', when: AT('ch7_gorge', 'cool'), flag: 'drain_cool_a', toast: 'Плита остыла.' },
   { id: 'drain_cool_b', spot: 'drain_cool_b', when: AT('ch7_gorge', 'cool'), flag: 'drain_cool_b', toast: 'Плита остыла.' },
@@ -305,6 +383,11 @@ export const STORY_WAVES = {
     spot: 'road_guard_a', camp: 'road_guard', delay: 3.5, say: ['D08_004', 'D08_005', 'D08_006'],
     enemies: [['guardian', 0, 0, { at: 'road_guard_a' }], ['guardian', 0, 0, { at: 'road_guard_b' }]], onClear: [{ scene: 'D08c' }],
   },
+  // version 2.0: the two service guards of the pump of the port wake on the way back (D22): they come out of the marks and the pit takes them
+  port_guards: {
+    spot: 'port_guard_a', camp: 'port_guard', delay: 3, say: [],
+    enemies: [['guardian', 0, 0, { at: 'port_guard_a' }], ['guardian', 0, 0, { at: 'port_guard_b' }]], onClear: [],
+  },
   raid1: { spot: 'night_field', camp: 'raid_w1', enemies: [['mushroom', -6, 0], ['mushroom', 0, 5], ['mushroom', 6, 0]], onClear: [{ wave: 'raid2' }], say: [] },
   raid2: { spot: 'night_field', camp: 'raid_w2', enemies: [['mushroom', -8, 2], ['mushroom', 8, 2], ['mushroom', 0, 8], ['puglin', 0, -4]], onClear: [] },
   gate_mushrooms: { spot: 'upper_gate', camp: 'gate_mush', enemies: [['mushroom', -4, 3], ['mushroom', 4, 3], ['mushroom', 0, 6]], onClear: [] },
@@ -315,4 +398,11 @@ export const STORY_BLASTS = [
   { spot: 'spring_partition', r: 10, when: AT('s_roxy_water', 'p_blast'), flag: 'spring_blast' },
   // version 2.0: the Explosion on the white mark of the boulder at the Stone Ledge (only in the stage of the explosion route)
   { spot: 'ledge_white_mark', r: 8, when: AT('ainstrey_road', 'p_expl'), flag: 'ledge_main_cleared' },
+  // version 2.0: the white mark of the side coupling of the pump (only with the flow held and everyone out)
+  { spot: 'port_white_mark', r: 5, when: [CITY('p_expl'), { flag: 'port_hold' }], flag: 'port_coupling_blasted' },
+];
+
+/** Pits that take the enemies of a camp that enter them (the service guards of the port): { camp, spot, r, when }. */
+export const STORY_LURES = [
+  { camp: 'port_guard', spot: 'port_pit', r: 3.6, when: CITY('p_pit') },
 ];

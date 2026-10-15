@@ -66,5 +66,8 @@ export const VARS = {
   AINSTRAY_CHAPTER_COMPLETE: 'bool', // D27
   AXEL_LOCAL_FLOW_SAFE: 'bool', // C20: the city flow is separated from the unknown lower node
   NEXT_NORTH_SURVEY: ['planned', 'available', 'accepted', 'complete'],
+  TAVIA_FREE_RESTS: [0, 9], // nights at Tavia's paid by the guild (D15: two)
+  PORT_GUARDS: ['top', 'pit'], // D22: the way past the two service guards (the panel above / the pit)
+  N01_PLAN: ['list', 'street'], N02_PLAN: ['prop', 'move'], N05_PLAN: ['lure', 'top', 'reserve'], // the capital side stories (answers that change the way, not the end)
   LISSA_ADDRESS_FIXED: 'bool', TAVIA_OVEN: 'bool', ILAR_RECORD_CHECKED: 'bool', MILL_WATER_AGREEMENT: 'bool', MILLS_PATROL_READY: 'bool',
 };

@@ -167,6 +167,7 @@ export function check(rpg, cond) {
       case 'n': break;
       case 'eris': if (rpg.inventory.eris < v) return false; break;
       case 'level': if (rpg.game.player.level < v) return false; break;
+      case 'mana': { const f = rpg.game.player.fighters?.[v[0]]; if (!f || f.mana < v[1]) return false; break; } // [heroine, at least]
       case 'hour': {
         const h = rpg.clock.hour;
         const [a, b] = v;

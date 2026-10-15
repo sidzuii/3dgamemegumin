@@ -5,7 +5,7 @@ import { COMBAT_CLIPS } from '../data/story/combatClips.js';
 const CLIPS = { ...STORY_CLIPS, ...COMBAT_CLIPS };
 import { VOICE } from '../data/story/dsl.js';
 import { TRIGGERS } from '../data/story/triggers.js';
-import { STORY_PROPS, STORY_VOLLEY, STORY_WAVES, STORY_BLASTS } from '../data/story/props.js';
+import { STORY_PROPS, STORY_VOLLEY, STORY_WAVES, STORY_BLASTS, STORY_LURES } from '../data/story/props.js';
 import { Clock } from './Clock.js';
 import { QuestManager } from './Quests.js';
 import { DialogueRunner } from './Dialogue.js';
@@ -276,6 +276,7 @@ export class RPG {
     this.game.world.relay?.sync(F);
     this.game.world.drain?.sync(F);
     this.game.world.pump?.sync(F, this.state.vars);
+    this.game.world.port?.sync(F, this.state.vars || {});
     this.game.world.core?.sync(F);
     const led = this.game.world.ledge;
     if (led) { led.rpg ||= this; led.sync(F, this.state.vars || {}); }
@@ -955,6 +956,19 @@ export class RPG {
     }
   }
 
+  /** Pits of STORY_LURES: an enemy of the camp that walks into one falls and is out of the fight (it counts as a kill of the wave). */
+  _updateLures() {
+    for (const L of STORY_LURES) {
+      if (!check(this, L.when)) continue;
+      const s = this.spotPos(L.spot);
+      if (!s) continue;
+      for (const e of this.game.enemies.list) {
+        if (!e.alive || e.camp !== L.camp) continue;
+        if (Math.hypot(e.position.x - s.x, e.position.z - s.z) <= L.r && e.position.y < s.y + 1.2) e.takeHit(1e6, s, 0);
+      }
+    }
+  }
+
   update(dt) {
     const newDay = this.clock.update(dt);
     if (newDay) {
@@ -968,6 +982,7 @@ export class RPG {
       this._explore(pp);
       this.quests.update(pp);
       this._updateTriggers(0.5);
+      this._updateLures();
       this.gathering.update();
       // Schedules change on the hour.
       const hour = Math.floor(this.clock.hour);

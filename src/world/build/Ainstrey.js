@@ -28,10 +28,43 @@ export function buildAinstrey(W) {
   W.group('ain_postal', { x: w(-1548, 2300)[0], z: w(-1548, 2300)[1] }, (r) => postalAscent(W, r), 'Почтовый подъём');
   W.group('ain_chalk_view', { x: w(-974, 1789)[0], z: w(-974, 1789)[1], rot: 2.3 }, (r) => chalkView(W, r), 'Смотровая площадка Меловых склонов');
   W.group('ain_mills', { x: w(-470, 1500)[0], z: w(-470, 1500)[1] }, (r) => whiteMills(W, r), 'Белые мельницы');
+  { const [gx, gz] = w(-440, 1652); W.group('ain_goblin_camp', { x: gx, z: gz }, (r) => goblinCamp(W, gx, gz, r), 'Лагерь дорожных гоблинов (N05)'); }
+  { const [px, pz] = w(-540, 1614); W.group('ain_side_pole', { x: px, z: pz }, () => sidePoles(W, w), 'Столбы бокового поворота'); }
   W.group('ain_dam', { x: w(AIN.DAM.u, (AIN.DAM.v0 + AIN.DAM.v1) / 2)[0], z: w(AIN.DAM.u, (AIN.DAM.v0 + AIN.DAM.v1) / 2)[1] }, () => southDam(W), 'Южная дамба');
 }
 
 const H = (W, x, z) => W.heightAt(x, z);
+
+/** N05: the camp of the road goblins behind a stake fence with a log across the entrance, two tents, a fire, a barrel of lamp oil. */
+function goblinCamp(W, cx, cz, rng) {
+  const R = 11;
+  for (let i = 0; i < 22; i++) {
+    const a = (i / 22) * Math.PI * 2;
+    if (Math.abs(a - Math.PI) < 0.32) continue; // the entrance faces west (the road)
+    const x = cx + Math.cos(a) * R, z = cz + Math.sin(a) * R;
+    const F = new Frame(W, x, H(W, x, z) - 0.1, z, a);
+    F.cyl(0.11, 1.8 + (i % 3) * 0.25, 0, 0, 0, 'log', { seg: 6, collide: true, tint: 0x6a4a30 });
+    F.box(0.1, 0.1, 1.6, 0.0, 1.0, 0.5, 'log', { collide: false, rx: 0.0 });
+  }
+  { const x = cx - R, z = cz; new Frame(W, x, H(W, x, z) + 0.45, z, Math.PI / 2).cyl(0.4, 4.2, 0, 0, 0, 'log', { seg: 8, rz: Math.PI / 2, tint: 0x5a3a24 }); }
+  tent(W, cx + 4.5, cz - 3.5, 0.8, null);
+  tent(W, cx + 5.5, cz + 4.0, 2.2, null);
+  campfire(W, cx + 0.5, cz + 0.5);
+  barrel(W, new Frame(W, cx - 3, H(W, cx - 3, cz + 6), cz + 6, 0), 0, 0);
+  barrel(W, new Frame(W, cx - 2, H(W, cx - 2, cz + 6.8), cz + 6.8, 0), 0, 0);
+  void rng;
+}
+
+/** N05: the poles of the side road: the bend has a pole for the lantern and a pole farther on (the far post). */
+function sidePoles(W, w) {
+  for (const [u, v, h] of [[-540, 1614, 3.4], [-500, 1578, 3.4], [-700, 1626, 2.6], [-640, 1606, 2.6]]) {
+    const [x, z] = w(u, v);
+    const F = new Frame(W, x, H(W, x, z), z, 0);
+    F.cyl(0.12, h, 2.0, 0, 1.0, 'log', { seg: 6, collide: false, tint: 0x5a3a24 });
+    F.box(0.9, 0.05, 0.05, 1.6, h - 0.25, 1.0, 'log', { collide: false });
+    if (h > 3) F.box(0.35, 0.5, 0.3, 1.2, h - 0.85, 1.0, 'wood', { collide: false, tint: 0x4a3a2c }); // the empty lantern bracket with a roof
+  }
+}
 
 // -----------------------------------------------------------------------------------------------------------------
 // The pass gates
@@ -194,6 +227,7 @@ function whiteMills(W, rng) {
       const hs = house(W, { x: mx, z: mz, rot, w: i % 2 ? 7 : 8, d: 6, floors: i === 1 ? 3 : 2, roofTint: i % 2 ? 0x9c9ea8 : 0xc09474, chimney: false, kind: 'mill' }, rng);
       new WaterWheel(W, ...(() => { const p = hs.frame.at(0, 1.9, -(3 + 1.2)); return [p.x, p.y, p.z]; })(), rot, 2.4, 1.5);
       const F = new Frame(W, mx, my, mz, rot);
+      { const fp = F.at(0, 0, 7.4); W.spot('mill_front_' + i, new THREE.Vector3(fp.x, H(W, fp.x, fp.z), fp.z), rot); } // N04: the measuring places before the mills
       // sacks of flour under the awning, a handcart, barrels
       crate(W, F, 5.3, 1.6, 0.9, 0.2); crate(W, F, 5.9, 1.0, 0.9, 0.5);
       barrel(W, F, -5.1, 1.2); barrel(W, F, -5.6, 2.0);
@@ -216,7 +250,7 @@ function whiteMills(W, rng) {
   // A few cottages of the mill workers by the road (no smoke from the wheel: only from the chimneys).
   [[-380, 1530, 0.4], [-330, 1500, 0.2], [-600, 1600, 0.6]].forEach(([u, v, r], i) => {
     const [x, z] = w(u, v);
-    W.group('ain_mill_cottage_' + i, { x, z, rot: r }, () => house(W, { x, z, rot: r, w: 6, d: 5, floors: 1, roofTint: 0xc09474, chimney: true, kind: 'cottage' }, rng), 'Дом мельника');
+    W.group('ain_mill_cottage_' + i, { x, z, rot: r }, () => { const hc = house(W, { x, z, rot: r, w: 6, d: 5, floors: 1, roofTint: 0xc09474, chimney: true, kind: 'cottage' }, rng); if (hc.door) W.spot('mill_cottage_' + i, hc.door, r); }, 'Дом мельника');
   });
 }
 

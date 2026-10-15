@@ -25,5 +25,8 @@ export const TRIGGERS = [
   { id: 'B18b', if: { quest: 's_boris_gate', stage: 'upper' }, spot: 'upper_gate', r: 12, dialogue: 'B18b' },
   { id: 'B19b', if: { quest: 's_rann_nests', stage: 'pipe' }, spot: 'rann_pipe', r: 10, dialogue: 'B19b' },
   { id: 'B22b', if: { quest: 's_tobias_road', stage: 'post' }, spot: 'relay_gate_out', r: 14, dialogue: 'B22b' },
+  // Version 2.0, the capital: the watch at the mills (the camp of the goblins), the short talk at the garden after the chapter.
+  { id: 'N05b', if: { quest: 'n05_patrol', stage: 'camp' }, spot: 'n05_camp', r: 16, dialogue: 'N05b' },
+  { id: 'D28', if: [{ v: 'AINSTRAY_CHAPTER_COMPLETE' }, { notFlag: 'D28_DONE' }], spot: 'garden_bench', r: 14, dialogue: 'D28' },
   { id: 'B09_kids', if: { flag: 'ballad' }, spot: 'square', r: 18, say: ['B09b_014', 'B09b_015', 'B09b_016'] },
 ];

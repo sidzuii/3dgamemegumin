@@ -159,7 +159,7 @@ export const KEY_PLOTS = [
   { id: 'academy_hall', name: 'Академия: главный зал', u: 306, v: -540, w: 52, d: 28, rot: 0, floors: 3, kind: 'academy', dome: true, district: 'academy' },
   { id: 'theatre_h', name: 'Театр', u: 190, v: -64, w: 54, d: 32, rot: 0, floors: 3, kind: 'theatre', district: 'steps' },
   { id: 'port_office', name: 'Портовая контора', u: 628, v: -2, w: 34, d: 20, rot: Math.PI / 2, floors: 2, kind: 'port', district: 'port' },
-  { id: 'pump_house', name: 'Насосный склад', u: 712, v: 640, w: 52, d: 22, rot: Math.PI / 2, floors: 2, kind: 'pump', district: 'port' },
+  { id: 'pump_house', name: 'Насосный склад', u: 712, v: 640, w: 52, d: 22, rot: Math.PI / 2, floors: 1, kind: 'pump', district: 'port', yard: 32 },
   { id: 'council_hall', name: 'Зал собраний', u: -33, v: -830, w: 46, d: 26, rot: 0, floors: 2, kind: 'council', district: 'garden' },
   { id: 'market_hall', name: 'Торговый ряд', u: -365, v: 640, w: 60, d: 16, rot: 0, floors: 1, kind: 'market', district: 'posad' },
   { id: 'steps_arcade', name: 'Пассаж Ступеней', u: -100, v: 340, w: 64, d: 18, rot: 0, floors: 4, kind: 'arcade', district: 'steps' },
@@ -285,6 +285,7 @@ export function cityPlan() {
   // the pier streets first: the key plots keep off them
   PIERS.filter((pr) => pr.v > -100).forEach((pr, k) => addStreet({ kind: 'pier', cls: 'street', name: pr.name.split(' (')[0].replace('Пристань', 'Пирс'), pts: [[COLS[6] + 6, pr.v], [eastWallU(pr.v) - 28, pr.v], [eastWallU(pr.v) + 4, pr.v]], width: CLASS.street.width, pieces: 1, pier: pr.id }));
   const keys = [];
+  const yardRect = (k) => ({ u: k.u + Math.sin(k.rot) * (k.d / 2 + k.yard / 2), v: k.v + Math.cos(k.rot) * (k.d / 2 + k.yard / 2), w: 22, d: k.yard, rot: k.rot });
   for (const K of KEY_PLOTS) {
     let best = null;
     for (let ring = 0; ring <= 12 && !best; ring++) {
@@ -293,12 +294,16 @@ export function cityPlan() {
         const cand = { ...K, u: K.u + Math.cos(ang) * rr, v: K.v + Math.sin(ang) * rr };
         if (!offStreets(cand) || !offBands(cand) || !insideCity(cand.u, cand.v, 20)) continue;
         if (squares.some((q) => rectsOverlap(q, cand, 2)) || keys.some((q) => rectsOverlap(q, cand, 3))) continue;
+        if (K.yard) { // the ramp and the yard in front of a hall (the pump of the port) are part of the plot
+          const yd = yardRect(cand);
+          if (!offStreets(yd) || !insideCity(yd.u, yd.v, 8) || squares.some((q) => rectsOverlap(q, yd, 2)) || keys.some((q) => rectsOverlap(q, yd, 2) || (q.yard && rectsOverlap(yardRect(q), yd, 2)))) continue;
+        }
         best = cand;
       }
     }
     keys.push(best || { ...K, unplaced: true });
   }
-  const obstacles = [...squares.map((s) => ({ ...s, margin: 3 })), ...keys.map((k) => ({ ...k, margin: 2.5 }))];
+  const obstacles = [...squares.map((s) => ({ ...s, margin: 3 })), ...keys.map((k) => ({ ...k, margin: 2.5 })), ...keys.filter((k) => k.yard).map((k) => ({ ...yardRect(k), margin: 2 }))];
 
   // ---- lanes: a pedestrian lane through the middle of most blocks (across the long side), and the lots keep off them
   const lanes = [];
