@@ -781,6 +781,10 @@ function caravanYard(rng) {
   for (let i = 0; i < 3; i++) haystack(W, ...P(58 + (i % 2) * 2.2, 60 + i * 2.4), 0.7);
   for (let i = 0; i < 4; i++) crate(W, F0(30 + i * 1.0, 58, 0.2 * i), 0, 0, 0.8, i * 0.3);
   for (let i = 0; i < 3; i++) barrel(W, F0(56 + i * 0.9, 76, 0), 0, 0);
+  // A00: two sacks by the rear wheel of the first cart (Marta asks for them in option 1).
+  [[33.2, 62.4, 0.5], [34.2, 66.0, -0.4]].forEach(([u, v, rot], i) => {
+    W.addInteractable(new QuestProp({ id: 'caravan_bag_' + 'ab'[i], name: 'Мешок', prompt: 'Взять мешок', position: G(u, v, 0), shape: 'sack', rotY: rot }));
+  });
   W.spot('caravan_arrival', G(44, 66), Math.PI + 0.4);
   W.spot('caravan_master', G(48, 58), Math.PI);
   W.addLightSource(G(46, 66, 2.2), { color: 0xffa050, intensity: 5, distance: 12, night: true });

@@ -34,6 +34,7 @@ export function buildCountryside(world) {
   W.group('watchtower', R('watchtower'), (r) => watchtower(W, r), 'Сторожевая башня');
   W.group('cave_entrance', R('cave'), (r) => caveEntrance(W, r), 'Вход в Старую шахту');
   W.group('astrarium', R('astrarium'), (r) => astrarium(W, r), 'Руины Астрариума');
+  W.group('return_camp', { x: -318, z: -196, rot: 0 }, () => returnCamp(W), 'Привал на северной дороге (A27)');
   W.group('mist_lake', R('mist_lake'), (r) => mistLake(W, r), 'Озеро Туманов');
   W.group('crimson_gorge', R('crimson_gorge'), (r) => crimsonGorge(W, r), 'Багровое ущелье');
   W.group('old_mines', R('old_mines'), (r) => oldMines(W, r), 'Заброшенный посёлок');
@@ -670,6 +671,18 @@ function astrarium(W, rng) {
     W.addInteractable(new QuestProp({ id: 'rift_crystal_' + i, name: 'Резонирующий кристалл', prompt: 'Коснуться', position: F.at(dx, 1.0, dz), shape: 'none' }));
   });
   W.spot('astrarium_center', F.at(0, 0.95, 6), Math.PI);
+  // A24: the measuring stand of the west gallery (an early blast topples it, the lever puts it back) ...
+  F.box(0.5, 2.2, 0.5, -9, 0.15, -14, 'stone', { tint: 0xdedad0 });
+  F.box(1.4, 0.12, 0.12, -9, 2.35, -14, 'metal', { collide: false, tint: 0xc8a050 });
+  W.spot('astra_lever', F.at(-9, 0.15, -12), 0);
+  W.addInteractable(new QuestProp({ id: 'astra_lever', name: 'Измерительная стойка', prompt: 'Поднять стойку рычагом', position: F.at(-9, 1.0, -12), shape: 'none' }));
+  // ... and A25: the only sector where the ritual allows a blast, behind the white stone.
+  W.spot('astrarium_far', F.at(-16, 0.15, 12), 0);
+  F.cyl(1.0, 1.6, -16, 0.15, 12, 'stone', { seg: 7, tint: 0xf4f4f0 });
+  const farRing = createRitualCircle(F.at(-16, 0.2, 12), 6);
+  farRing.mesh.material.color.setRGB(1.8, 1.8, 1.8);
+  W.addObject(farRing.mesh);
+  W.addUpdatable(farRing);
   // Roxy's camp just south of the ruins.
   const R = new Frame(W, c.x + 6, H(W, c.x + 6, c.z + 30), c.z + 30, 0.3);
   tent(W, c.x + 9, c.z + 33, 0.3, 0x3a5a8a);
@@ -677,6 +690,16 @@ function astrarium(W, rng) {
   for (let i = 0; i < 3; i++) R.box(0.4, 0.12, 0.3, -2.2 + i * 0.45, 0, 1.5, 'cloth', { collide: false, tint: [0x3a5a8a, 0x8a3a3a, 0x4a7a4a][i] });
   W.spot('roxy_camp', R.at(-1.5, 0, 0.5), Math.PI);
   W.addFootprint(c.x, c.z, 40, 40, 0, 'ruins');
+}
+
+/** A27: the first camp together on the way back from the Astrarium: a fire and three logs by the north road. */
+function returnCamp(W) {
+  const x = -318, z = -196, y = H(W, x, z);
+  campfire(W, x, z);
+  const F = new Frame(W, x, y, z, 0.4);
+  for (const a of [0.6, 2.2, 3.9]) F.cyl(0.22, 1.2, Math.cos(a) * 2.1, 0.25, Math.sin(a) * 2.1, 'log', { seg: 8, rz: Math.PI / 2, ry: a + Math.PI / 2, collide: false });
+  W.spot('return_camp', new THREE.Vector3(x, y, z), 0);
+  W.addInteractable(new QuestProp({ id: 'return_camp', name: 'Костёр', prompt: 'Присесть к огню', position: new THREE.Vector3(x, y + 0.6, z), shape: 'none' }));
 }
 
 function mistLake(W, rng) {

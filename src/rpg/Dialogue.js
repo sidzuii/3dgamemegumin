@@ -42,10 +42,20 @@ export class DialogueRunner {
       return this.end();
     }
     if (node.if && !check(this.rpg, node.if)) return this._go(node.else || node.next);
+    // Silent nodes (story programs, data/story/dsl.js): a branch on a condition, a jump to another
+    // scene, or effects that run between two lines without being shown.
+    if (node.branch) return this._go(check(this.rpg, node.branch) ? node.then : node.else);
+    if (node.jump) {
+      const npc = c.npc;
+      this.current = null;
+      return this.start(node.jump, npc);
+    }
     c.nodeId = nodeId;
+    c.seen.add(nodeId);
     if (node.do) this.rpg.apply(node.do, c.npc);
     // An effect may have closed the dialogue (e.g. opening a shop).
     if (!this.current) return;
+    if (node.silent) return this._go(node.next);
     this.rpg.ui.dialogue.show(this.view());
   }
 

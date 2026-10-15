@@ -11,6 +11,8 @@
  *  barks     short written lines for people without a conversation right now
  *  appear    condition for being in the world at all
  */
+import { clipText } from './story/index.js';
+
 const NIGHT_HOME = { time: [22, 6], hidden: true };
 const M = (parts, colors = {}, extra = {}) => ({ pack: 'm', parts, colors, ...extra });
 const F = (parts, colors = {}, extra = {}) => ({ pack: 'w', parts, colors, ...extra });
@@ -22,7 +24,12 @@ export const NPCS = [
     model: F(['Soldier_Head', 'Adventurer_Body', 'Medieval_Legs', 'Adventurer_Feet'], { Hair_Brown: 0x6a3a1a, 'Adventurer_Body:Green': 0x8a6a4a, 'Adventurer_Body:LightGreen': 0x5a4030, Black: 0x4a3a2a }),
     look: { skin: 0xe8b890, hair: 0x6a3a1a, hairStyle: 'bun', top: 0x8a6a4a, vest: 0x5a4030, bottom: 0x4a3a2a, hat: 'wide', hatColor: 0x7a5a3a, build: 1.05, chestShape: true },
     schedule: [{ time: [6, 12], spot: 'caravan_master', anim: 'idle' }, { time: [12, 17], spot: 'caravan_office_desk', anim: 'sit', seat: 0.5 }, { time: [17, 21], spot: 'caravan_master', anim: 'idle' }, { time: [21, 24], spot: 'tavern_table4', anim: 'sit' }, NIGHT_HOME],
-    talk: [{ if: { quest: 'prologue_arrival', stage: 'marta' }, dialogue: 'marta_arrival' }, { dialogue: 'marta_idle' }],
+    talk: [
+      { if: { quest: 'a00_bags', stage: 'back' }, dialogue: 'A00:join' },
+      { if: { quest: 'a00_bags', stage: 'carry' }, bark: ['Два у заднего колеса. Потом можешь спорить.'] },
+      { if: { quest: 'prologue_arrival', stage: 'marta' }, dialogue: 'A00' },
+      { dialogue: 'marta_idle' },
+    ],
   },
   // ------------------------------------------------------------------ Axel
   {
@@ -30,15 +37,17 @@ export const NPCS = [
     model: M(['Casual2_Head', 'King_Body', 'King_Legs', 'King_Feet', 'Sword'], { Hair: 0x6a3a1a, Blue: 0x2f4f8a }),
     look: { skin: 0xf6d0b0, hair: 0x6a3a1a, hairStyle: 'short', top: 0x3a5a8a, bottom: 0x3a3a48, armor: 0x9aa0a8, hat: 'helmet', hatColor: 0x9aa0a8, build: 1.1, height: 1.05 },
     schedule: [
-      { time: [21, 24], spot: 'gate_north', anim: 'guard', if: { quest: 'ch2_people', status: 'active' } },
+      { time: [19, 24], spot: 'gate_north', anim: 'guard', if: { quest: 'ch2_people', status: 'active', notFlag: 'A12_DONE' } },
       { time: [6, 21], spot: 'gate_south', anim: 'guard' },
       { time: [21, 23], spot: 'tavern_table1', anim: 'sit' },
       { time: [23, 6], hidden: true },
     ],
     talk: [
-      { if: { quest: 'prologue_arrival', stage: 'gate' }, dialogue: 'bernard_gate' },
-      { if: { quest: 'c_lost_cat', stage: 'ask' }, dialogue: 'bernard_cat' },
-      { if: { quest: 'ch2_people', stage: 'bernard' }, dialogue: 'bernard_secret' },
+      { if: { quest: 'prologue_arrival', stage: 'gate' }, dialogue: 'A01' },
+      { if: { quest: 'c_lost_cat', stage: 'ask' }, dialogue: 'B02b' },
+      { if: { quest: 'ch2_people', status: 'active', notFlag: 'A12_DONE', hour: [19, 24] }, dialogue: 'A12' },
+      { if: { quest: 'ch2_people', status: 'active', notFlag: 'A12_DONE' }, bark: ['Ворота ещё открыты. Если нужен я, не днём. После заката я на северной стене.'] },
+      { if: { quest: 'ch2_bernard', stage: 'bernard' }, dialogue: 'A14' },
       { dialogue: 'bernard_idle' },
     ],
   },
@@ -59,9 +68,10 @@ export const NPCS = [
     look: { skin: 0xffe0c8, hair: 0xe8d8a0, hairStyle: 'ponytail', top: 0xd88a6a, dress: true, dressLong: true, dressColor: 0x6a4a3a, apron: 0xf4f0e8, chestShape: true, height: 0.95 },
     schedule: [{ time: [6, 18], spot: 'bakery_counter', anim: 'shop' }, { time: [18, 21], spot: 'square_west', anim: 'idle' }, { time: [21, 6], hidden: true }],
     talk: [
-      { if: { quest: 'prologue_arrival', stage: 'lina' }, dialogue: 'lina_intro' },
-      { if: { quest: 'first_delivery', stage: 'back' }, dialogue: 'lina_paid' },
-      { if: { quest: 'ch2_people', stage: 'lina' }, dialogue: 'lina_bernard' },
+      { if: { quest: 'prologue_arrival', stage: 'lina', flag: 'A02_LATER' }, dialogue: 'A02b' },
+      { if: { quest: 'prologue_arrival', stage: 'lina' }, dialogue: 'A02' },
+      { if: { quest: 'first_delivery', stage: 'back' }, dialogue: 'A03:back' },
+      { if: { quest: 'ch2_bernard', stage: 'lina' }, dialogue: 'A13' },
       { dialogue: 'lina_shop' },
     ],
   },
@@ -71,8 +81,10 @@ export const NPCS = [
     look: { skin: 0xe8b890, hair: 0x2a1a12, hairStyle: 'bald', beard: true, top: 0x8a5a3a, sleeves: 'short', apron: 0x3a2a1e, bottom: 0x3a3028, build: 1.25, height: 1.06 },
     schedule: [{ time: [7, 19], spot: 'forge_anvil', anim: 'work' }, { time: [19, 22], spot: 'tavern_bar_front', anim: 'idle' }, NIGHT_HOME],
     talk: [
-      { if: { quest: 'first_delivery', stage: 'deliver' }, dialogue: 'garret_parcel' },
-      { if: { quest: 'c_ore_for_garret', stage: 'turnin' }, dialogue: 'garret_ore' },
+      { if: { quest: 'first_delivery', stage: 'deliver' }, dialogue: 'A03' },
+      { if: { quest: 'ch3_lights', stage: 'garret' }, dialogue: 'A18' },
+      { if: { quest: 'c_ore_for_garret', stage: 'brief' }, dialogue: 'B05a' },
+      { if: { quest: 'c_ore_for_garret', stage: 'turnin' }, dialogue: 'B05b' },
       { dialogue: 'garret_main' },
     ],
   },
@@ -82,12 +94,14 @@ export const NPCS = [
     look: { skin: 0xffe8d8, hair: 0xa06a3a, hairStyle: 'long', top: 0xf2ead8, vest: 0x2f5a8a, dress: true, dressLong: true, dressColor: 0x2f3a5a, chestShape: true },
     schedule: [{ time: [8, 20], spot: 'guild_counter', anim: 'idle' }, { time: [20, 22], spot: 'tavern_table2', anim: 'sit' }, NIGHT_HOME],
     talk: [
-      { if: { quest: 'join_guild', stage: 'go' }, dialogue: 'luna_join' },
-      { if: { quest: 'join_guild', stage: 'potion' }, dialogue: 'luna_wait_potion' },
-      { if: { quest: 'join_guild', stage: 'register' }, dialogue: 'luna_register' },
-      { if: { quest: 'c_goblin_scouts', stage: 'report' }, dialogue: 'luna_scouts' },
+      { if: { quest: 'join_guild', stage: 'go' }, dialogue: 'A04' },
+      { if: { quest: 'join_guild', stage: 'potion' }, bark: ['Регистрационный флакон ждёт тебя у Висс. Принеси его и взнос.'] },
+      { if: { quest: 'join_guild', stage: 'register' }, dialogue: 'A06' },
+      { if: { quest: 'ch1_name', stage: 'board' }, dialogue: 'A08' },
+      { if: { quest: 'ch1_name', stage: 'promote' }, dialogue: 'A09' },
+      { if: { quest: 'c_goblin_scouts', stage: 'brief' }, dialogue: 'B03a' },
+      { if: { quest: 'c_goblin_scouts', stage: 'report' }, dialogue: 'B03b' },
       { if: { quest: 'c_watchtower', stage: 'report' }, dialogue: 'luna_tower' },
-      { if: { quest: 'ch1_name', stage: 'promote' }, dialogue: 'luna_promote' },
       { dialogue: 'luna_main' },
     ],
   },
@@ -111,8 +125,8 @@ export const NPCS = [
     look: { skin: 0xffe0c8, hair: 0xe8d8a0, hairStyle: 'long', top: 0xe0c080, vest: 0x6a2a6a, bottom: 0x3a2a4a, cape: 0x6a2a6a, hat: 'wide', hatColor: 0x6a2a6a, tallBoots: true },
     schedule: [{ time: [11, 17], spot: 'square_east', anim: 'talk' }, { time: [18, 24], spot: 'tavern_stage', anim: 'dance' }, { time: [0, 11], hidden: true }],
     talk: [
-      { if: { quest: 'ch2_people', stage: 'fenrik', hour: [18, 24] }, dialogue: 'fenrik_song' },
-      { if: { quest: 'ch2_people', stage: 'fenrik' }, bark: ['Песни — вечером, в таверне! Днём я только настраиваюсь.'] },
+      { if: { quest: 'ch2_people', status: 'active', notFlag: 'A10_DONE', hour: [18, 24] }, dialogue: 'A10' },
+      { if: { quest: 'ch2_people', status: 'active', notFlag: 'A10_DONE' }, bark: ['Песни вечером, в таверне. Днём я только настраиваюсь.'] },
       { if: { quest: 's_bard_song', stage: 'give' }, dialogue: 'fenrik_ballad' },
       { dialogue: 'fenrik_idle' },
     ],
@@ -123,7 +137,9 @@ export const NPCS = [
     look: { skin: 0xffe8d8, hair: 0xb8a0d8, hairStyle: 'long', top: 0x5a4a6e, dress: true, dressLong: true, dressColor: 0x4a3a5e, hat: 'witch', hatColor: 0x3a2a4e, chestShape: true },
     schedule: [{ time: [9, 19], spot: 'alchemist_counter', anim: 'shop' }, { time: [19, 21], spot: 'temple_door', anim: 'idle' }, { time: [21, 9], hidden: true }],
     talk: [
-      { if: { quest: 'c_herbs', stage: 'turnin' }, dialogue: 'wiss_herbs' },
+      { if: { quest: 'join_guild', stage: 'potion' }, dialogue: 'A05' },
+      { if: { quest: 'c_herbs', stage: 'brief' }, dialogue: 'B01a' },
+      { if: { quest: 'c_herbs', stage: 'turnin' }, dialogue: 'B01b' },
       { if: { quest: 'c_moonflowers', stage: 'turnin' }, dialogue: 'wiss_moon' },
       { dialogue: 'wiss_main' },
     ],
@@ -148,9 +164,10 @@ export const NPCS = [
     look: { skin: 0xffe8d8, hair: 0xe8789a, hairStyle: 'braids', top: 0xf0a0c0, dress: true, dressColor: 0xf0a0c0, stockings: 0xffffff, height: 0.72 },
     schedule: [{ time: [9, 18], spot: 'square_west', anim: 'idle' }, { time: [18, 9], hidden: true }],
     talk: [
-      { if: { quest: 'c_lost_cat', stage: 'mia' }, dialogue: 'mia_cat' },
-      { if: { quest: 'c_lost_cat', stage: 'return', flag: 'cat_found' }, dialogue: 'mia_return' },
+      { if: { quest: 'c_lost_cat', stage: 'mia' }, dialogue: 'B02a' },
+      { if: { quest: 'c_lost_cat', stage: 'return', flag: 'cat_found' }, dialogue: 'B02c' },
       { if: { quest: 'c_lost_cat', status: 'active' }, bark: ['Уголёк ещё не нашёлся?..', 'Он любит тёплые места и не любит собак.'] },
+      { if: { quest: 'c_lost_cat', status: 'none', member: true }, dialogue: 'B02a' },
       { if: { quest: 'c_lost_cat', status: 'none' }, dialogue: 'mia_sad' },
       { dialogue: 'mia_happy' },
     ],
@@ -161,8 +178,8 @@ export const NPCS = [
     look: { skin: 0xffe8d8, hair: 0xe8d8a0, hairStyle: 'long', top: 0xf4f0e8, dress: true, dressLong: true, dressColor: 0xf4f0e8, hat: 'hood', hatColor: 0x8ab0e0, cape: 0x8ab0e0, chestShape: true },
     schedule: [{ time: [7, 21], spot: 'temple_altar', anim: 'idle' }, NIGHT_HOME],
     talk: [
-      { if: { quest: 'ch2_people', stage: 'clara' }, dialogue: 'clara_legend' },
-      { if: { quest: 'ch5_voices', stage: 'clara' }, dialogue: 'clara_crypt' },
+      { if: { quest: 'ch2_people', status: 'active', notFlag: 'A11_DONE' }, dialogue: 'A11' },
+      { if: { quest: 'ch4_return', stage: 'clara' }, dialogue: 'A29' },
       { dialogue: 'clara_main' },
     ],
   },
@@ -179,9 +196,11 @@ export const NPCS = [
     look: { skin: 0xc89070, hair: 0x1a1418, hairStyle: 'short', top: 0x7a3a2a, armor: 0x6a5a4a, bottom: 0x3a3a3a, build: 1.15, height: 1.08, tallBoots: true },
     schedule: [{ time: [7, 20], spot: 'training_field', anim: 'guard' }, { time: [20, 23], spot: 'guild_table', anim: 'idle' }, { time: [23, 7], hidden: true }],
     talk: [
-      { if: { quest: 'guild_test', stage: 'bran' }, dialogue: 'bran_start' },
-      { if: { quest: 'guild_test', stage: 'report' }, dialogue: 'bran_done' },
-      { if: { quest: 'guild_test', status: 'active' }, bark: ['Не отвлекайся! Сначала — посох, потом — магия.'] },
+      { if: { quest: 'guild_test', stage: 'bran' }, dialogue: 'A07' },
+      { if: { quest: 'guild_test', stage: 'staff' }, bark: [clipText('A07_006')] },
+      { if: { quest: 'guild_test', stage: 'bran2' }, dialogue: 'A07:signal' },
+      { if: { quest: 'guild_test', stage: 'magic' }, bark: ['Рука наверху. Начинай, когда готова. Цель — центр поля.'] },
+      { if: { quest: 'guild_test', stage: 'report' }, dialogue: 'A07:report' },
       { dialogue: 'bran_idle' },
     ],
   },
@@ -193,9 +212,9 @@ export const NPCS = [
       ? [{ time: [7, 21], spot: 'olkhovka_tobias', anim: 'idle' }, { time: [21, 7], hidden: true }]
       : [{ time: [8, 20], spot: 'tobias_wait', anim: 'idle' }, { time: [20, 8], hidden: true }]),
     talk: [
-      { if: { quest: 'c_escort_tobias', stage: 'meet' }, dialogue: 'tobias_meet' },
+      { if: { quest: 'c_escort_tobias', stage: 'meet' }, dialogue: 'B06a' },
       { if: { quest: 'c_escort_tobias', stage: 'escort' }, bark: ['Идём, идём! Только не слишком быстро…'] },
-      { if: { quest: 'c_escort_tobias', stage: 'pay' }, dialogue: 'tobias_pay' },
+      { if: { quest: 'c_escort_tobias', stage: 'pay' }, dialogue: 'B06c' },
       { if: { quest: 'c_escort_tobias', status: 'available' }, dialogue: 'tobias_offer' },
       { if: { quest: 'c_escort_tobias', status: 'done' }, dialogue: 'tobias_idle' },
       { bark: ['Мне бы попутчика до Ольховки… Покрепче, с лицензией.'] },
@@ -237,7 +256,9 @@ export const NPCS = [
     look: { skin: 0xe8b890, hair: 0x8a5a2a, hairStyle: 'short', beard: true, top: 0xa0b060, sleeves: 'short', bottom: 0x5a4a3a, hat: 'wide', hatColor: 0xd8b060, build: 1.15 },
     schedule: [{ time: [6, 12], spot: 'field_0', anim: 'work' }, { time: [12, 13], spot: 'farmhouse', anim: 'idle' }, { time: [13, 19], spot: 'field_2', anim: 'work' }, { time: [19, 6], hidden: true }],
     talk: [
-      { if: { quest: 'c_mushroom_field', stage: 'report' }, dialogue: 'boris_report' },
+      { if: { quest: 'c_lost_cat', stage: 'search' }, dialogue: 'B02b:boris' },
+      { if: { quest: 'c_mushroom_field', stage: 'brief' }, dialogue: 'B04a' },
+      { if: { quest: 'c_mushroom_field', stage: 'report' }, dialogue: 'B04b' },
       { dialogue: 'boris_main' },
     ],
   },
@@ -247,7 +268,7 @@ export const NPCS = [
     look: { skin: 0xc89070, hair: 0x3a2418, hairStyle: 'short', top: 0x4a5a3a, vest: 0x6a5040, bottom: 0x3a3a2a, hat: 'hood', hatColor: 0x3a4a2a, cape: 0x3a4a2a, tallBoots: true },
     schedule: [{ time: [6, 20], spot: 'hunter_rann', anim: 'idle' }, { time: [20, 6], spot: 'hunters_fire', anim: 'sit', seat: 0.12 }],
     talk: [
-      { if: { quest: 'ch3_lights', stage: 'rann' }, dialogue: 'rann_lights' },
+      { if: { quest: 'ch3_lights', stage: 'rann' }, dialogue: 'A15' },
       { dialogue: 'rann_main' },
     ],
   },
@@ -264,9 +285,10 @@ export const NPCS = [
     look: { skin: 0xf6d0b0, hair: 0xe8e8e8, hairStyle: 'short', beard: true, top: 0x3a4a7a, dress: true, dressLong: true, dressColor: 0x2a3a6a, cape: 0x2a3a6a, height: 0.97 },
     schedule: [{ time: [20, 2], spot: 'olkhovka_green', anim: 'magic' }, { time: [8, 20], spot: 'scholar', anim: 'idle' }, { time: [2, 8], hidden: true }],
     talk: [
-      { if: { quest: 'ch3_lights', stage: 'edmund' }, dialogue: 'edmund_shard' },
-      { if: { quest: 'ch3_lights', stage: 'edmund2' }, dialogue: 'edmund_letter' },
-      { if: { quest: 'ch5_voices', stage: 'edmund' }, dialogue: 'edmund_rift' },
+      { if: { quest: 'ch3_lights', stage: 'edmund' }, dialogue: 'A17' },
+      { if: { quest: 'ch3_lights', stage: 'edmund2' }, dialogue: 'A20' },
+      { if: { quest: 'ch4_return', stage: 'camp' }, dialogue: 'A28' },
+      { if: { quest: 'ch4_return', stage: 'edmund' }, dialogue: 'A28' },
       { dialogue: 'edmund_main' },
     ],
   },
@@ -301,14 +323,18 @@ export const NPCS = [
   {
     id: 'roxy', name: 'Рокси Мигурдия', title: 'Маг воды', special: 'roxy', portrait: 'roxy',
     appear: [{ notFlag: 'roxy_companion' }, { any: [{ quest: 'ch4_astrarium', stage: 'meet' }, { quest: 'roxy_trust', status: 'active' }] }],
-    schedule: (rpg) => (rpg.check({ any: [{ quest: 'roxy_trust', stage: 'defend' }, { quest: 'roxy_trust', stage: 'talk' }] })
+    schedule: (rpg) => (rpg.check({ any: [{ quest: 'roxy_trust', stage: 'ritual' }, { quest: 'roxy_trust', stage: 'defend' }, { quest: 'roxy_trust', stage: 'after' }, { quest: 'roxy_trust', stage: 'join' }] })
       ? [{ time: [0, 24], spot: 'astrarium_center', anim: 'idle' }]
       : [{ time: [0, 24], spot: 'roxy_camp', anim: 'idle' }]),
     talk: [
-      { if: { quest: 'ch4_astrarium', stage: 'meet' }, dialogue: 'roxy_meet' },
-      { if: { quest: 'roxy_trust', stage: 'return' }, dialogue: 'roxy_crystals' },
-      { if: { quest: 'roxy_trust', stage: 'talk' }, dialogue: 'roxy_join' },
-      { if: { quest: 'roxy_trust', stage: 'defend' }, bark: ['Держи их подальше от круга! Я почти закончила!'] },
+      { if: { quest: 'ch4_astrarium', stage: 'meet' }, dialogue: 'A22' },
+      { if: { quest: 'roxy_trust', stage: 'return' }, dialogue: 'A24' },
+      { if: { quest: 'roxy_trust', stage: 'repair' }, bark: ['Рычаг у стены. Я скажу, где остановиться.'] },
+      { if: { quest: 'roxy_trust', stage: 'prep' }, dialogue: 'A24:join' },
+      { if: { quest: 'roxy_trust', stage: 'ritual' }, dialogue: 'A25' },
+      { if: { quest: 'roxy_trust', stage: 'defend' }, bark: ['Держу поток. Стражи у линии, не у меня!'] },
+      { if: { quest: 'roxy_trust', stage: 'after' }, dialogue: 'A25:after' },
+      { if: { quest: 'roxy_trust', stage: 'join' }, dialogue: 'A26' },
       { dialogue: 'roxy_waiting' },
     ],
   },

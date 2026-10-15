@@ -1,5 +1,7 @@
 import * as THREE from 'three';
-import { EventBus, freshState, loadSave, writeSave, check, MAP_REV } from './State.js';
+import { EventBus, freshState, loadSave, writeSave, check, MAP_REV, STORY_REV } from './State.js';
+import { CLIPS } from '../data/story/clips.js';
+import { VOICE } from '../data/story/dsl.js';
 import { Clock } from './Clock.js';
 import { QuestManager } from './Quests.js';
 import { DialogueRunner } from './Dialogue.js';
@@ -48,13 +50,26 @@ export class RPG {
     this.events.on('questDone', () => this.game.audio?.play('questDone'));
     this.events.on('item', () => this.game.audio?.play('pickup'));
     for (const ev of ['questStart', 'questDone', 'questStage']) this.events.on(ev, () => { this._syncProps(); this.npcs?.refresh(); });
-    // Roxy's condition: no Explosion inside the Astrarium while she works.
+    // Roxy's condition (A22): no explosion inside the ruins before the ritual. During the ritual the far sector
+    // behind the white stone is allowed; a blast anywhere else damages the circle's sector (A25: one more line).
     this.events.on('explosion', (e) => {
       const A = REGION.astrarium;
-      if (this.quests.status('roxy_trust') === 'active' && Math.hypot(e.pos.x - A.center.x, e.pos.z - A.center.z) < A.r + 10 && !this.state.flags.roxy_angry) {
-        this.setFlag('roxy_angry');
-        this.notify('event', 'Рокси: «Я же просила — БЕЗ ВЗРЫВОВ!» Похоже, придётся извиняться.');
+      if (this.quests.status('roxy_trust') !== 'active' || Math.hypot(e.pos.x - A.center.x, e.pos.z - A.center.z) > A.r + 10) return;
+      const st = this.quests.stageId('roxy_trust');
+      if ((st === 'crystals' || st === 'return') && this.getVar('ROXY_PROMISE') && !this.getVar('ROXY_EXPLOSION')) {
+        this.setVar('ROXY_EXPLOSION', true);
+        this.notify('event', 'Измерительная стойка в западной галерее упала. Рокси это не понравится.');
+      } else if (st === 'defend') {
+        const far = this.spotPos('astrarium_far');
+        if (far && Math.hypot(e.pos.x - far.x, e.pos.z - far.z) < 14) this._sayChain(['A25_009', 'A25_010']);
+        else this.setFlag('ritual_sector_hit');
       }
+    });
+    // The ritual: the second pair of guardians comes when the first two are down (A25).
+    this.events.on('kill', (e) => {
+      if (e.camp !== 'rift_wave' || this.quests.stageId('roxy_trust') !== 'defend') return;
+      this._ritualKills = (this._ritualKills || 0) + 1;
+      if (this._ritualKills === 2) this._effect('ritualWave', 2);
     });
   }
 
@@ -85,7 +100,9 @@ export class RPG {
     this.gathering.syncFromState();
     this.npcs?.refresh();
     this._resumeEscort();
-    this.loaded = { migrated, corrupted, fresh: newGame || !this.state.player };
+    this._resumeRitual();
+    this.loaded = { migrated, corrupted, fresh: newGame || !this.state.player || !!this._storyReset };
+    this._storyReset = false;
     if (migrated) this.notify('info', 'Сохранение со старой карты перенесено: эрисы и предметы на месте, история начинается заново.');
     if (corrupted) this.notify('info', 'Сохранение повреждено — начата новая игра.');
     this.markDirty(true);
@@ -104,6 +121,18 @@ export class RPG {
       S.mapRev = MAP_REV;
     }
     S.quests = S.quests || {};
+    if (S.storyRev !== STORY_REV) {
+      // A save of the previous story: keep the character (level, bag, discoveries), start the new story.
+      if (S.player || Object.keys(S.quests).length) {
+        try { localStorage.setItem(`megumin-save-v2.story${S.storyRev ?? 0}.bak`, JSON.stringify(S)); } catch { /* storage full */ }
+        Object.assign(S, { quests: {}, flags: {}, vars: {}, counters: {}, rel: {}, met: {}, props: {}, events: {}, kills: {}, log: [], guild: { member: false, rank: 'F', points: 0, completed: [] } });
+        const inv = S.inventory;
+        if (inv?.items) inv.items = inv.items.filter((it) => ITEMS[it.id]?.kind !== 'quest');
+        this._storyReset = !!S.player;
+        this._relocate = !!S.player;
+      }
+      S.storyRev = STORY_REV;
+    }
     for (const id of Object.keys(S.quests)) if (!this.quests.def(id)) delete S.quests[id];
     if (S.explored) {
       try {
@@ -122,7 +151,8 @@ export class RPG {
     for (const it of g.world.interactables) if (it.id && S.chests.includes(it.id)) it.looted = true;
     if (S.inventory) g.inventory.deserialize(S.inventory);
     else {
-      g.inventory.deserialize({ eris: 40, items: [{ id: 'bread', count: 2 }, { id: 'book_explosion', count: 1 }], equipment: {} });
+      // The scenario starts with an empty purse: Marta returns the road deposit (A00).
+      g.inventory.deserialize({ eris: 0, items: [{ id: 'bread', count: 2 }, { id: 'book_explosion', count: 1 }], equipment: {} });
     }
     const P = S.player;
     const pl = g.player;
@@ -131,7 +161,7 @@ export class RPG {
       const s = this.spot(this.quests.status('prologue_arrival') === 'done' ? 'square' : 'caravan_arrival');
       P.x = s.pos.x; P.y = s.pos.y; P.z = s.pos.z; P.yaw = s.yaw;
       this._relocate = false;
-      this.notify('info', 'Аксель отстроен заново: вы снова на улицах города. Задания и вещи сохранены.');
+      this.notify('info', this._storyReset ? 'История обновлена: она начинается заново. Уровень, вещи и открытая карта сохранены; старое сохранение лежит в резервной копии.' : 'Аксель отстроен заново: вы снова на улицах города. Задания и вещи сохранены.');
     }
     if (P) {
       pl.level = P.level || 1;
@@ -160,15 +190,16 @@ export class RPG {
       pl.controller.teleport(s.pos.clone(), s.yaw);
       pl.setCheckpoint(s.pos.clone(), s.yaw);
       g.cameraRig.snapBehind(s.yaw + Math.PI);
-      this.quests.start('prologue_arrival', true);
     }
+    if (!S.quests.prologue_arrival) this.quests.start('prologue_arrival', true);
     for (const id of S.discovered) g.discovered.add(id);
     this._syncProps();
     if (g.world.rubble) {
       g.world.rubble.setCleared(!!S.flags.rubble_cleared);
       g.world.rubble.onCleared = () => {
         this.setFlag('rubble_cleared');
-        this.notify('event', 'Завал разлетелся в пыль! Путь вглубь шахты открыт.');
+        this.say('A19_007');
+        this.notify('event', 'Завал разлетелся в пыль внутри бокового тупика. Каменная арка защитила путь назад.');
       };
     }
   }
@@ -180,10 +211,13 @@ export class RPG {
       if (!it.setActive) continue;
       if (it.id === 'glade_shard') it.setActive(!F.glade_shard_taken);
       if (it.id === 'deep_shard') it.setActive(!F.deep_shard_taken);
-      if (it.id?.startsWith('rift_crystal_')) it.setActive(!F[it.id] && this.quests.status('roxy_trust') === 'active');
+      if (it.id?.startsWith('rift_crystal_')) it.setActive(!F[it.id] && this.quests.stageId('roxy_trust') === 'crystals');
+      if (it.id === 'astra_lever') it.setActive(this.quests.stageId('roxy_trust') === 'repair');
+      if (it.id === 'return_camp') it.setActive(this.quests.stageId('ch4_return') === 'camp');
       if (it.id === 'cave_in') it.setActive(!F.rubble_cleared);
       if (it.id === 'cat_ugolek') it.setActive(this.quests.status('c_lost_cat') === 'active' && !F.cat_found);
       if (it.id === 'cat_home') it.setActive(!!F.cat_returned);
+      if (it.id?.startsWith('caravan_bag_')) it.setActive(this.quests.status('a00_bags') === 'active' && !F[it.id + '_taken']);
     }
   }
 
@@ -229,6 +263,26 @@ export class RPG {
     this.events.emit('flag', { name, value });
     this._syncProps();
     this.markDirty();
+  }
+
+  /** Story variable (scenario package: ROXY_TRUST, KHARZ_ROUTE...). Emits 'flag' so quests re-evaluate. */
+  setVar(name, value) {
+    const V = (this.state.vars ||= {});
+    if (V[name] === value) return;
+    V[name] = value;
+    this.events.emit('flag', { name, value });
+    this._syncProps();
+    this.markDirty();
+  }
+
+  /** Numeric story variable += delta, clamped to [min, max] when given. */
+  addVar(name, delta, min = -Infinity, max = Infinity) {
+    const have = typeof this.state.vars?.[name] === 'number' ? this.state.vars[name] : 0;
+    this.setVar(name, Math.max(min, Math.min(max, have + delta)));
+  }
+
+  getVar(name) {
+    return this.state.vars?.[name];
   }
 
   changeRel(npc, delta) {
@@ -282,6 +336,8 @@ export class RPG {
     switch (k) {
       case 'setFlag': for (const f of [].concat(v)) this.setFlag(f); break;
       case 'clearFlag': for (const f of [].concat(v)) this.setFlag(f, false); break;
+      case 'setVar': this.setVar(v[0], v[1]); break;
+      case 'addVar': this.addVar(v[0], v[1], v[2], v[3]); break;
       case 'give': for (const [id, n] of v) inv.add(id, n, false, true); break;
       case 'take': for (const [id, n] of v) inv.remove(id, n); break;
       case 'eris': if (v > 0) inv.add('eris', v); else inv.spend(-v); break;
@@ -314,6 +370,20 @@ export class RPG {
       case 'follow': { const n = this.npcs.get(v[0]); n?.setFollow(v[1] ? { pos: () => this.game.player.position, keep: 2.4 } : null); if (!v[1]) n?.refresh(true); break; }
       case 'escort': this.startEscort(v); break;
       case 'heal': this.game.player.heal(9999); this.game.player.restoreMana(9999); this.game.player.restoreStamina(100); break;
+      case 'say': this.say(v); break;
+      case 'sayChain': this._sayChain(v); break;
+      case 'startIfAvailable': if (this.quests.canStart(v)) this.quests.start(v); break;
+      case 'ritualWave': {
+        const p = this.spotPos('astrarium_center');
+        if (p) for (let i = 0; i < 2; i++) {
+          const a = (i / 2) * Math.PI * 2 + (v === 2 ? 1.2 : 0);
+          const e = this.game.enemies.spawn('guardian', new THREE.Vector3(p.x + Math.cos(a) * 11, p.y, p.z + Math.sin(a) * 11), 'rift_wave');
+          e.noRespawn = true;
+        }
+        this._ritualKills = v === 1 ? 0 : this._ritualKills;
+        this._sayChain(v === 1 ? ['A25_006', 'A25_007'] : ['A25_008']);
+        break;
+      }
       case 'readItem': this.game.hud.readBook(ITEMS[v]); break;
       case 'read': this.game.hud.readBook({ icon: v.icon || '📜', name: v.title, text: v.text }); break;
       case 'refreshNPCs': this.npcs?.refresh(); break;
@@ -331,7 +401,7 @@ export class RPG {
     this.state.met[npc.id] = true;
     // Story quests offered by this person start as soon as you talk to them.
     for (const [id, d] of Object.entries(this.quests.defs)) {
-      if (d.giver === npc.id && d.category === 'story' && this.quests.canStart(id)) this.quests.start(id);
+      if (d.giver === npc.id && d.category === 'story' && !d.noAuto && this.quests.canStart(id)) this.quests.start(id);
     }
     for (const t of def.talk || []) {
       if (!t.if || this.check(t.if)) {
@@ -350,6 +420,30 @@ export class RPG {
     if (def.barks?.length) this._bark(npc, def.barks);
   }
 
+  /** One recorded line of the package outside a conversation (a cast cry, a thought): shown as a toast. */
+  say(clipId) {
+    const c = CLIPS[clipId];
+    if (!c) return;
+    const who = VOICE[c[0]];
+    const name = who === 'megumin' ? 'Мегумин' : this.npcs?.def(who)?.name || c[0];
+    this.game.hud.toast(`${name}: «${c[1]}»`, 4);
+    this.events.emit('say', { id: clipId });
+  }
+
+  /** Recorded lines one after another (toasts, 2.6 s apart). */
+  _sayChain(ids, gap = 2.6) {
+    ids.forEach((id, i) => setTimeout(() => this.say(id), i * gap * 1000));
+  }
+
+  /** New game: the cutscene-like first conversation with Marta (A00); the player moves after it. */
+  autoIntro() {
+    if (this.state.quests.prologue_arrival?.stage !== 0) return;
+    setTimeout(() => {
+      const marta = this.npcs?.get('marta');
+      if (marta && !this.dialogue.active) this.talkTo(marta);
+    }, 900);
+  }
+
   _bark(npc, lines) {
     const arr = typeof lines === 'function' ? lines(this) : lines;
     const i = (this._barkIdx = ((this._barkIdx || 0) + 1)) % arr.length;
@@ -362,22 +456,23 @@ export class RPG {
     const text = PROP_TEXTS[id];
     switch (id) {
       case 'glade_shard':
-        if (!F.glade_shard_taken) {
-          this.setFlag('glade_shard_taken');
-          this.inventory.add('star_shard', 1);
-          this.apply({ read: text });
-        }
+        // A16: Megumin's own lines at the stump; the shard is taken at the end of the scene.
+        if (!F.glade_shard_taken && !this.dialogue.active) this.dialogue.start('A16', null);
         break;
       case 'deep_shard':
-        if (!F.deep_shard_taken) {
-          this.setFlag('deep_shard_taken');
-          this.setFlag('dungeon_cleared');
-          this.inventory.add('star_shard', 1);
-          this.apply({ read: text });
-        }
+        if (!F.deep_shard_taken && !this.dialogue.active) this.dialogue.start('A19:after', null);
         break;
       case 'cave_in':
-        this.game.hud.toast(F.rubble_cleared ? 'Проход расчищен.' : 'Огромный завал. Руками не разобрать… Но если отойти подальше и как следует ВЗОРВАТЬ…', 5);
+        if (F.rubble_cleared) this.game.hud.toast('Проход расчищен.', 4);
+        else if (!F.A19_SEEN && this.quests.status('ch3_lights') === 'active' && !this.dialogue.active) this.dialogue.start('A19', null);
+        else this.game.hud.toast('Завал. Игла показывает за него. Отойти к каменной арке и ударить взрывом (Q).', 5);
+        break;
+      case 'return_camp':
+        if (this.quests.stageId('ch4_return') === 'camp' && !this.dialogue.active) this.dialogue.start('A27', null);
+        else this.game.hud.toast('Костёр. Здесь можно присесть.', 3);
+        break;
+      case 'astra_lever':
+        this.notify('info', 'Стойка поднимается на место.');
         break;
       case 'cat_ugolek':
         if (!F.cat_found) {
@@ -405,11 +500,17 @@ export class RPG {
         this.game.hud.toast('Уголёк: «Мрррр…» Кажется, он вас запомнил.', 3);
         break;
       default:
-        if (id.startsWith('rift_crystal_')) {
+        if (id.startsWith('caravan_bag_')) {
+          this.setFlag(id + '_taken');
+          this.notify('info', 'Мешок тяжёлый. Складываю у телеги Марты.');
+        } else if (id.startsWith('rift_crystal_')) {
           if (!F[id]) {
             this.setFlag(id);
             this.inventory.add('resonance_crystal', 1);
             this.game.vfx.burst('magicPop', prop.root.getWorldPosition(new THREE.Vector3()), 30);
+            // A23: one line at each crystal; the third depends on the promise.
+            const n = this.inventory.count('resonance_crystal');
+            this.say(n <= 1 ? 'A23_001' : n === 2 ? 'A23_002' : this.getVar('ROXY_EXPLOSION') ? 'A23_004' : 'A23_003');
           }
         } else if (text) this.apply({ read: text });
     }
@@ -449,6 +550,20 @@ export class RPG {
   }
 
   /** After a load: an escort that was under way goes on from where it was saved. */
+  /** Loaded in the middle of the ritual fight (A25): the guardians that were still alive are back. */
+  _resumeRitual() {
+    if (this.quests.stageId('roxy_trust') !== 'defend') return;
+    const done = this.state.quests.roxy_trust.progress?.[0] || 0;
+    const p = this.spotPos('astrarium_center');
+    if (!p || done >= 4) return;
+    this._ritualKills = done;
+    for (let i = 0; i < 4 - done; i++) {
+      const a = (i / (4 - done)) * Math.PI * 2;
+      const e = this.game.enemies.spawn('guardian', new THREE.Vector3(p.x + Math.cos(a) * 11, p.y, p.z + Math.sin(a) * 11), 'rift_wave');
+      e.noRespawn = true;
+    }
+  }
+
   _resumeEscort() {
     if (this.escort || this.quests.stageId('c_escort_tobias') !== 'escort') return;
     const E = this.state.escort;
@@ -486,7 +601,8 @@ export class RPG {
     const cower = foes.length > 0;
     if (cower !== e.cowering) {
       e.cowering = cower;
-      this._bark(n, cower ? ['Помогите! Грибы!'] : ['Фух… Идём дальше.']);
+      // B06b: Tobias hides, Megumin tells him to stay; after the fight she calls the road clear.
+      this._sayChain(cower ? ['B06b_001', 'B06b_002', 'B06b_003'] : ['B06b_004', 'B06b_005', 'B06b_006']);
     }
     n.cower = cower;
     if (e.ambush && !e.ambushed) {

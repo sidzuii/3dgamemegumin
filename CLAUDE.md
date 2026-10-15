@@ -61,6 +61,15 @@ Full description, file map and how-to guides: see `README.md` (Russian). The use
   `MAPS.kk` (GLTFLoader strips the dots: `upperarm.l` → `upperarml`); gear from `Skeleton_Gear.glb` is parented to the
   `handslotr/l` bones in `EnemyAssets.instance`. `tools/pack_skeletons.mjs` rebuilds them. NOTE: node_modules and dist
   are tracked in git here — never run `npm install` in the repo (it rewrites tracked files); `git checkout -- node_modules`.
+- Story = the scenario package in `docs/story/` (read `00_start.md`, `05_implementation_notes.md` for variables and
+  checks). Spoken lines live in `src/data/story/clips.js` (GENERATED from the package's Реплики.json by
+  `tools/story/gen_clips.mjs`; ids `A00_001`… are the future voice-over ids — never renumber). Scenes are programs
+  over those ids (`story/dsl.js`: `$.L` lines, `$.CH` answers, `$.IF`, `$.DO`, `$.MENU`…; draft a scene from the
+  markdown with `tools/story/draft.mjs`, list its ids with `tools/story/outline.mjs`). Dialogue ids = scene ids
+  (`A00`, entry points `A00:join`); NPC `talk` entries in `data/npcs.js` route to them by quest stage. Story variables:
+  `state.vars` (`{ setVar }` / `{ addVar }` / `{ var: [name, op, value] }`, names declared in `story/vars.js`).
+  `node tools/story/check.mjs [A|B|C]` = static check + coverage (run it after every change). Do not touch the
+  voice-over (`Озвучка/` of the package, core/Audio.js) while the story is being built.
 - Character animation = mocap clips from `public/models/anim/ual.glb` retargeted at runtime
   (`src/character/Retarget.js` + `CharacterAnimator.js`). Bone maps per skeleton are in `MAPS`
   (ual, mixamo, cc, qp = Quaternius people, demon). The library has no sitting clip: NPC `sit` = idle + legs

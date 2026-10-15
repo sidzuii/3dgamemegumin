@@ -97,6 +97,8 @@ export const ITEMS = {
 
   // --- trophies (sold for coin) ---
   gem_ruby: { name: 'Алый самоцвет', icon: '♦️', kind: 'trophy', rarity: 'epic', price: 260, desc: 'Сияет как глаза Алых Демонов.' },
+  reg_flask: { name: 'Регистрационный флакон', icon: '🧪', tint: 'hp', kind: 'quest', rarity: 'common', price: 0, desc: 'Флакон Висс с красной этикеткой. Его нужно показать Луне. Выпить можно после проверки.' },
+  edmund_device: { name: 'Прибор Эдмунда', icon: '🧭', kind: 'quest', rarity: 'rare', price: 0, desc: 'Керамическая тарелка с двумя иглами: показывает направление резонанса. Эдмунд просил вернуть целым.' },
   old_coin: { name: 'Старинная монета', icon: '🪙', kind: 'trophy', rarity: 'rare', price: 45, desc: 'Чеканка времён Астрариума. Коллекционеры платят хорошо.' },
 };
 

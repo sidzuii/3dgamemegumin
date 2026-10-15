@@ -244,6 +244,13 @@ export class QuestProp extends Interactable {
         this.root.add(e);
       }
       this.addMesh(new THREE.CylinderGeometry(0.03, 0.025, 0.42, 6).rotateX(1.2).translate(0.12, 0.2, -0.32), fur);
+    } else if (shape === 'sack') {
+      // A burlap sack tied at the neck.
+      const cloth = this.mat({ color: 0xb89a6a, roughness: 0.95 });
+      const rope = this.mat({ color: 0x5a4028, roughness: 0.9 });
+      this.addMesh(new THREE.SphereGeometry(0.34, 10, 8).scale(1, 1.15, 0.85).translate(0, 0.38, 0), cloth);
+      this.addMesh(new THREE.CylinderGeometry(0.1, 0.17, 0.2, 8).translate(0, 0.78, 0), cloth);
+      this.addMesh(new THREE.TorusGeometry(0.12, 0.025, 6, 10).rotateX(Math.PI / 2).translate(0, 0.7, 0), rope);
     } else if (shape === 'book') {
       const cover = this.mat({ color: 0x6a2a2a, roughness: 0.7 });
       const page = this.mat({ color: 0xf2e6c8, roughness: 0.9 });

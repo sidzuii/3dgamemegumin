@@ -10,50 +10,64 @@ export const QUESTS = Object.fromEntries([
   // PROLOGUE — a new life
   // =====================================================================================
   Q('prologue_arrival', {
-    title: 'Город начинающих', category: 'story', chapter: 0, giver: 'marta', hidden: true,
+    title: 'Город начинающих', category: 'story', chapter: 0, giver: 'marta', hidden: true, noAuto: true,
     summary: 'Караван наконец добрался до Акселя — города, где начинают все искатели приключений. Пора осмотреться.',
     stages: [
-      { id: 'marta', text: 'Попрощайся с Мартой, хозяйкой каравана.', target: 'npc:marta', objectives: [{ type: 'talk', label: 'Поговорить с Мартой' }],
-        hint: 'WASD — идти, Shift — бег, мышь — камера. Подойди к Марте и нажми E.' },
-      { id: 'gate', text: 'Войди в город через южные ворота. Стражник подскажет, куда идти.', target: 'npc:bernard', objectives: [{ type: 'talk', label: 'Поговорить со стражником' }] },
-      { id: 'square', text: 'Осмотрись на центральной площади Акселя.', target: 'spot:square', objectives: [{ type: 'reach', spot: 'square', r: 9, label: 'Дойти до площади' }],
+      { id: 'marta', text: 'Поговори с Мартой, хозяйкой каравана.', target: 'npc:marta', objectives: [{ type: 'talk', label: 'Поговорить с Мартой' }],
+        hint: 'WASD — идти, Shift — бег, мышь — камера. E — говорить и брать предметы.' },
+      { id: 'gate', text: 'Войди в город через южные ворота. Стражник назовёт дорогу.', target: 'npc:bernard', objectives: [{ type: 'talk', label: 'Поговорить со стражником' }] },
+      { id: 'square', text: 'Осмотрись на площади Фонтана.', target: 'spot:square', objectives: [{ type: 'reach', spot: 'square', r: 9, label: 'Дойти до площади' }],
         hint: 'Компас вверху показывает направление к цели задания (◆).' },
-      { id: 'lina', text: 'С рынка пахнет свежим хлебом. Загляни в пекарню Лины (рынок, юго-восток).', target: 'npc:lina', objectives: [{ type: 'talk', label: 'Поговорить с Линой' }] },
+      { id: 'lina', text: 'С рынка пахнет свежим хлебом. Загляни в пекарню Лины (справа от фонтана).', target: 'npc:lina', objectives: [{ type: 'talk', label: 'Поговорить с Линой' }] },
     ],
     rewards: { xp: 15 },
   }),
-  Q('first_delivery', {
-    title: 'Хлеб для кузнеца', category: 'story', chapter: 0, giver: 'lina', requires: { quest: 'prologue_arrival', stage: 'lina' },
-    summary: 'Лина попросила отнести свёрток кузнецу Гаррету и пообещала заплатить.',
+  // A00, option 1: two sacks by the rear wheel of Marta's cart.
+  Q('a00_bags', {
+    title: 'Два мешка для Марты', category: 'side', chapter: 0, giver: 'marta', hidden: true, noAuto: true,
+    summary: 'Марта попросила перенести два мешка от заднего колеса. Потом можно спорить.',
     stages: [
-      { id: 'deliver', text: 'Отнеси свёрток кузнецу Гаррету — кузница в юго-западном квартале.', target: 'npc:garret', objectives: [{ type: 'talk', label: 'Отдать свёрток Гаррету' }],
-        hint: 'Свёрток в сумке: I — инвентарь. Предметы задания нельзя продать или выбросить.' },
-      { id: 'back', text: 'Вернись к Лине за платой.', target: 'npc:lina', objectives: [{ type: 'talk', label: 'Поговорить с Линой' }] },
+      { id: 'carry', text: 'Перенеси два мешка у заднего колеса телеги Марты.', target: 'npc:marta',
+        objectives: [{ type: 'interact', id: 'caravan_bag_a', label: 'Первый мешок' }, { type: 'interact', id: 'caravan_bag_b', label: 'Второй мешок' }] },
+      { id: 'back', text: 'Вернись к Марте.', target: 'npc:marta', objectives: [{ type: 'talk', label: 'Поговорить с Мартой' }] },
     ],
-    rewards: { eris: 30, xp: 20, items: [['bread', 2]], rel: [['lina', 10], ['garret', 5]] },
+    rewards: { xp: 5, rel: [['marta', 5]] },
+  }),
+  Q('first_delivery', {
+    title: 'Хлеб для кузнеца', category: 'story', chapter: 0, giver: 'lina', noAuto: true, requires: { quest: 'prologue_arrival', stage: 'lina' },
+    summary: 'Лина попросила отнести свёрток кузнецу Гаррету и пообещала тридцать эрис.',
+    stages: [
+      { id: 'deliver', text: 'Отнеси свёрток кузнецу Гаррету: кузница у восточной улицы.', target: 'npc:garret', objectives: [{ type: 'talk', label: 'Отдать свёрток Гаррету' }],
+        hint: 'Свёрток в сумке: I — инвентарь. Предметы задания нельзя продать или выбросить.' },
+      { id: 'back', text: 'Вернись к Лине за платой. Она ждёт пустую салфетку.', target: 'npc:lina', objectives: [{ type: 'talk', label: 'Поговорить с Линой' }] },
+    ],
+    rewards: { eris: 30, xp: 20, rel: [['lina', 10], ['garret', 5]] },
+    next: 'join_guild',
   }),
   Q('join_guild', {
-    title: 'Лицензия искателя', category: 'story', chapter: 0, giver: 'lina', requires: { quest: 'first_delivery', status: 'done' },
-    summary: 'Чтобы зарабатывать на приключениях, нужна лицензия Гильдии искателей.',
+    title: 'Лицензия искателя', category: 'story', chapter: 1, giver: 'luna', noAuto: true, requires: { quest: 'first_delivery', status: 'done' },
+    summary: 'Чтобы брать заказы гильдии, нужна лицензия: взнос тридцать эрис и регистрационное зелье Висс.',
     stages: [
-      { id: 'go', text: 'Гильдия — большое здание с синей крышей и башней к северо-востоку от площади. Поговори с Луной.', target: 'npc:luna', objectives: [{ type: 'talk', label: 'Поговорить с Луной' }] },
-      { id: 'potion', text: 'Правило гильдии: при себе должно быть зелье исцеления. Купи его у алхимика Висс (рынок, юго-восток).', target: 'npc:wiss',
-        objectives: [{ type: 'collect', item: 'hp_potion', n: 1, label: 'Зелье исцеления' }],
-        hint: 'Поговори с торговцем и выбери «Торговать». Купленное сразу попадает в сумку.' },
-      { id: 'register', text: 'Вернись к Луне и заплати вступительный взнос — 30 эрис.', target: 'npc:luna', objectives: [{ type: 'talk', label: 'Зарегистрироваться' }] },
+      { id: 'go', text: 'Гильдия — здание с синей крышей за площадью Фонтана. Поговори с Луной.', target: 'npc:luna', objectives: [{ type: 'talk', label: 'Поговорить с Луной' }] },
+      { id: 'potion', text: 'Забери регистрационный флакон у алхимика Висс (лавка у рынка, двадцать эрис).', target: 'npc:wiss',
+        objectives: [{ type: 'collect', item: 'reg_flask', n: 1, label: 'Регистрационный флакон' }],
+        hint: 'Флакон нельзя выпить до проверки Луной: после неё он станет обычным зельем.' },
+      { id: 'register', text: 'Вернись к Луне: взнос тридцать эрис и подпись.', target: 'npc:luna', objectives: [{ type: 'talk', label: 'Зарегистрироваться' }] },
     ],
     rewards: { xp: 30 },
     next: 'guild_test',
   }),
   Q('guild_test', {
-    title: 'Практическое испытание', category: 'story', chapter: 0, giver: 'luna', requires: { quest: 'join_guild', status: 'done' },
-    summary: 'Новичок обязан показать, что умеет. Испытание проводит инструктор Бран на поле гильдии за северными воротами.',
+    title: 'Испытание у Брана', category: 'story', chapter: 1, giver: 'luna', noAuto: true, requires: { quest: 'join_guild', status: 'done' },
+    summary: 'Лицензия ранга F выдана. Первый отчёт Мегумин принесёт после испытания: посох, дистанция, контроль площадки. Инструктор Бран ждёт на поле за северными воротами.',
     stages: [
       { id: 'bran', text: 'Найди инструктора Брана на тренировочном поле за северными воротами.', target: 'npc:bran', objectives: [{ type: 'talk', label: 'Поговорить с Браном' }] },
-      { id: 'staff', text: 'Покажи владение посохом: ударь манекен три раза.', target: 'spot:training_center', objectives: [{ type: 'custom', name: 'dummy_hit', n: 3, label: 'Удары по манекену' }],
+      { id: 'staff', text: 'Ударь манекен посохом три раза.', target: 'spot:training_center', objectives: [{ type: 'custom', name: 'dummy_hit', n: 3, label: 'Удары по манекену' }],
         hint: 'ЛКМ или F — удар посохом. Три нажатия подряд — комбо.' },
-      { id: 'magic', text: 'Теперь — магия. Ударь заклинанием по центру поля (Q).', target: 'spot:training_center', objectives: [{ type: 'explosion', spot: 'training_center', r: 14, label: 'Заклинание по центру поля' }],
-        hint: 'Q — способность. Прицелься в центр поля (на расстоянии 12–34 м). Explosion тратит всю ману.' },
+      { id: 'bran2', text: 'Вернись к Брану: теперь большая мишень в центре поля.', target: 'npc:bran', objectives: [{ type: 'talk', label: 'Поговорить с Браном' }] },
+      { id: 'magic', text: 'Дождись сигнала Брана и ударь заклинанием по центру поля (Q).', target: 'spot:training_center', objectives: [{ type: 'explosion', spot: 'training_center', r: 14, label: 'Заклинание по центру поля' }],
+        hint: 'Q — способность. Прицелься в мишень в центре поля (12–34 м). Explosion тратит всю ману, потом нужен отдых.',
+        onDone: { say: 'A07_018' } },
       { id: 'report', text: 'Доложи инструктору Брану.', target: 'npc:bran', objectives: [{ type: 'talk', label: 'Поговорить с Браном' }] },
     ],
     rewards: { eris: 50, xp: 50, items: [['mana_potion', 2]], rankPoints: 1, flags: ['guild_tested'] },
@@ -64,12 +78,13 @@ export const QUESTS = Object.fromEntries([
   // CHAPTER 1 — a beginner adventurer
   // =====================================================================================
   Q('ch1_name', {
-    title: 'Имя в гильдии', category: 'story', chapter: 1, giver: 'luna', requires: { quest: 'guild_test', status: 'done' },
-    summary: 'Луна советует набраться опыта на простых заказах. Доска заказов — в зале гильдии, слева от входа.',
+    title: 'Имя в книге', category: 'story', chapter: 1, giver: 'luna', noAuto: true, requires: { quest: 'guild_test', status: 'done' },
+    summary: 'Луна даст ранг E, когда будут сданы три разных заказа с доски гильдии: заказчику результат, затем отметка у неё.',
     stages: [
-      { id: 'contracts', text: 'Выполни три заказа с доски гильдии.', target: 'spot:guild_front', objectives: [{ type: 'custom', name: 'contract_done', n: 3, label: 'Заказы' }],
-        hint: 'Доска заказов: подойди к ней в гильдии и нажми E — или открой меню гильдии (G).' },
-      { id: 'promote', text: 'Поговори с Луной о повышении ранга.', target: 'npc:luna', objectives: [{ type: 'talk', label: 'Поговорить с Луной' }] },
+      { id: 'board', text: 'Бран прислал отчёт. Поговори с Луной у доски заказов.', target: 'npc:luna', objectives: [{ type: 'talk', label: 'Поговорить с Луной' }] },
+      { id: 'contracts', text: 'Сдай три разных заказа с доски гильдии.', target: 'spot:guild_front', objectives: [{ type: 'custom', name: 'contract_done', n: 3, label: 'Заказы' }],
+        hint: 'Доска заказов: подойди к ней в гильдии и нажми E — или открой меню гильдии (G). Один заказ дважды не считается.' },
+      { id: 'promote', text: 'Поговори с Луной о ранге E.', target: 'npc:luna', objectives: [{ type: 'talk', label: 'Поговорить с Луной' }] },
     ],
     rewards: { eris: 60, xp: 60 },
     next: 'ch2_people',
@@ -80,6 +95,7 @@ export const QUESTS = Object.fromEntries([
     title: 'Травы для лавки', category: 'contract', kind: 'Сбор', chapter: 1, giver: 'wiss', rank: 'F',
     summary: 'Алхимику Висс нужны лечебные травы. Они растут на лугах вокруг города.',
     stages: [
+      { id: 'brief', text: 'Поговори с Висс: она покажет образец травы.', target: 'npc:wiss', objectives: [{ type: 'talk', label: 'Поговорить с Висс' }] },
       { id: 'gather', text: 'Собери 5 лечебных трав (луга у западных ворот, к югу от города).', target: 'spot:herb_meadow', objectives: [{ type: 'collect', item: 'herb', n: 5, label: 'Лечебная трава' }],
         hint: 'Травы с белыми цветками растут на лугах. Подойди и нажми E.' },
       { id: 'turnin', text: 'Отнеси травы Висс.', target: 'npc:wiss', objectives: [{ type: 'talk', label: 'Отдать травы' }] },
@@ -101,7 +117,8 @@ export const QUESTS = Object.fromEntries([
     title: 'Разведчики у кромки леса', category: 'contract', kind: 'Устранение угрозы', chapter: 1, giver: 'luna', rank: 'F',
     summary: 'У опушки Шепчущего леса, к западу от города, поставили лагерь гоблины-разведчики. Их нужно прогнать.',
     stages: [
-      { id: 'kill', text: 'Победи гоблинов у кромки леса (запад, за лагерем охотников не ходи).', target: 'spot:forest_scouts', objectives: [{ type: 'kill', camp: 'forest_scouts', n: 4, label: 'Гоблины' }],
+      { id: 'brief', text: 'Поговори с Луной о заказе: границы участка и правила добычи.', target: 'npc:luna', objectives: [{ type: 'talk', label: 'Поговорить с Луной' }] },
+      { id: 'kill', text: 'Прогони гоблинов у кромки леса (запад). Дальше белых столбов не иди.', target: 'spot:forest_scouts', objectives: [{ type: 'kill', camp: 'forest_scouts', n: 4, label: 'Гоблины' }],
         hint: 'Держи дистанцию: ЛКМ/F — комбо посохом, Q — способность. Зелья: 3 — исцеление, 4 — бодрость.' },
       { id: 'report', text: 'Доложи Луне в гильдии.', target: 'npc:luna', objectives: [{ type: 'talk', label: 'Доложить' }] },
     ],
@@ -111,6 +128,7 @@ export const QUESTS = Object.fromEntries([
     title: 'Грибная напасть', category: 'contract', kind: 'Охота', chapter: 1, giver: 'boris', rank: 'F',
     summary: 'Фермер Борис жалуется: с речного луга к полям повадились ходить грибы-переростки.',
     stages: [
+      { id: 'brief', text: 'Поговори с Борисом: он уберёт людей с луга.', target: 'npc:boris', objectives: [{ type: 'talk', label: 'Поговорить с Борисом' }] },
       { id: 'kill', text: 'Прогони грибов с речного луга (за мостом, к востоку от ферм).', target: 'spot:river_meadow', objectives: [{ type: 'kill', camp: 'river_meadow', n: 3, label: 'Грибы' }] },
       { id: 'report', text: 'Сообщи Борису на ферме.', target: 'npc:boris', objectives: [{ type: 'talk', label: 'Поговорить с Борисом' }] },
     ],
@@ -120,6 +138,7 @@ export const QUESTS = Object.fromEntries([
     title: 'Руда для кузницы', category: 'contract', kind: 'Помощь торговцу', chapter: 1, giver: 'garret', rank: 'F',
     summary: 'Караван с рудой задерживается. Гаррету нужна железная руда — её можно наковырять у входа в старую шахту.',
     stages: [
+      { id: 'brief', text: 'Поговори с Гаррет: он покажет, где бить породу.', target: 'npc:garret', objectives: [{ type: 'talk', label: 'Поговорить с Гарретом' }] },
       { id: 'gather', text: 'Добудь 4 железной руды (холм у Старой шахты, северо-запад).', target: 'spot:cave_mouth', objectives: [{ type: 'collect', item: 'iron_ore', n: 4, label: 'Железная руда' }] },
       { id: 'turnin', text: 'Отнеси руду Гаррету.', target: 'npc:garret', objectives: [{ type: 'talk', label: 'Отдать руду' }] },
     ],
@@ -162,78 +181,95 @@ export const QUESTS = Object.fromEntries([
   // CHAPTER 2 — people and their stories
   // =====================================================================================
   Q('ch2_people', {
-    title: 'Люди Акселя', category: 'story', chapter: 2, giver: 'luna', requires: { quest: 'ch1_name', status: 'done' },
-    summary: 'Ранг E открывает больше дверей. А заодно — больше разговоров. Город живёт своей жизнью, и в нём что-то не так.',
+    title: 'Люди Акселя', category: 'story', chapter: 2, giver: 'luna', noAuto: true, requires: { quest: 'ch1_name', status: 'done' },
+    summary: 'Ранг E открывает дальние маршруты. Вечером город разговорчивее: в таверне поёт Фенрик, в храме Клара хранит записи, а Бернард после заката стоит на стене.',
     stages: [
-      { id: 'fenrik', text: 'Вечером (после 18:00) весь город собирается в таверне. Послушай барда Фенрика.', target: 'npc:fenrik', objectives: [{ type: 'talk', label: 'Поговорить с Фенриком' }] },
-      { id: 'clara', text: 'Сестра Клара в храме Эрис знает старые легенды о «падающих звёздах».', target: 'npc:clara', objectives: [{ type: 'talk', label: 'Поговорить с Кларой' }] },
-      { id: 'bernard', text: 'Лина волнуется: её брат Бернард стал задерживаться на посту до ночи. Узнай, в чём дело.', target: 'npc:bernard', objectives: [{ type: 'talk', label: 'Поговорить с Бернардом' }] },
-      { id: 'lina', text: 'Расскажи Лине о Бернарде… или не всё.', target: 'npc:lina', objectives: [{ type: 'talk', label: 'Поговорить с Линой' }] },
+      { id: 'talks', text: 'Поговори с людьми: Фенрик поёт в таверне вечером, Клара ждёт в храме, Бернард на стене после заката.', target: 'npc:fenrik',
+        objectives: [
+          { type: 'flag', flag: 'A10_DONE', label: 'Фенрик и песня (таверна, вечером)' },
+          { type: 'flag', flag: 'A11_DONE', label: 'Клара и легенда (храм)' },
+          { type: 'flag', flag: 'A12_DONE', label: 'Бернард на стене (после заката)' },
+        ] },
     ],
     rewards: { eris: 40, xp: 80 },
-    next: 'ch3_lights',
+  }),
+  // A13-A14: Bernard's story closes at the next visits; it never blocks the main line.
+  Q('ch2_bernard', {
+    title: 'Записи Бернарда', category: 'story', chapter: 2, giver: 'lina', noAuto: true, requires: { flag: 'A12_DONE' },
+    summary: 'Бернард ведёт тетрадь со вспышками над хребтом и просил не говорить сестре. Лина волнуется: он задерживается на посту.',
+    stages: [
+      { id: 'lina', text: 'Лина спрашивает про брата. Зайди в пекарню.', target: 'npc:lina', objectives: [{ type: 'talk', label: 'Поговорить с Линой' }] },
+      { id: 'bernard', text: 'Загляни к Бернарду: у него будет что сказать после разговора с Линой.', target: 'npc:bernard', objectives: [{ type: 'talk', label: 'Поговорить с Бернардом' }] },
+    ],
+    rewards: { xp: 40, rel: [['lina', 5], ['bernard', 5]] },
   }),
 
   // =====================================================================================
-  // CHAPTER 3 — beyond the familiar world
+  // CHAPTER 3 — two voices under the ground
   // =====================================================================================
   Q('ch3_lights', {
-    title: 'Странное сияние', category: 'story', chapter: 3, giver: 'luna', requires: [{ rank: 'E' }, { quest: 'ch2_people', status: 'done' }],
-    summary: 'Огни над северным хребтом, легенда о звёздах, что упали в лес… Охотники Шепчущего леса тоже что-то видели.',
+    title: 'Два голоса под землёй', category: 'story', chapter: 3, giver: 'bernard', noAuto: true, requires: [{ rank: 'E' }, { flag: 'A12_DONE' }],
+    summary: 'Бернард записывает вспышки над хребтом и назвал место: западный лес. Ранн в лагере охотников должен видеть больше.',
     stages: [
-      { id: 'rann', text: 'Поговори с охотником Ранном в лагере охотников (Шепчущий лес, запад).', target: 'npc:rann', objectives: [{ type: 'talk', label: 'Поговорить с Ранном' }] },
-      { id: 'glade', text: 'Найди скрытую поляну — заросшая тропа на запад от лагеря охотников.', target: 'region:glade', objectives: [{ type: 'reach', region: 'glade', label: 'Найти поляну' }] },
-      { id: 'shard', text: 'Осмотри светящийся пень в центре поляны.', target: 'region:glade', objectives: [{ type: 'interact', id: 'glade_shard', label: 'Осмотреть свет' }] },
-      { id: 'edmund', text: 'Говорят, в Ольховке живёт учёный, который изучает звёзды. Покажи ему осколок.', target: 'npc:edmund', objectives: [{ type: 'talk', label: 'Поговорить с Эдмундом' }] },
-      { id: 'mine', text: 'Эдмунд уверен: второй осколок упал в Старую шахту. Найди его в глубине.', target: 'region:cave',
-        objectives: [{ type: 'interact', id: 'deep_shard', label: 'Второй осколок' }],
-        hint: 'Вход в шахту — на холме к северо-западу от города. Внутри может понадобиться кое-что… громкое.' },
-      { id: 'edmund2', text: 'Вернись к Эдмунду в Ольховку.', target: 'npc:edmund', objectives: [{ type: 'talk', label: 'Поговорить с Эдмундом' }] },
+      { id: 'rann', text: 'Поговори с охотником Ранном в лагере Шепчущего леса (запад).', target: 'npc:rann', objectives: [{ type: 'talk', label: 'Поговорить с Ранном' }] },
+      { id: 'glade', text: 'Найди Скрытую поляну: тропа от ручья, держись белых камней.', target: 'region:glade', objectives: [{ type: 'reach', region: 'glade', label: 'Найти поляну' }] },
+      { id: 'shard', text: 'Осмотри светящийся пень в центре поляны.', target: 'region:glade', objectives: [{ type: 'flag', flag: 'glade_shard_taken', label: 'Осмотреть пень' }] },
+      { id: 'edmund', text: 'Покажи находку учёному Эдмунду в Ольховке.', target: 'npc:edmund', objectives: [{ type: 'talk', label: 'Поговорить с Эдмундом' }] },
+      { id: 'garret', text: 'Покажи Гаррету план шахты, прежде чем спускаться.', target: 'npc:garret', objectives: [{ type: 'talk', label: 'Поговорить с Гарретом' }] },
+      { id: 'mine', text: 'Вход в Старую шахту на холме к северо-западу. Отойди к каменной арке и расчисти завал в боковом тупике.', target: 'region:cave',
+        objectives: [{ type: 'flag', flag: 'deep_shard_taken', label: 'Второй осколок' }],
+        hint: 'Завал разбирается взрывом: отойди подальше, прицелься (Q). Глубокий ход оставь на потом.' },
+      { id: 'edmund2', text: 'Вернись к Эдмунду с вторым осколком.', target: 'npc:edmund', objectives: [{ type: 'talk', label: 'Поговорить с Эдмундом' }] },
     ],
     rewards: { eris: 150, xp: 150, rankPoints: 3 },
     next: 'ch4_astrarium',
   }),
 
   // =====================================================================================
-  // CHAPTER 4 — the mage from the ruins
+  // CHAPTER 4 — a foreign circle
   // =====================================================================================
+  // Starts after chapter 3 once the song (A10) and Clara's legend (A11) are heard.
   Q('ch4_astrarium', {
-    title: 'Маг из руин', category: 'story', chapter: 4, giver: 'edmund', requires: { quest: 'ch3_lights', status: 'done' },
-    summary: 'Эдмунд попросил передать письмо магу, которая работает в Руинах Астрариума за северным хребтом.',
+    title: 'Чужой круг', category: 'story', chapter: 4, giver: 'edmund', noAuto: true, requires: [{ quest: 'ch3_lights', status: 'done' }, { flag: 'A10_DONE' }, { flag: 'A11_DONE' }],
+    summary: 'Эдмунд написал письмо магу воды, которая два месяца изучает разлом в Руинах Астрариума за северным хребтом.',
     stages: [
-      { id: 'travel', text: 'Отправляйся в Руины Астрариума: северная дорога через перевал в хребте.', target: 'region:astrarium', objectives: [{ type: 'reach', region: 'astrarium', label: 'Дойти до руин' }],
-        hint: 'Руины охраняют каменные стражи. Запасись зельями.' },
-      { id: 'meet', text: 'Найди мага у костра к югу от руин и передай письмо.', target: 'npc:roxy', objectives: [{ type: 'talk', label: 'Передать письмо' }] },
+      { id: 'travel', text: 'Отправляйся в Руины Астрариума: северная дорога через перевал. Ворота руин охраняют каменные стражи.', target: 'region:astrarium', objectives: [{ type: 'reach', region: 'astrarium', label: 'Дойти до руин' }],
+        hint: 'Стражи реагируют на отмеченные сектора. Осколки при проходе не расходуются.',
+        onDone: { sayChain: ['A21_001', 'A21_002', 'A21_003', 'A21_004', 'A21_005'] } },
+      { id: 'meet', text: 'Найди Рокси Мигурдию у лагеря южнее руин и передай письмо.', target: 'npc:roxy', objectives: [{ type: 'talk', label: 'Передать письмо' }] },
     ],
     rewards: { xp: 60 },
     next: 'roxy_trust',
   }),
   Q('roxy_trust', {
-    title: 'Без единого взрыва', category: 'story', chapter: 4, giver: 'roxy', requires: { quest: 'ch4_astrarium', status: 'done' },
-    summary: 'Рокси Мигурдия изучает разлом в Астрариуме. Она не доверяет «взрывному магу», но согласилась на помощь — с одним условием.',
+    title: 'Три кристалла', category: 'story', chapter: 4, giver: 'roxy', noAuto: true, requires: { quest: 'ch4_astrarium', status: 'done' },
+    summary: 'Рокси Мигурдия изучает разлом. Для запечатывания ей нужны три резонирующих кристалла. Условие: ни одного взрыва в руинах до окончания подготовки.',
     stages: [
-      { id: 'crystals', text: 'Собери три резонирующих кристалла в руинах. Условие Рокси: никаких Explosion!', target: 'region:astrarium',
+      { id: 'crystals', text: 'Принеси Рокси три целых резонирующих кристалла. Синие ленты отмечают колонны, которые нельзя задеть.', target: 'region:astrarium',
         objectives: [{ type: 'collect', item: 'resonance_crystal', n: 3, label: 'Резонирующий кристалл' }] },
-      { id: 'return', text: 'Принеси кристаллы Рокси.', target: 'npc:roxy', objectives: [{ type: 'talk', label: 'Поговорить с Рокси' }] },
-      { id: 'defend', text: 'Защити Рокси, пока она запечатывает разлом!', target: 'spot:astrarium_center', objectives: [{ type: 'kill', camp: 'rift_wave', n: 4, label: 'Стражи разлома' }],
-        onStart: { spawn: { type: 'guardian', spot: 'astrarium_center', n: 4, r: 11, camp: 'rift_wave' } } },
-      { id: 'talk', text: 'Поговори с Рокси.', target: 'npc:roxy', objectives: [{ type: 'talk', label: 'Поговорить с Рокси' }] },
+      { id: 'return', text: 'Отнеси кристаллы Рокси.', target: 'npc:roxy', objectives: [{ type: 'talk', label: 'Поговорить с Рокси' }] },
+      { id: 'repair', skipIf: { nv: 'ROXY_EXPLOSION' }, text: 'Помоги Рокси вернуть измерительную стойку в западной галерее на место (рычаг у стены).', target: 'spot:astra_lever',
+        objectives: [{ type: 'interact', id: 'astra_lever', label: 'Поднять стойку рычагом' }] },
+      { id: 'prep', skipIf: { nv: 'ROXY_EXPLOSION' }, text: 'Вернись к Рокси: она объяснит порядок ритуала.', target: 'npc:roxy', objectives: [{ type: 'talk', label: 'Поговорить с Рокси' }] },
+      { id: 'ritual', text: 'Рокси замыкает круг. Поговори с ней: готова ли ты. Разрешённый сектор для взрыва: дальний, за белым камнем.', target: 'npc:roxy', objectives: [{ type: 'talk', label: 'Поговорить с Рокси' }] },
+      { id: 'defend', text: 'Защити круг, пока Рокси запечатывает разлом! Стражи идут двумя волнами.', target: 'spot:astrarium_center', objectives: [{ type: 'kill', camp: 'rift_wave', n: 4, label: 'Стражи разлома' }],
+        onStart: { ritualWave: 1 } },
+      { id: 'after', text: 'Поговори с Рокси: разлом закрыт.', target: 'npc:roxy', objectives: [{ type: 'talk', label: 'Поговорить с Рокси' }] },
+      { id: 'join', text: 'После отдыха Рокси ждёт у стены. Поговори с ней.', target: 'npc:roxy', objectives: [{ type: 'talk', label: 'Поговорить с Рокси' }] },
     ],
     rewards: { eris: 100, xp: 200, items: [['book_water', 1]], rel: [['roxy', 20]] },
-    next: 'ch5_voices',
+    next: 'ch4_return',
   }),
-
-  // =====================================================================================
-  // CHAPTER 5 — the main mystery (opening)
-  // =====================================================================================
-  Q('ch5_voices', {
-    title: 'Голоса звёзд', category: 'story', chapter: 5, giver: 'roxy', requires: { quest: 'roxy_trust', status: 'done' },
-    summary: 'Осколки, разлом, огни над хребтом… Рокси считает, что всё это связано с чем-то под самим Акселем.',
+  Q('ch4_return', {
+    title: 'Карта Эдмунда', category: 'story', chapter: 4, giver: 'edmund', noAuto: true, requires: { quest: 'roxy_trust', status: 'done' },
+    summary: 'Разлом запечатан, Рокси идёт с отрядом. Три осколка резонируют на трёх линиях: Эдмунд сведёт их на карте.',
     stages: [
-      { id: 'edmund', text: 'Расскажи Эдмунду о разломе в Астрариуме.', target: 'npc:edmund', objectives: [{ type: 'talk', label: 'Поговорить с Эдмундом' }] },
-      { id: 'clara', text: 'Сестра Клара упоминала крипту под храмом Эрис. Спроси её.', target: 'npc:clara', objectives: [{ type: 'talk', label: 'Поговорить с Кларой' }] },
+      { id: 'camp', text: 'Дорога обратно: первый общий привал у костра на северной дороге.', target: 'spot:return_camp', objectives: [{ type: 'flag', flag: 'A27_DONE', label: 'Привал у костра' }] },
+      { id: 'edmund', text: 'Утром дойдите до Эдмунда в Ольховке: он сравнит показания.', target: 'npc:edmund', objectives: [{ type: 'talk', label: 'Поговорить с Эдмундом' }] },
+      { id: 'clara', text: 'Покажите карту Кларе в храме Эрис.', target: 'npc:clara', objectives: [{ type: 'talk', label: 'Поговорить с Кларой' }] },
     ],
     rewards: { xp: 120, flags: ['ch5_hook'] },
+    onComplete: { notify: 'Конец доступного сюжета: крипта под храмом остаётся закрытой. Продолжение — в следующих главах.' },
   }),
 
   // =====================================================================================
