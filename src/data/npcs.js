@@ -157,7 +157,7 @@ export const NPCS = [
     look: { skin: 0xe0b896, hair: 0x3a2e24, hairStyle: 'short', beard: true, top: 0x3a5a7a, bottom: 0x3a3a48, armor: 0xa2a8b0, hat: 'helmet', hatColor: 0xa2a8b0, build: 1.15, height: 1.05 },
     schedule: (rpg) => {
       const cy = cityAt(rpg);
-      if (cy >= 6 && cy <= 11) return [{ time: [0, 24], spot: 'pump_oskar', anim: 'guard' }];
+      if (cy >= 6 && cy <= 14) return [{ time: [0, 24], spot: 'pump_oskar', anim: 'guard' }];
       return [{ time: [5, 22], spot: 'oskar_post', anim: 'guard' }, { time: [22, 5], spot: 'oskar_post', anim: 'guard' }];
     },
     talk: [

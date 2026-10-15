@@ -6,6 +6,8 @@ const CLIPS = { ...STORY_CLIPS, ...COMBAT_CLIPS };
 import { VOICE } from '../data/story/dsl.js';
 import { TRIGGERS } from '../data/story/triggers.js';
 import { STORY_PROPS, STORY_VOLLEY, STORY_WAVES, STORY_BLASTS, STORY_LURES } from '../data/story/props.js';
+import { STOPS, STOP_R, STOPS_NEEDED } from '../data/travel.js';
+import { CITY_WALL, ORIGIN as AIN_ORIGIN } from '../world/AinstreyPlan.js';
 import { Clock } from './Clock.js';
 import { QuestManager } from './Quests.js';
 import { DialogueRunner } from './Dialogue.js';
@@ -143,6 +145,7 @@ export class RPG {
     this.clock.state = this.state;
     this._fixups();
     this._applyStateToWorld();
+    this._migrateCapital();
     this.gathering.syncFromState();
     this.npcs?.refresh();
     this._resumeEscort();
@@ -154,6 +157,22 @@ export class RPG {
     if (corrupted) this.notify('info', 'Сохранение повреждено — начата новая игра.');
     this.markDirty(true);
     return this.loaded;
+  }
+
+  /**
+   * Version 2.0 (the road to Ainstrey, the capital): a save that had finished the crypt (chapter 5) before the update gets the new chapters quietly.
+   * Not yet on the way to the post behind the ridge: the road quest is the next story step. Already further (ch6_relay and later): the road quest waits
+   * in the journal and does not take the pointer. The saved world, levels, bag, flags and decisions are kept; the old ENDING variable decides nothing.
+   */
+  _migrateCapital() {
+    const Q = this.quests;
+    if (Q.status('ch5_crypt') !== 'done' || Q.status('ainstrey_road') !== 'none') return;
+    const late = Q.status('ch6_relay') !== 'none';
+    const keep = Q.tracked;
+    Q.start('ainstrey_road', true);
+    if (late) Q.tracked = keep;
+    this.setFlag('ainstrey_migrated');
+    this.notify('info', late ? 'Открыта новая ветка: дорога к Айнстрею. Письмо для Селии Морн лежит у Луны; задание ждёт в журнале и не мешает основному.' : 'Открыта новая глава: дорога к Айнстрею. Поговори с Луной в гильдии.');
   }
 
   _fixups() {
@@ -956,6 +975,66 @@ export class RPG {
     }
   }
 
+  // ---------------------------------------------------------------------------------------
+  // Fast travel in the capital: the carts of the city and the river ferry between the safe stops (data/travel.js)
+  // ---------------------------------------------------------------------------------------
+  /** A stop opens when the player has been at it. */
+  _updateStops() {
+    if (!this.getVar('AINSTRAY_ENTERED')) return;
+    const pp = this.game.player.position;
+    for (const st of STOPS) {
+      if (this.state.flags['stop_' + st.id]) continue;
+      const s = this.spotPos(st.spot);
+      if (s && Math.hypot(pp.x - s.x, pp.z - s.z) < STOP_R) {
+        this.setFlag('stop_' + st.id);
+        const n = STOPS.filter((x) => this.state.flags['stop_' + x.id]).length;
+        this.notify('info', `Остановка открыта: ${st.name}.` + (n === STOPS_NEEDED ? ' Повозки и речной перевозчик теперь возят между известными остановками (карта, лист «Айнстрей»).' : ''));
+      }
+    }
+  }
+
+  knownStops() {
+    return STOPS.filter((st) => this.state.flags['stop_' + st.id]);
+  }
+
+  /** { ok, reason }: may the carts leave now? */
+  canFastTravel() {
+    const g = this.game;
+    if (!this.getVar('AINSTRAY_ENTERED')) return { ok: false, reason: 'Повозки столицы начинают возить после первого входа в город.' };
+    if (this.knownStops().length < STOPS_NEEDED) return { ok: false, reason: `Повозки возят между остановками, которые вы уже видели (нужно ${STOPS_NEEDED}, открыто ${this.knownStops().length}).` };
+    if (g.inDungeon || this.dialogue.active) return { ok: false, reason: 'Сейчас недоступно.' };
+    if (g.enemies.list.some((e) => e.alive && e.aggroed && e.position.distanceTo(g.player.position) < 40)) return { ok: false, reason: 'Рядом враги: повозка не подъедет.' };
+    const pp = g.player.position;
+    if (!inAinSheet(pp.x, pp.z) || !this._nearCity(pp)) return { ok: false, reason: 'Повозки ходят только внутри городских стен.' };
+    return { ok: true };
+  }
+
+  _nearCity(pp) {
+    const u = pp.x - AIN_ORIGIN.x, v = pp.z - AIN_ORIGIN.z;
+    let inside = false;
+    for (let i = 0, j = CITY_WALL.length - 1; i < CITY_WALL.length; j = i++) {
+      const a = CITY_WALL[i], b = CITY_WALL[j];
+      if (a.v > v !== b.v > v && u < ((b.u - a.u) * (v - a.v)) / (b.v - a.v) + a.u) inside = !inside;
+    }
+    return inside;
+  }
+
+  fastTravel(id) {
+    const st = STOPS.find((x) => x.id === id);
+    const can = this.canFastTravel();
+    if (!st || !can.ok) { if (!can.ok) this.game.hud.toast(can.reason, 3); return false; }
+    if (!this.state.flags['stop_' + id]) { this.game.hud.toast('Эту остановку вы ещё не видели.', 3); return false; }
+    this.game.travel(st.spot);
+    // the ride takes a quarter of an hour of the day
+    const t = this.state.time;
+    t.minutes += 15;
+    if (t.minutes >= 1440) { t.minutes -= 1440; t.day += 1; }
+    this.notify('info', `${st.ride[0].toUpperCase()}${st.ride.slice(1)}: ${st.name}.`);
+    this.npcs?.refresh();
+    this.markDirty(true);
+    return true;
+  }
+
   /** Pits of STORY_LURES: an enemy of the camp that walks into one falls and is out of the fight (it counts as a kill of the wave). */
   _updateLures() {
     for (const L of STORY_LURES) {
@@ -983,6 +1062,7 @@ export class RPG {
       this.quests.update(pp);
       this._updateTriggers(0.5);
       this._updateLures();
+      this._updateStops();
       this.gathering.update();
       // Schedules change on the hour.
       const hour = Math.floor(this.clock.hour);

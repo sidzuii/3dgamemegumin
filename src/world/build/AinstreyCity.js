@@ -364,6 +364,25 @@ function capitalSpots(W, P) {
     const old = nearest(470, 520), nw = nearest(615, 430, old);
     for (const [name, l] of [['n01_old_workshop', old], ['n01_new_house', nw]]) if (l) { const [u, v] = lotFront(l, 0, 2.0); sp(name, u, v, l.rot + Math.PI); }
   }
+  { // the stops of the carts of the city (fast travel, data/travel.js): the nearest point of a paved street to each place, facing the place
+    const nearestStreetPoint = (u, v, pad = 0) => {
+      let best = null;
+      for (const S of P.streets) {
+        if (S.cls === 'stair') continue;
+        for (let i = 0; i + 1 < S.pts.length; i++) {
+          const [ax, az] = S.pts[i], [bx, bz] = S.pts[i + 1], dx = bx - ax, dz = bz - az, L2 = dx * dx + dz * dz || 1;
+          const t = Math.max(0, Math.min(1, ((u - ax) * dx + (v - az) * dz) / L2)), px = ax + dx * t, pz = az + dz * t, d = Math.hypot(px - u, pz - v);
+          if (!best || d < best.d) best = { u: px, v: pz, d, S };
+        }
+      }
+      void pad;
+      return best;
+    };
+    const stopAt = (name, u, v) => { const b = nearestStreetPoint(u, v); if (b) sp(name, b.u, b.v, Math.atan2(u - b.u, v - b.v)); };
+    stopAt('stop_market', -365, 700); stopAt('stop_steps', -33, 412); stopAt('stop_academy', 306, -470); stopAt('stop_port', 735, 246); stopAt('stop_garden', -33, -750);
+    sp('stop_gate', -20, 1062, Math.PI);
+    for (const [name, id] of [['stop_guild', 'guild_hall'], ['stop_archive', 'archive']]) { const k = kg(id); const [u, v] = lotFront(k, 6, 4.5); sp(name, u, v, k.rot + Math.PI); }
+  }
   { // N02: the chimney of the inn from the yard
     const k = kg('inn_tavia'), c = Math.cos(k.rot), sn = Math.sin(k.rot), lx = k.w / 2 + 2.4, lz = -4;
     sp('n02_roof', k.u + lx * c + lz * sn, k.v - lx * sn + lz * c, k.rot + Math.PI / 2);

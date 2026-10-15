@@ -1,6 +1,7 @@
 import { HALF, REGIONS, RIVERS, LAKES, ROADS } from '../world/MapData.js';
 import { WALL, STREETS, SQUARES, toWorld } from '../world/AxelPlan.js';
 import { GRID_N, GRID_STEP } from '../world/Terrain.js';
+import { STOPS, CLOSED_PARTS } from '../data/travel.js';
 import { SHEET as AIN_SHEET, EXPLORE as EXPLORE_AIN, inSheet, CITY_WALL, DISTRICTS, toWorld as ainToWorld } from '../world/AinstreyPlan.js';
 
 const EXPLORE_N = 96; // fog-of-war grid of the old map (rpg/RPG.js)
@@ -280,6 +281,26 @@ export class MapView {
       const label = `${R.icon} ${R.name}`;
       ctx.strokeText(label, sx, sz);
       ctx.fillText(label, sx, sz);
+    }
+    // The capital: the stops of the carts (known ones are lit) and the closed parts with their status.
+    if (sh.id === 'ainstrey') {
+      ctx.font = '600 11px Segoe UI, sans-serif';
+      for (const st of STOPS) {
+        const s = rpg.spotPos(st.spot);
+        if (!s || !rpg.state.flags['stop_' + st.id]) continue;
+        const [sx, sz] = this._toScreen(s.x, s.z);
+        ctx.fillStyle = '#7fd0ff'; ctx.strokeStyle = '#0a2a44'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(sx, sz, 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        if (this.zoom > 0.55) { ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(10,20,30,0.85)'; ctx.fillStyle = '#d8f0ff'; ctx.strokeText(st.name, sx, sz - 9); ctx.fillText(st.name, sx, sz - 9); }
+      }
+      for (const c of CLOSED_PARTS) {
+        const s = rpg.spotPos(c.spot);
+        if (!s) continue;
+        const [sx, sz] = this._toScreen(s.x, s.z);
+        ctx.fillStyle = '#c8c0b0'; ctx.strokeStyle = '#3a2a20'; ctx.lineWidth = 2;
+        ctx.fillRect(sx - 4, sz - 4, 8, 8); ctx.strokeRect(sx - 4, sz - 4, 8, 8);
+        if (this.zoom > 0.55) { ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(20,14,10,0.85)'; ctx.fillStyle = '#e8dcc8'; ctx.strokeText('🔒 ' + c.name + ' (' + c.note + ')', sx, sz - 9); ctx.fillText('🔒 ' + c.name + ' (' + c.note + ')', sx, sz - 9); }
+      }
     }
     // Quest target.
     const tid = rpg.quests.tracked;
