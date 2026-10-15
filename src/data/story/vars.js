@@ -23,6 +23,7 @@ export const VARS = {
   // chapters 5-10
   PUBLIC_REPORT: 'bool',
   C07_PLAN: ['dan', 'osa', 'guard'], // how the workers were got out (C07.1)
+  C12_PLAN: ['cargo', 'roxy', 'rope'], // how Marta's cart was saved (C12.1)
   C08_CHOICE: ['copies', 'council', 'orin'], // what was done with the documents (C08.1)
   KHARZ_ROUTE: ['treaty', 'battle'],
   WATER_FIRST: ['residents', 'repair'],

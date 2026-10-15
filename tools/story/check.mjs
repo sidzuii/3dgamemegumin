@@ -107,7 +107,7 @@ for (const [id, w] of Object.entries(STORY_WAVES)) { checkFx(w.onClear, `wave ${
 const want = Object.keys(CLIPS).filter((k) => !k.startsWith('V') && (!prefixes.length || prefixes.some((p) => k.startsWith(p))));
 const usedIds = new Set([...used.keys()].map((k) => k.split('#')[0]));
 // Lines the game uses outside dialogue graphs (barks, { say: 'A07_018' } effects): referenced by id in the data files.
-for (const dir of ['src/data', 'src/rpg', 'src/npc', 'src/world/build']) {
+for (const dir of ['src/data', 'src/data/story', 'src/rpg', 'src/npc', 'src/world/build']) {
   for (const f of readdirSync(dir)) {
     if (!f.endsWith('.js')) continue;
     for (const m of readFileSync(`${dir}/${f}`, 'utf8').matchAll(/['"]([ABCV]\d{2}[a-z]?_\d{3})['"]/g)) usedIds.add(m[1]);

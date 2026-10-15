@@ -192,14 +192,14 @@ export function buildRelay(world) {
   relay.sync({});
 }
 
-function sconce(W, x, z) {
+export function sconce(W, x, z, trim = TN.trim) {
   const F = new Frame(W, x, 0, z, 0);
-  F.box(0.2, 2.4, 0.2, 0, 0, 0, 'stoneDark', { tint: TN.trim });
+  F.box(0.2, 2.4, 0.2, 0, 0, 0, 'stoneDark', { tint: trim });
   lantern(W, F.sub(0, 2.4, 0));
 }
 
 /** Veyr's projection (the same ghostly figure as in the crypt), toggled by `relay.sync`. */
-function projectionFigure(W, x, z) {
+export function projectionFigure(W, x, z) {
   const g = new THREE.Group();
   const mat = new THREE.MeshBasicMaterial({ color: 0x7fd0ff, transparent: true, opacity: 0.42, depthWrite: false, blending: THREE.AdditiveBlending });
   g.add(new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.42, 1.2, 10).translate(0, 0.9, 0), mat));

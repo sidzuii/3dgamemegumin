@@ -16,7 +16,9 @@ import { QuestProp, Door } from '../Interactables.js';
 export const CRYPT_ZONE = { minX: -40, maxX: 40, minZ: 1226, maxZ: 1390 };
 /** The relay post beyond the eastern ridge (build/Relay.js, chapter 6) — the third interior beyond the map edge. */
 export const RELAY_ZONE = { minX: -45, maxX: 45, minZ: 1406, maxZ: 1610 };
-const ZONES = [CRYPT_ZONE, RELAY_ZONE];
+/** The outer drain channel under the Crimson Gorge (build/Drain.js, chapter 7). */
+export const DRAIN_ZONE = { minX: -45, maxX: 45, minZ: 1636, maxZ: 1850 };
+const ZONES = [CRYPT_ZONE, RELAY_ZONE, DRAIN_ZONE];
 
 export const DUNGEON = {
   minX: -50, maxX: 50, minZ: 1090, maxZ: 1210,

@@ -113,7 +113,11 @@ export class QuestManager {
     if (!q || q.status !== 'active') return;
     const d = this.def(id);
     const st = d.stages[q.stage];
-    if (st?.onDone) this.rpg.apply(st.onDone);
+    if (st?.onDone) {
+      // Effects may set flags that re-evaluate this very quest: it must not advance a second time from the same stage.
+      (this._busy ||= new Set()).add(id);
+      try { this.rpg.apply(st.onDone); } finally { this._busy.delete(id); }
+    }
     q.stage++;
     if (q.stage >= d.stages.length) {
       this.complete(id);
@@ -190,7 +194,7 @@ export class QuestManager {
 
   evaluate(id) {
     const q = this.state[id];
-    if (!q || q.status !== 'active') return;
+    if (!q || q.status !== 'active' || this._busy?.has(id)) return;
     const st = this.stage(id);
     if (!st || st.manual || !st.objectives?.length) return;
     if (st.objectives.some((o) => o.type === 'talk')) return;

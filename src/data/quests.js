@@ -332,6 +332,48 @@ export const QUESTS = Object.fromEntries([
       { id: 'camp', text: 'Вернись на перевал (подъёмник в зале) и присядь к костру у ворот: Рокси хочет поговорить.', target: 'spot:relay_camp', objectives: [{ type: 'talk', label: 'Привал у костра' }] },
     ],
     rewards: { eris: 200, xp: 350, flags: ['ch6_done'] },
+    next: 'ch7_gorge',
+  }),
+
+  // =====================================================================================
+  // CHAPTER 7 — the treaty in the gorge
+  // =====================================================================================
+  Q('ch7_gorge', {
+    title: 'Договор в ущелье', category: 'story', chapter: 7, giver: 'luna', requires: { quest: 'ch6_relay', status: 'done' },
+    summary: 'Схема аварийного отвода ведёт в Багровое ущелье. У отвода — договор Вейра с Харзом: разорвать привязку без внешнего канала нельзя.',
+    stages: [
+      { id: 'luna', text: 'Поговори с Луной: работники вернулись, она оформит заказ на обследование ущелья.', target: 'npc:luna', objectives: [{ type: 'talk', label: 'Поговорить с Луной' }] },
+      { id: 'ledge', manual: true, text: 'Дойди до уступа на лавовой тропе (от Ольховки к ущелью): там застрял обоз.', target: 'region:ledge', objectives: [{ type: 'reach', region: 'ledge', label: 'Дойти до уступа' }] },
+      { id: 'p12_cargo', skipIf: { not: { var: ['C12_PLAN', '==', 'cargo'] } }, text: 'План «грузы»: вынеси оба мешка за каменный столб и закрепи канат (Мегумин).', target: 'spot:ledge_cart',
+        objectives: [{ type: 'flag', flag: 'ledge_cargo_a', label: 'Первый мешок' }, { type: 'flag', flag: 'ledge_cargo_b', label: 'Второй мешок' }, { type: 'flag', flag: 'ledge_rope_set', label: 'Закрепить канат (Мегумин)' }] },
+      { id: 'p12_roxy', skipIf: { not: { var: ['C12_PLAN', '==', 'roxy'] } }, text: 'План «укрепить уступ»: выведи людей из телеги, закрепи канат (Мегумин), Рокси укрепляет край водяным заслоном.', target: 'spot:ledge_cart',
+        objectives: [{ type: 'flag', flag: 'ledge_people_out', label: 'Вывести людей' }, { type: 'flag', flag: 'ledge_rope_set', label: 'Закрепить канат (Мегумин)' }, { type: 'flag', flag: 'ledge_crack_fixed', label: 'Водяной заслон (Рокси: Tab, Q)' }] },
+      { id: 'p12_rope', skipIf: { not: { var: ['C12_PLAN', '==', 'rope'] } }, text: 'План «канат к оси»: привяжи канат к оси переднего колеса, Рокси укрепляет край водяным заслоном.', target: 'spot:ledge_cart',
+        objectives: [{ type: 'flag', flag: 'ledge_axle_set', label: 'Привязать канат к оси' }, { type: 'flag', flag: 'ledge_crack_fixed', label: 'Водяной заслон (Рокси: Tab, Q)' }] },
+      { id: 'ledge_out', text: 'Обоз удержан. Поговори с Мартой.', target: 'npc:marta', objectives: [{ type: 'talk', label: 'Поговорить с Мартой' }] },
+      { id: 'gorge', text: 'Дойди до Багрового ущелья (тропа дальше по склону). Ворота отвода на южном краю.', target: 'region:crimson_gorge', objectives: [{ type: 'reach', region: 'crimson_gorge', label: 'Дойти до ущелья' }] },
+      { id: 'cool', text: 'Спустись к отводу и восстанови две площадки охлаждения: повернуть ручной клапан и охладить плиту залпом Рокси.', target: 'spot:drain_cool',
+        objectives: [{ type: 'flag', flag: 'drain_valve_a', label: 'Клапан (левая плита)' }, { type: 'flag', flag: 'drain_cool_a', label: 'Залп на левую плиту (Рокси)' }, { type: 'flag', flag: 'drain_valve_b', label: 'Клапан (правая плита)' }, { type: 'flag', flag: 'drain_cool_b', label: 'Залп на правую плиту (Рокси)' }],
+        hint: 'Рокси стреляет водяным залпом по прицелу (Tab, затем Q). Клапаны крутит любая героиня.' },
+      { id: 'kharz', text: 'За ограничительной линией ждёт Харз. Поговори с ним; договор лежит на панели слева.', target: 'npc:kharz', objectives: [{ type: 'talk', label: 'Поговорить с Харзом' }] },
+      { id: 'explosion', text: 'Освободи ручную заслонку: направленный взрыв в пустую боковую стену у западной стены внешнего отвода (Мегумин, Q).', target: 'spot:drain_wall',
+        objectives: [{ type: 'explosion', spot: 'drain_wall', r: 14, label: 'Взрыв в пустую стену' }], onDone: [{ setFlag: 'drain_blast' }, { wave: 'drain_guards' }],
+        hint: 'Взрыв: Q. Целься в стену, а не в канал: канал остаётся за аркой.' },
+      { id: 'guards', manual: false, text: 'Взрыв разбудил стражей. Рокси держит оборону, пока Мегумин приходит в себя: отбей стражей.', target: 'spot:drain_guards', objectives: [{ type: 'flag', flag: 'wd_drain_guards', label: 'Отбить стражей' }] },
+      { id: 'gauge', text: 'Проверь малый поток по трём мерным столбам вдоль западной стены.', target: 'spot:drain_outer',
+        objectives: [{ type: 'flag', flag: 'drain_gauge_1', label: 'Первый столб' }, { type: 'flag', flag: 'drain_gauge_2', label: 'Второй столб' }, { type: 'flag', flag: 'drain_gauge_3', label: 'Третий столб' }],
+        onDone: [{ sayChain: ['C14_003', 'C14_004'] }] },
+      { id: 'decide', text: 'Вернись к Харзу и назови условия: договор или бой. (Можно сначала ещё раз осмотреть отвод.)', target: 'npc:kharz', objectives: [{ type: 'talk', label: 'Решение о Харзе' }] },
+      { id: 't_gauge', skipIf: { not: { var: ['KHARZ_ROUTE', '==', 'treaty'] } }, text: 'Договор: сними замер рядом с Харзом (мерный столб справа от панели).', target: 'spot:drain_kharz', objectives: [{ type: 'flag', flag: 'treaty_gauge', label: 'Замер у линии' }] },
+      { id: 't_guards', skipIf: { not: { var: ['KHARZ_ROUTE', '==', 'treaty'] } }, text: 'Стражи Вейра пришли разбираться: отбей их.', target: 'spot:veyr_guards', onStart: [{ wave: 'veyr_guards' }], objectives: [{ type: 'flag', flag: 'wd_veyr_guards', label: 'Отбить стражей Вейра' }] },
+      { id: 't_release', skipIf: { not: { var: ['KHARZ_ROUTE', '==', 'treaty'] } }, text: 'Сними привязку вместе: Рокси открывает клапан слева, затем Мегумин тянет рычаг справа.', target: 'spot:drain_hall',
+        objectives: [{ type: 'flag', flag: 'release_roxy', label: 'Клапан привязки (Рокси)' }, { type: 'flag', flag: 'release_megumin', label: 'Рычаг привязки (Мегумин)' }] },
+      { id: 'b_shields', skipIf: { not: { var: ['KHARZ_ROUTE', '==', 'battle'] } }, text: 'Бой: разбей два внешних щита Харза водяными залпами Рокси.', target: 'spot:kharz_arena',
+        objectives: [{ type: 'flag', flag: 'kharz_shield_a', label: 'Левый щит (Рокси)' }, { type: 'flag', flag: 'kharz_shield_b', label: 'Правый щит (Рокси)' }] },
+      { id: 'b_fight', skipIf: { not: { var: ['KHARZ_ROUTE', '==', 'battle'] } }, text: 'Открой ядро: победи Харза. Он уйдёт ослабленным.', target: 'spot:kharz_arena', onStart: [{ wave: 'kharz_battle' }], objectives: [{ type: 'flag', flag: 'wd_kharz_battle', label: 'Победить Харза' }] },
+      { id: 'outro', text: 'Выслушай Вейра у панели.', target: 'spot:drain_projection', objectives: [{ type: 'talk', label: 'Панель Вейра' }] },
+    ],
+    rewards: { eris: 300, xp: 450, flags: ['ch7_done'] },
   }),
 
   // =====================================================================================

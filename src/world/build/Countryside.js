@@ -39,6 +39,7 @@ export function buildCountryside(world) {
   W.group('crimson_gorge', R('crimson_gorge'), (r) => crimsonGorge(W, r), 'Багровое ущелье');
   W.group('old_mines', R('old_mines'), (r) => oldMines(W, r), 'Заброшенный посёлок');
   W.group('east_pass', R('east_pass'), (r) => eastPass(W, r), 'Восточный перевал');
+  W.group('convoy_ledge', R('ledge'), (r) => convoyLedge(W, r), 'Уступ с обозом Марты (C12)');
 }
 
 const H = (W, x, z) => W.heightAt(x, z);
@@ -759,6 +760,37 @@ function crimsonGorge(W, rng) {
   W.addUpdatable(rc);
   W.addChest(new THREE.Vector3(ax, ay + 0.15, az - 4.8), 0, 'crimson_gorge');
   W.addFootprint(ax, az, 15, 15, 0, 'arena');
+  // Chapter 7: the drain gate (the lift down to the outer drain, build/Drain.js) at the gorge's southern lip.
+  const gx = c.x - 18, gz = c.z + 40, gy = H(W, gx, gz);
+  const G = new Frame(W, gx, gy, gz, 0);
+  for (const s of [-1, 1]) G.box(1.1, 4.4, 1.1, s * 2.6, 0, 0, 'basalt', { tint: 0x5a4a48 });
+  G.box(6.8, 0.9, 1.3, 0, 4.4, 0, 'basalt', { tint: 0x5a4a48 });
+  G.box(4.2, 0.3, 0.5, 0, 0.0, -0.4, 'stoneDark', { collide: false, tint: 0x6a5a56 });
+  W.spot('drain_gate_out', new THREE.Vector3(gx, gy, gz + 3.5), Math.PI);
+  W.addInteractable(new Door({ id: 'drain_gate', name: 'Спуск к внешнему отводу', prompt: 'Спуститься', position: new THREE.Vector3(gx, gy, gz - 0.2), target: 'drain_in', shape: 'lift' }));
+}
+
+/** C12: Marta's cart on a crumbling ledge of the lava trail; the gorge's drain gate is built with the gorge. */
+function convoyLedge(W, rng) {
+  const c = REGION.ledge.center;
+  const y = H(W, c.x, c.z);
+  wagon(W, c.x, c.z, 0.5, 0xd8c8a0);
+  // the broken ledge edge: dark rocks and a crack
+  for (let i = 0; i < 7; i++) rock(W, c.x - 6 + i * 1.3, c.z - 5 + (rng() - 0.5) * 1.2, 0.9 + rng() * 0.9, rng, 'rockDark');
+  const crack = new Frame(W, c.x - 3, y, c.z - 2.5, 0.4);
+  crack.box(0.25, 0.04, 3.4, 0, 0.02, 0, 'stoneDark', { collide: false, castShadow: false, tint: 0x2a2220 });
+  W.spot('ledge_marta', new THREE.Vector3(c.x + 4, H(W, c.x + 4, c.z + 2.5), c.z + 2.5), -Math.PI / 2);
+  W.spot('ledge_crack', new THREE.Vector3(c.x - 3, y + 0.3, c.z - 2.5), 0);
+  W.spot('ledge_cart', new THREE.Vector3(c.x, y, c.z), 0);
+  const prop = (id, name, prompt, dx, dz, shape = 'none', dy = 0.9) => W.addInteractable(new QuestProp({ id, name, prompt, position: new THREE.Vector3(c.x + dx, H(W, c.x + dx, c.z + dz) + dy, c.z + dz), shape }));
+  prop('ledge_cargo_a', 'Мешок с грузом', 'Вынести мешок за каменный столб', -2.6, 2.4, 'sack', 0.2);
+  prop('ledge_cargo_b', 'Мешок с грузом', 'Вынести мешок за каменный столб', -3.4, 3.6, 'sack', 0.2);
+  prop('ledge_people', 'Телега с людьми', 'Вывести людей из телеги', 0.6, 1.2);
+  prop('ledge_rope', 'Страховочный канат', 'Закрепить канат (Мегумин держит)', 3, -1.2);
+  prop('ledge_axle', 'Канат к оси', 'Привязать канат к оси переднего колеса', 2.4, 2.8);
+  prop('ledge_crack', 'Трещина уступа', 'Уступ крошится. Укрепи край водяным залпом (Рокси: Tab, Q)', -3, -2.5);
+  const rf = new Frame(W, c.x + 3, H(W, c.x + 3, c.z - 1.2), c.z - 1.2, 0);
+  rf.cyl(0.35, 0.18, 0, 0, 0, 'log', { seg: 10, collide: false, tint: 0xc0aa78 });
 }
 
 function oldMines(W, rng) {

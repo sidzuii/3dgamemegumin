@@ -45,6 +45,44 @@ export const STORY_PROPS = {
     do: [{ wave: 'relay_panel' }], toast: 'Линза набирает свет. Стражи постов просыпаются: защити панель!', vfx: 'magicPop',
   },
   relay_camp: { when: AT('ch6_relay', 'camp'), scene: 'C10' },
+
+  // ---- chapter 7: the convoy ledge (C12) and the drain under the gorge (C13-C14)
+  ledge_cargo_a: { when: AT('ch7_gorge', 'p12_cargo'), once: 'ledge_cargo_a', toast: 'Мешок вынесен за каменный столб.', vfx: 'magicPop' },
+  ledge_cargo_b: { when: AT('ch7_gorge', 'p12_cargo'), once: 'ledge_cargo_b', toast: 'Второй мешок за столбом. Без спора.', vfx: 'magicPop' },
+  ledge_people: { when: AT('ch7_gorge', 'p12_roxy'), once: 'ledge_people_out', toast: 'Люди выведены из телеги на твёрдую землю.', vfx: 'magicPop' },
+  ledge_rope: {
+    when: AT('ch7_gorge', 'p12_cargo', 'p12_roxy'), once: 'ledge_rope_set', char: 'megumin',
+    wrong: 'Канат держит Мегумин (Tab).', toast: 'Канат закреплён за столб: телега больше не поедет.', vfx: 'magicPop',
+  },
+  ledge_axle: { when: AT('ch7_gorge', 'p12_rope'), once: 'ledge_axle_set', toast: 'Канат привязан к оси переднего колеса.', vfx: 'magicPop' },
+  ledge_crack: { when: AT('ch7_gorge', 'p12_roxy', 'p12_rope'), toast: 'Край уступа крошится. Укрепить его может водяной заслон Рокси (Tab, затем Q).' },
+  drain_gate: {
+    when: { any: [{ quest: 'ch7_gorge', status: 'done' }, [{ quest: 'ch7_gorge', status: 'active' }, { any: ['gorge', 'cool', 'kharz', 'explosion', 'guards', 'gauge', 'decide', 't_gauge', 't_guards', 't_release', 'b_shields', 'b_fight', 'outro'].map((stage) => ({ quest: 'ch7_gorge', stage })) }]] },
+  },
+  drain_valve_a: { when: AT('ch7_gorge', 'cool'), once: 'drain_valve_a', toast: 'Клапан повернут: вода пошла к площадке.', vfx: 'magicPop' },
+  drain_valve_b: { when: AT('ch7_gorge', 'cool'), once: 'drain_valve_b', toast: 'Клапан повернут: вода пошла к площадке.', vfx: 'magicPop' },
+  drain_cool_a: { when: AT('ch7_gorge', 'cool'), toast: 'Плита раскалена. Охладить её может водяной залп Рокси (Tab, затем Q).' },
+  drain_cool_b: { when: AT('ch7_gorge', 'cool'), toast: 'Плита раскалена. Охладить её может водяной залп Рокси (Tab, затем Q).' },
+  drain_panel: {
+    when: { quest: 'ch7_gorge' },
+    do: [{ read: { icon: '📜', title: 'Договор о приёме избыточного потока', text: 'Стороны: Элиас Вейр, руководитель установки, и Харз, приёмник.\n\n1. Приёмник принимает избыточный поток установки в пределах внешнего отвода.\n2. Установка обязана держать внешний отвод открытым.\n3. Приёмник не покидает круг без согласия установки.\n4. Нагрузка не превышает вдвое пробную.\n5. Подпись руководителя ставится до первого опыта.\n6. Если приёмник разрывает связь без внешнего отвода, установка сбрасывает поток в городской резерв.' } }],
+  },
+  drain_growth: { when: AT('ch7_gorge', 'explosion'), toast: 'Нарост не сдвинуть руками. Нужен направленный взрыв в пустую боковую стену рядом (Мегумин, Q).' },
+  drain_gauge_1: { when: AT('ch7_gorge', 'gauge'), once: 'drain_gauge_1', toast: 'Показания сняты: малый поток идёт ровно.', vfx: 'magicPop' },
+  drain_gauge_2: { when: AT('ch7_gorge', 'gauge'), once: 'drain_gauge_2', toast: 'Показания сняты: малый поток идёт ровно.', vfx: 'magicPop' },
+  drain_gauge_3: { when: AT('ch7_gorge', 'gauge'), once: 'drain_gauge_3', toast: 'Показания сняты: малый поток идёт ровно.', vfx: 'magicPop' },
+  treaty_gauge: { when: AT('ch7_gorge', 't_gauge'), once: 'treaty_gauge', toast: 'Замер рядом с Харзом снят: он ждёт у линии и не двигается.', vfx: 'magicPop' },
+  drain_valve_r: {
+    when: AT('ch7_gorge', 't_release'), once: 'release_roxy', char: 'roxy',
+    wrong: 'Клапан привязки поворачивает Рокси (Tab).', toast: 'Клапан открыт: привязка Харза держится только на рычаге.', vfx: 'magicPop',
+  },
+  drain_lever_m: {
+    when: AT('ch7_gorge', 't_release'), once: 'release_megumin', char: 'megumin',
+    wrong: 'Рычаг привязки тянет Мегумин (Tab).', need: { flag: 'release_roxy' }, locked: 'Рычаг не поддаётся, пока Рокси не открыла клапан привязки.',
+    do: [{ setFlag: 'drain_released' }, { scene: 'C14t' }], vfx: 'magicPop',
+  },
+  kharz_shield_a: { when: AT('ch7_gorge', 'b_shields'), toast: 'Щит держит жар. Разбить его может водяной залп Рокси (Tab, затем Q).' },
+  kharz_shield_b: { when: AT('ch7_gorge', 'b_shields'), toast: 'Щит держит жар. Разбить его может водяной залп Рокси (Tab, затем Q).' },
 };
 
 export const STORY_VOLLEY = [
@@ -53,6 +91,11 @@ export const STORY_VOLLEY = [
     do: [{ setFlag: 'relay_grate_open' }], toast: 'Защёлка сбита: решётка служебной площадки поднялась.',
   },
   { id: 'relay_trough', spot: 'relay_trough', when: AT('ch6_relay', 'lens'), flag: 'relay_trough_clean', toast: 'Желоб промыт: вода пошла к линзе.' },
+  { id: 'ledge_crack', spot: 'ledge_crack', when: AT('ch7_gorge', 'p12_roxy', 'p12_rope'), flag: 'ledge_crack_fixed', toast: 'Водяной заслон схватил край уступа: он держит.' },
+  { id: 'drain_cool_a', spot: 'drain_cool_a', when: AT('ch7_gorge', 'cool'), flag: 'drain_cool_a', toast: 'Плита остыла.' },
+  { id: 'drain_cool_b', spot: 'drain_cool_b', when: AT('ch7_gorge', 'cool'), flag: 'drain_cool_b', toast: 'Плита остыла.' },
+  { id: 'kharz_shield_a', spot: 'kharz_shield_a', when: AT('ch7_gorge', 'b_shields'), flag: 'kharz_shield_a', toast: 'Внешний щит разбит.' },
+  { id: 'kharz_shield_b', spot: 'kharz_shield_b', when: AT('ch7_gorge', 'b_shields'), flag: 'kharz_shield_b', toast: 'Внешний щит разбит.' },
 ];
 
 export const STORY_WAVES = {
@@ -61,4 +104,7 @@ export const STORY_WAVES = {
     spot: 'relay_panel', camp: 'relay_wave_c6', enemies: [['guardian', -6, 2], ['guardian', 6, 2], ['watcher', 0, -4]],
     onClear: [{ scene: 'C09' }],
   },
+  drain_guards: { spot: 'drain_guards', camp: 'drain_wave', enemies: [['guardian', -5, 3], ['guardian', 5, 3], ['watcher', 0, -6]], onClear: [] },
+  veyr_guards: { spot: 'veyr_guards', camp: 'veyr_wave', enemies: [['guardian', -6, 2], ['guardian', 6, 2], ['watcher', 0, -3]], onClear: [] },
+  kharz_battle: { spot: 'kharz_arena', camp: 'kharz_battle', enemies: [['archdemon', 0, 0], ['imp', -4, -3], ['imp', 4, -3]], onClear: [{ scene: 'C14b' }] },
 };

@@ -23,8 +23,13 @@ export const NPCS = [
     id: 'marta', name: 'Марта', title: 'Хозяйка каравана',
     model: F(['Soldier_Head', 'Adventurer_Body', 'Medieval_Legs', 'Adventurer_Feet'], { Hair_Brown: 0x6a3a1a, 'Adventurer_Body:Green': 0x8a6a4a, 'Adventurer_Body:LightGreen': 0x5a4030, Black: 0x4a3a2a }),
     look: { skin: 0xe8b890, hair: 0x6a3a1a, hairStyle: 'bun', top: 0x8a6a4a, vest: 0x5a4030, bottom: 0x4a3a2a, hat: 'wide', hatColor: 0x7a5a3a, build: 1.05, chestShape: true },
-    schedule: [{ time: [6, 12], spot: 'caravan_master', anim: 'idle' }, { time: [12, 17], spot: 'caravan_office_desk', anim: 'sit', seat: 0.5 }, { time: [17, 21], spot: 'caravan_master', anim: 'idle' }, { time: [21, 24], spot: 'tavern_table4', anim: 'sit' }, NIGHT_HOME],
+    schedule: [
+      { time: [0, 24], spot: 'ledge_marta', anim: 'idle', if: { any: ['ledge', 'p12_cargo', 'p12_roxy', 'p12_rope', 'ledge_out'].map((stage) => ({ quest: 'ch7_gorge', stage })) } },
+      { time: [6, 12], spot: 'caravan_master', anim: 'idle' }, { time: [12, 17], spot: 'caravan_office_desk', anim: 'sit', seat: 0.5 }, { time: [17, 21], spot: 'caravan_master', anim: 'idle' }, { time: [21, 24], spot: 'tavern_table4', anim: 'sit' }, NIGHT_HOME],
     talk: [
+      { if: { quest: 'ch7_gorge', stage: 'ledge' }, dialogue: 'C12' },
+      { if: { quest: 'ch7_gorge', stage: 'ledge_out' }, dialogue: 'C12b' },
+      { if: { any: ['p12_cargo', 'p12_roxy', 'p12_rope'].map((stage) => ({ quest: 'ch7_gorge', stage })) }, bark: ['Не подходи к колесу. Уступ крошится.', 'Лошадей я отвела. Груз и телега — на вас.'] },
       { if: { quest: 'a00_bags', stage: 'back' }, dialogue: 'A00:join' },
       { if: { quest: 'a00_bags', stage: 'carry' }, bark: ['Два у заднего колеса. Потом можешь спорить.'] },
       { if: { quest: 'prologue_arrival', stage: 'marta' }, dialogue: 'A00' },
@@ -95,6 +100,7 @@ export const NPCS = [
     look: { skin: 0xffe8d8, hair: 0xa06a3a, hairStyle: 'long', top: 0xf2ead8, vest: 0x2f5a8a, dress: true, dressLong: true, dressColor: 0x2f3a5a, chestShape: true },
     schedule: [{ time: [8, 20], spot: 'guild_counter', anim: 'idle' }, { time: [20, 22], spot: 'tavern_table2', anim: 'sit' }, NIGHT_HOME],
     talk: [
+      { if: { quest: 'ch7_gorge', stage: 'luna' }, dialogue: 'C11' },
       { if: { quest: 'join_guild', stage: 'go' }, dialogue: 'A04' },
       { if: { quest: 'join_guild', stage: 'potion' }, bark: ['Регистрационный флакон ждёт тебя у Висс. Принеси его и взнос.'] },
       { if: { quest: 'join_guild', stage: 'register' }, dialogue: 'A06' },
@@ -338,6 +344,19 @@ export const NPCS = [
       { if: { flag: 'B12_READY', notFlag: 'B12_DONE' }, dialogue: 'B12b' },
       { if: { item: 'astra_token', notFlag: 'B12_ASKED' }, dialogue: 'B12a' },
       { dialogue: 'trader_main' },
+    ],
+  },
+  // ------------------------------------------------------------------ Kharz (chapter 7): the archdemon of the gorge, bound by a treaty
+  {
+    id: 'kharz', name: 'Харз', title: 'Хозяин участка ущелья',
+    appear: [{ not: { flag: 'kharz_hostile' } }, { any: [{ quest: 'ch7_gorge', status: 'active' }, { quest: 'ch7_gorge', status: 'done' }] }],
+    model: M(['Casual2_Head', 'King_Body', 'King_Legs', 'King_Feet'], { Skin: 0x9a2a2a, Skin_Darker: 0x7a1a1a, Hair: 0x1a0a0a, Blue: 0x3a1418 }, { scale: 1.3 }),
+    look: { skin: 0x9a2a2a, hair: 0x1a0a0a, hairStyle: 'bald', top: 0x3a1418, build: 1.2 },
+    schedule: [{ time: [0, 24], spot: 'drain_kharz', anim: 'idle' }],
+    talk: [
+      { if: { quest: 'ch7_gorge', stage: 'kharz' }, dialogue: 'C13' },
+      { if: { quest: 'ch7_gorge', stage: 'decide' }, dialogue: 'C14' },
+      { bark: ['Договор лежит на панели. Читайте, пока работаете.', 'Без отвода ни один из нас не получит желаемого.', 'Пока Марта едет по дороге, она в безопасности.'] },
     ],
   },
   // ------------------------------------------------------------------ the workers of the relay post (chapter 6)

@@ -237,6 +237,7 @@ export class RPG {
     const F = this.state.flags;
     this.game.world.crypt?.sync(F);
     this.game.world.relay?.sync(F);
+    this.game.world.drain?.sync(F);
     for (const it of this.game.world.interactables) {
       if (!it.setActive) continue;
       const sp = STORY_PROPS[it.id];
@@ -388,7 +389,7 @@ export class RPG {
       case 'openCraft': this.dialogue.current && this.dialogue.end(); this.ui.shop.openCraft(v); break;
       case 'openBoard': this.dialogue.current && this.dialogue.end(); this.ui.menu.show('guild'); break;
       case 'joinGuild': this.guild.join(); break;
-      case 'promote': this.guild.promote(); break;
+      case 'promote': if (typeof v === 'string') this.guild.promoteTo(v); else this.guild.promote(); break;
       case 'sleep': this.sleep(v); break;
       case 'toast': this.game.hud.toast(v, 4); break;
       case 'notify': this.notify('info', v); break;
