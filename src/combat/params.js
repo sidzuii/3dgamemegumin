@@ -28,7 +28,8 @@ export const PARAMS = {
     "inactive_stamina": 12,
     "stamina_delay": 0.7,
     "regen_during_guard": false,
-    "regen_during_cast": false
+    "regen_during_cast": false,
+    "basic_stamina_delay": 0
   },
   "defense": {
     "guard_arc": 120,
@@ -114,22 +115,22 @@ export const PARAMS = {
       "id": "M_L1",
       "owner": "megumin",
       "category": "basic_melee",
-      "startup": 0.18,
+      "startup": 0.12,
       "active": 0.08,
-      "recovery": 0.2,
-      "total": 0.46,
+      "recovery": 0.12,
+      "total": 0.32,
       "damage": {
         "A": 0.28,
         "S": 0
       },
       "cost": {
         "mana": 0,
-        "stamina": 6
+        "stamina": 2
       },
       "poise": 10,
       "range": 1.8,
       "arc": 100,
-      "cancel_at": 0.3,
+      "cancel_at": 0.2,
       "backstep": 0,
       "cost_at": "start",
       "hit_at": "weapon_contact",
@@ -139,22 +140,22 @@ export const PARAMS = {
       "id": "M_L2",
       "owner": "megumin",
       "category": "basic_melee",
-      "startup": 0.2,
-      "active": 0.1,
-      "recovery": 0.22,
-      "total": 0.52,
+      "startup": 0.13,
+      "active": 0.08,
+      "recovery": 0.13,
+      "total": 0.34,
       "damage": {
         "A": 0.34,
         "S": 0
       },
       "cost": {
         "mana": 0,
-        "stamina": 7
+        "stamina": 2
       },
       "poise": 12,
       "range": 1.8,
       "arc": 120,
-      "cancel_at": 0.34,
+      "cancel_at": 0.21,
       "backstep": 0,
       "cost_at": "start",
       "hit_at": "weapon_contact",
@@ -164,22 +165,22 @@ export const PARAMS = {
       "id": "M_L3",
       "owner": "megumin",
       "category": "basic_melee",
-      "startup": 0.28,
-      "active": 0.12,
-      "recovery": 0.32,
-      "total": 0.72,
+      "startup": 0.18,
+      "active": 0.1,
+      "recovery": 0.2,
+      "total": 0.48,
       "damage": {
         "A": 0.48,
         "S": 0
       },
       "cost": {
         "mana": 0,
-        "stamina": 10
+        "stamina": 3
       },
       "poise": 18,
       "range": 1.8,
       "arc": 40,
-      "cancel_at": 0.48,
+      "cancel_at": 0.28,
       "backstep": 0,
       "cost_at": "start",
       "hit_at": "weapon_contact",
@@ -189,22 +190,22 @@ export const PARAMS = {
       "id": "R_L1",
       "owner": "roxy",
       "category": "basic_melee",
-      "startup": 0.17,
+      "startup": 0.11,
       "active": 0.07,
-      "recovery": 0.16,
-      "total": 0.4,
+      "recovery": 0.1,
+      "total": 0.28,
       "damage": {
         "A": 0.24,
         "S": 0
       },
       "cost": {
         "mana": 0,
-        "stamina": 5
+        "stamina": 2
       },
       "poise": 8,
       "range": 1.7,
       "arc": 90,
-      "cancel_at": 0.28,
+      "cancel_at": 0.18,
       "backstep": 0,
       "cost_at": "start",
       "hit_at": "weapon_contact",
@@ -214,22 +215,22 @@ export const PARAMS = {
       "id": "R_L2",
       "owner": "roxy",
       "category": "basic_melee",
-      "startup": 0.18,
+      "startup": 0.12,
       "active": 0.08,
-      "recovery": 0.2,
-      "total": 0.46,
+      "recovery": 0.12,
+      "total": 0.32,
       "damage": {
         "A": 0.28,
         "S": 0
       },
       "cost": {
         "mana": 0,
-        "stamina": 6
+        "stamina": 2
       },
       "poise": 10,
       "range": 1.7,
       "arc": 100,
-      "cancel_at": 0.31,
+      "cancel_at": 0.2,
       "backstep": 0,
       "cost_at": "start",
       "hit_at": "weapon_contact",
@@ -239,22 +240,22 @@ export const PARAMS = {
       "id": "R_L3",
       "owner": "roxy",
       "category": "basic_melee",
-      "startup": 0.22,
-      "active": 0.1,
-      "recovery": 0.22,
-      "total": 0.54,
+      "startup": 0.16,
+      "active": 0.09,
+      "recovery": 0.15,
+      "total": 0.4,
       "damage": {
         "A": 0.36,
         "S": 0
       },
       "cost": {
         "mana": 0,
-        "stamina": 8
+        "stamina": 3
       },
       "poise": 14,
       "range": 1.7,
       "arc": 35,
-      "cancel_at": 0.4,
+      "cancel_at": 0.25,
       "backstep": 0.35,
       "cost_at": "start",
       "hit_at": "weapon_contact",
@@ -608,5 +609,5 @@ export const PARAMS = {
       ]
     }
   ],
-  "note": "Числа для ручного переноса в прототип. Файл не является готовой реализацией игры."
+  "note": "Числа для ручного переноса в прототип. Файл не является готовой реализацией игры. | 2026-10: staff series sped up and made cheap (2/2/3 stamina, no regen pause; the next hit starts from cancel_at when pressed during the swing)."
 };

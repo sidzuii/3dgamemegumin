@@ -153,6 +153,11 @@ export class CombatSim {
         break;
       case 'action':
         SKILLS.stepAction(this, hero, h);
+        // Staff series: a queued hit cuts the recovery of the current one at its cancel point.
+        if (hero.state === 'action' && hero.act.spec.kind === 'basic' && hero.queue?.kind === 'attack' && hero.act.t >= hero.act.spec.cancelAt) {
+          SKILLS.finish(this, hero);
+          this._consumeQueue(hero);
+        }
         break;
       default:
         this._stepFree(hero, h);
@@ -178,7 +183,7 @@ export class CombatSim {
     const q = hero.queue;
     if (!q || hero.state !== 'free') return;
     hero.queue = null;
-    if (this.time - q.at > INPUT_WINDOW) return; // too old: only the last 0.18 s count
+    if (!q.chain && this.time - q.at > INPUT_WINDOW) return; // too old: only the last 0.18 s count
     if (q.kind === 'attack') this._startAttack(hero);
     else if (q.kind === 'skill') this.skill(hero.id, q.slot);
     else if (q.kind === 'dodge') this.dodge(hero.id, q.dx, q.dz);
@@ -215,7 +220,8 @@ export class CombatSim {
       return this._startAttack(hero);
     }
     if (hero.state === 'action' || hero.state === 'dodge' || hero.state === 'stun') {
-      hero.queue = { kind: 'attack', at: this.time };
+      // A press during a staff swing is kept for the whole swing: the next hit starts from its cancel point.
+      hero.queue = { kind: 'attack', at: this.time, chain: hero.state === 'action' && hero.act?.spec.kind === 'basic' };
       return true;
     }
     return false;
@@ -231,7 +237,7 @@ export class CombatSim {
       this.emit('denied', { hero: hero.id, id, reason: 'Не хватает выносливости', why: 'stamina' });
       return false;
     }
-    f.spendStamina(s.cost.stamina);
+    f.spendStamina(s.cost.stamina, NUM.regen.basic_stamina_delay ?? NUM.regen.stamina_delay); // staff hits do not pause the regeneration
     hero.guarding = false;
     SKILLS.begin(this, hero, s);
     return true;

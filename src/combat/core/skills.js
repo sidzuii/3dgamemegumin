@@ -676,5 +676,5 @@ function aimTrack(sim, hero, a, h) {
   }
 }
 
-export const SKILLS = { begin, stepAction, cancel };
+export const SKILLS = { begin, stepAction, cancel, finish };
 void SLOTS; void SPEC;

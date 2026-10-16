@@ -57,14 +57,14 @@ test('damage formula: 0.65 S vs magic defence 10 ≈ 59 (docs/combat/01 §4)', (
   eq(computeHealth({ coefA: 0.0001, A: 100 }), 1, 'a successful hit deals at least 1');
 });
 
-test('combo numbers: 110 damage, 23 stamina, 1.70 s without cancels (Megumin); 88 / 19 / 1.40 s (Roxy)', () => {
+test('combo numbers: 110 damage, 7 stamina, 1.14 s without cancels (Megumin); 88 / 7 / 1.00 s (Roxy)', () => {
   const sum = (ids, f) => ids.reduce((a, id) => a + f(SPEC[id]), 0);
   eq(Math.round(sum(COMBO.megumin, (s) => s.coefA * 100)), 110);
-  eq(sum(COMBO.megumin, (s) => s.cost.stamina), 23);
-  near(sum(COMBO.megumin, (s) => s.total), 1.7, 1e-9);
+  eq(sum(COMBO.megumin, (s) => s.cost.stamina), 7);
+  near(sum(COMBO.megumin, (s) => s.total), 1.14, 1e-9);
   eq(Math.round(sum(COMBO.roxy, (s) => s.coefA * 100)), 88);
-  eq(sum(COMBO.roxy, (s) => s.cost.stamina), 19);
-  near(sum(COMBO.roxy, (s) => s.total), 1.4, 1e-9);
+  eq(sum(COMBO.roxy, (s) => s.cost.stamina), 7);
+  near(sum(COMBO.roxy, (s) => s.total), 1.0, 1e-9);
 });
 
 test('BT01 frame rate: Explosion releases at 2.40 s (±1 step) at 30, 60 and 120 fps', () => {
@@ -97,37 +97,37 @@ test('BT02 staff: a target inside the active path is hit once; outside / behind 
   eq(behind.log.length, 0, 'behind');
   eq(far.log.length, 0, 'out of range');
   eq(front.hp, 240 - 28, 'damage 0.28 A');
-  // Contact happens inside the active window 0.18 – 0.26 s.
+  // Contact happens inside the active window 0.12 – 0.20 s.
   const c = events(sim, 'contact')[0];
-  ok(c.time >= 0.17 && c.time <= 0.27, 'contact time ' + c.time);
+  ok(c.time >= 0.11 && c.time <= 0.21, 'contact time ' + c.time);
 });
 
-test('series: contacts at 0.18–0.26 / 0.66–0.76 / 1.26–1.38, total 1.70, input window = last 0.18 s', () => {
-  const { env, sim } = world({ roxy: false });
+test('series: a press during a swing chains from its cancel point: contacts 0.12–0.20 / 0.33–0.41 / 0.59–0.69, end 0.89', () => {
+  const { env, sim, m } = world({ roxy: false });
   const t = env.addTarget({ x: 0, z: 1.3, hp: 5000 });
   sim.attack('megumin');
-  run(sim, 0.30);
-  sim.attack('megumin'); // inside the last 0.18 s of hit 1 (0.28 – 0.46)
-  run(sim, 0.55);
-  sim.attack('megumin'); // inside the last 0.18 s of hit 2 (0.80 – 0.98)
+  run(sim, 0.05);
+  sim.attack('megumin'); // early in hit 1: kept for the whole swing
+  run(sim, 0.25);
+  sim.attack('megumin'); // during hit 2
   run(sim, 1.2);
   const cs = events(sim, 'contact').filter((e) => e.target === t);
   eq(cs.length, 3, 'three contacts');
-  ok(cs[0].time > 0.17 && cs[0].time < 0.27, 'c1 ' + cs[0].time);
-  ok(cs[1].time > 0.65 && cs[1].time < 0.78, 'c2 ' + cs[1].time);
-  ok(cs[2].time > 1.25 && cs[2].time < 1.4, 'c3 ' + cs[2].time);
+  ok(cs[0].time > 0.11 && cs[0].time < 0.21, 'c1 ' + cs[0].time);
+  ok(cs[1].time > 0.32 && cs[1].time < 0.42, 'c2 ' + cs[1].time);
+  ok(cs[2].time > 0.58 && cs[2].time < 0.7, 'c3 ' + cs[2].time);
   const ends = events(sim, 'action:end');
-  near(ends[2].time, 1.7, 0.05, 'series end');
+  near(ends[2].time, 0.89, 0.03, 'series end');
+  ok(m.f.stamina > 96, 'staff hits are cheap and do not stop the regeneration: ' + m.f.stamina);
 });
 
-test('series: a press earlier than the last 0.18 s is not queued; a late start resets after 0.75 s', () => {
+test('series: without a press the swing plays out; a late start resets after 0.75 s', () => {
   const { env, sim, m } = world({ roxy: false });
   env.addTarget({ x: 0, z: 1.3, hp: 5000 });
   sim.attack('megumin');
-  run(sim, 0.1);
-  sim.attack('megumin'); // too early (age at the end of the hit is 0.36 s)
   run(sim, 0.5);
-  eq(events(sim, 'action:start').length, 1, 'no second hit');
+  eq(events(sim, 'action:start').length, 1, 'one hit');
+  near(events(sim, 'action:end')[0].time, 0.32, 0.02, 'full swing');
   run(sim, 0.9);
   sim.attack('megumin');
   run(sim, 0.01);
