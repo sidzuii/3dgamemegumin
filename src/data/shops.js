@@ -33,6 +33,10 @@ export const SHOPS = {
     name: 'Таверна «Кружка и посох»', owner: 'doris', buys: ['food'],
     stock: [['stew', 8], ['bread', 6], ['cheese', 4], ['frog_meat', 4]],
   },
+  inn_tavia: {
+    name: 'Двор Тавии', owner: 'tavia', buys: ['food'],
+    stock: [['stew', 8], ['bread', 8], ['cheese', 5], ['apple', 6], ['hp_potion', 3]],
+  },
   olkhovka_inn: {
     name: 'Постоялый двор «Ольха»', owner: 'helga', buys: ['material', 'trophy', 'food'],
     stock: [['hp_potion', 4], ['frog_meat', 6], ['leather', 5], ['scroll_return', 2], ['st_potion', 3]],

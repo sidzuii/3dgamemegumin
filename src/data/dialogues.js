@@ -3,6 +3,7 @@
  * Effects: see RPG._effect (advance, startQuest, give, take, eris, rel, setFlag, openShop…).
  */
 import { STORY_SCENES } from './story/index.js';
+import { CAPITAL_DIALOGUES } from './dialogues_capital.js';
 
 const D = (nodes, start = 'start') => ({ start, nodes });
 const BYE = { text: 'До встречи.', next: 'end' };
@@ -184,6 +185,7 @@ export const DIALOGUES = {
 
   // ======================================================================== STORY (scenario package, data/story)
   ...STORY_SCENES,
+  ...CAPITAL_DIALOGUES,
 };
 
 /** Texts of readable story props. */

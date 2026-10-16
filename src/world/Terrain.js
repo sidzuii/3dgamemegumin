@@ -1,6 +1,7 @@
 import { fbm, smoothstep, clamp } from '../core/math.js';
 import { HALF, RIVER, RIVERS, LAKES, LAVA, ROADS, FLATS, HILLS, RIDGES, REGION, BRIDGES } from './MapData.js';
 import { STREETS, RING, streetLine, ringLine, toWorld } from './AxelPlan.js';
+import { SHEET, inSheet, LEDGE_CLIFFS } from './AinstreyPlan.js';
 
 /**
  * Terrain height model.
@@ -18,6 +19,11 @@ import { STREETS, RING, streetLine, ringLine, toWorld } from './AxelPlan.js';
 
 export const GRID_STEP = 2.5;
 export const GRID_N = Math.round((HALF * 2) / GRID_STEP) + 1;
+/** The height grids: the old map and the Ainstrey sheet (a separate rectangle east of it, docs/ainstrey). */
+export const SHEETS = [
+  { id: 'main', x0: -HALF, z0: -HALF, step: GRID_STEP, nx: GRID_N, nz: GRID_N },
+  { id: 'ainstrey', x0: SHEET.x0, z0: SHEET.z0, step: SHEET.step, nx: Math.round((SHEET.x1 - SHEET.x0) / SHEET.step) + 1, nz: Math.round((SHEET.z1 - SHEET.z0) / SHEET.step) + 1 },
+];
 
 function distToSeg(px, pz, ax, az, bx, bz) {
   const dx = bx - ax, dz = bz - az;
@@ -102,6 +108,43 @@ export function polygonDistance(pts, x, z) {
   return inside ? -d : d;
 }
 
+/**
+ * The cliff bands of the Stone Ledge (AinstreyPlan LEDGE_CLIFFS): a flat top and a steep face (steeper than the walkable
+ * slope of the character), so the gorge of the Postal ascent is closed and the rockfall is the only way through.
+ */
+const CLIFFS = LEDGE_CLIFFS.map((C) => {
+  const segs = [];
+  let s = 0;
+  for (let i = 0; i < C.pts.length - 1; i++) {
+    const [ax, az] = C.pts[i], [bx, bz] = C.pts[i + 1];
+    const len = Math.hypot(bx - ax, bz - az);
+    segs.push({ ax, az, bx, bz, len, s0: s });
+    s += len;
+  }
+  const xs = C.pts.map((p) => p[0]), zs = C.pts.map((p) => p[1]), m = C.top + C.face + 1;
+  return { ...C, segs, total: s, bbox: [Math.min(...xs) - m, Math.min(...zs) - m, Math.max(...xs) + m, Math.max(...zs) + m] };
+});
+
+function cliffHeight(x, z) {
+  let h = 0;
+  for (const C of CLIFFS) {
+    if (x < C.bbox[0] || x > C.bbox[2] || z < C.bbox[1] || z > C.bbox[3]) continue;
+    let best = Infinity, bs = 0;
+    for (const g of C.segs) {
+      const dx = g.bx - g.ax, dz = g.bz - g.az;
+      const t = clamp(((x - g.ax) * dx + (z - g.az) * dz) / (g.len * g.len), 0, 1);
+      const d = Math.hypot(x - (g.ax + dx * t), z - (g.az + dz * t));
+      if (d < best) { best = d; bs = g.s0 + t * g.len; }
+    }
+    if (best >= C.top + C.face) continue;
+    const k = 1 - smoothstep(C.top, C.top + C.face, best);
+    const fade = smoothstep(C.total, C.total - C.fadeEnd, bs); // the band sinks into the ground at its far end
+    const n = 0.88 + 0.24 * (fbm(x * 0.045 + 11, z * 0.045 - 5, 3) * 0.5 + 0.5);
+    h += (C.height * k * n + fbm(x * 0.16, z * 0.16, 2) * 1.6 * k * (1 - k) * 4) * fade;
+  }
+  return h;
+}
+
 function ridgeHeight(x, z) {
   let h = 0;
   for (const R of RIDGES) {
@@ -118,14 +161,21 @@ function ridgeHeight(x, z) {
 
 /** The natural ground before settlements, roads and water are cut in. */
 function naturalHeight(x, z) {
-  let h = fbm(x * 0.0065 + 3.1, z * 0.0065 - 7.4, 4) * 11;
-  h += fbm(x * 0.03, z * 0.03, 3) * 0.9;
+  const ain = inSheet(x, z);
+  let h = fbm(x * 0.0065 + 3.1, z * 0.0065 - 7.4, 4) * (ain ? 9 : 11) + (ain ? 3 : 0);
+  h += fbm(x * 0.03, z * 0.03, 3) * (ain ? 1.0 : 0.9);
   for (const H of HILLS) {
     const dx = x - H.x, dz = z - H.z;
     h += H.h * Math.exp(-(dx * dx + dz * dz) / (2 * H.r * H.r));
   }
   h += ridgeHeight(x, z);
-  // Mountains around the edge of the world.
+  // Mountains around the edge of the world (the Ainstrey sheet has its own rectangle).
+  if (ain) {
+    const d = Math.min(x - SHEET.x0, SHEET.x1 - x, z - SHEET.z0, SHEET.z1 - z);
+    if (d < 160) h += (1 - smoothstep(20, 160, d)) * 62 * (0.7 + 0.3 * fbm(x * 0.012, z * 0.012, 3));
+    h += (1 - smoothstep(6, 16, d)) * 55; // a wall at the very edge of the sheet: steeper than the walkable slope, nobody climbs out of the region
+    return h;
+  }
   const e = Math.max(Math.abs(x), Math.abs(z)) * 0.7 + Math.hypot(x, z) * 0.3;
   if (e > HALF - 120) h += smoothstep(HALF - 120, HALF - 20, e) * 60 * (0.7 + 0.3 * fbm(x * 0.012, z * 0.012, 3));
   return h;
@@ -185,7 +235,8 @@ function baseHeight(x, z) {
     } else d = Math.hypot(x - F.x, z - F.z);
     if (d > r + F.feather) continue;
     let level = F.level;
-    if (level === 'auto') {
+    if (typeof level === 'function') level = level(x, z);
+    else if (level === 'auto') {
       const key = F.x + ',' + F.z;
       if (!autoLevels.has(key)) autoLevels.set(key, naturalHeight(F.x, F.z));
       level = autoLevels.get(key);
@@ -199,13 +250,15 @@ function baseHeight(x, z) {
   if (road.d < 5 && city < 1) {
     const w = (1 - smoothstep(-1, 5, road.d)) * (1 - city);
     const smooth = naturalHeightSmooth(x, z, h);
-    h = h * (1 - w * 0.55) + smooth * w * 0.55;
+    const k = inSheet(x, z) ? 0.8 : 0.55; // the trakt is a built road: its bed is levelled harder
+    h = h * (1 - w * k) + smooth * w * k;
   }
   // Bank floor (after the road levelling, which can dig below it).
   const fw = 1 - smoothstep(V / 2, V * 1.16, rd);
   if (fw > 0) h += Math.max(0, R.level + 0.35 + Math.max(0, rd) * 0.03 - h) * fw;
-  // River channel.
-  const ch = 1 - smoothstep(-R.width * 0.15, R.width * 0.25, rd);
+  // River channel (bankW: the width the shore ramp scales with; a wide river has steep banks).
+  const bw = R.bankW ?? R.width;
+  const ch = 1 - smoothstep(-bw * 0.15, bw * 0.25, rd);
   if (ch > 0) h = h * (1 - ch) + R.bed * ch;
   // Fords: a shallow gravel bed (0.3 m of water) where a road wades the creek.
   for (const F of FORDS) {
@@ -238,6 +291,7 @@ function baseHeight(x, z) {
       if (wp > 0) h = Math.min(h, h * (1 - wp) + (LAVA.level - 0.9) * wp);
     }
   }
+  if (CLIFFS.length) h += cliffHeight(x, z);
   return h;
 }
 
@@ -248,28 +302,36 @@ function naturalHeightSmooth(x, z, h) {
   return h - fbm(x * 0.03, z * 0.03, 3) * 0.9;
 }
 
-/** Cached height grid + bilinear sampling. */
+/** Cached height grids (one per sheet) + bilinear sampling. */
 export class Heightfield {
   constructor() {
-    const N = GRID_N;
-    this.data = new Float32Array(N * N);
-    for (let j = 0; j < N; j++) {
-      const z = -HALF + j * GRID_STEP;
-      for (let i = 0; i < N; i++) this.data[j * N + i] = analyticHeight(-HALF + i * GRID_STEP, z);
-    }
+    this.sheets = SHEETS.map((sh) => {
+      const data = new Float32Array(sh.nx * sh.nz);
+      for (let j = 0; j < sh.nz; j++) {
+        const z = sh.z0 + j * sh.step;
+        for (let i = 0; i < sh.nx; i++) data[j * sh.nx + i] = analyticHeight(sh.x0 + i * sh.step, z);
+      }
+      return { ...sh, data };
+    });
+    this.main = this.sheets[0];
+    this.data = this.main.data; // the old map's grid (the map screen reads it)
   }
 
-  /** Height at a grid vertex. */
-  vertex(i, j) {
-    return this.data[clamp(j, 0, GRID_N - 1) * GRID_N + clamp(i, 0, GRID_N - 1)];
+  /** The sheet whose grid covers (x, z), else null. */
+  sheetAt(x, z) {
+    for (const sh of this.sheets) {
+      if (x >= sh.x0 && z >= sh.z0 && x <= sh.x0 + (sh.nx - 1) * sh.step && z <= sh.z0 + (sh.nz - 1) * sh.step) return sh;
+    }
+    return null;
   }
 
   sample(x, z) {
-    const fx = (x + HALF) / GRID_STEP, fz = (z + HALF) / GRID_STEP;
-    const i = Math.floor(fx), j = Math.floor(fz);
-    if (i < 0 || j < 0 || i >= GRID_N - 1 || j >= GRID_N - 1) return analyticHeight(x, z);
+    const sh = this.sheetAt(x, z);
+    if (!sh) return analyticHeight(x, z);
+    const fx = (x - sh.x0) / sh.step, fz = (z - sh.z0) / sh.step;
+    const i = Math.min(sh.nx - 2, Math.floor(fx)), j = Math.min(sh.nz - 2, Math.floor(fz));
     const tx = fx - i, tz = fz - j;
-    const N = GRID_N, d = this.data;
+    const N = sh.nx, d = sh.data;
     const a = d[j * N + i], b = d[j * N + i + 1], c = d[(j + 1) * N + i], e = d[(j + 1) * N + i + 1];
     // Same triangulation as PlaneGeometry (a-c-b / c-e-b) so feet match the mesh exactly.
     if (tx + tz <= 1) return a + (b - a) * tx + (c - a) * tz;

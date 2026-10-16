@@ -14,6 +14,11 @@ export const CH0 = {
       $.O(13, [$.L(14, 16), $.DO({ setVar: ['MARTA_FLOUR', true] })]),
     ]),
     $.L(17, 23),
+    // A00.2 — an optional question before leaving (v2.0): the caravan's route to Ainstrey.
+    $.CH('A00.2', [
+      $.O(901, [$.L(902, 903)]),
+      $.O(904, [$.L(905)]),
+    ]),
     $.IF({ quest: 'a00_bags', status: 'active' }, [$.DO([{ setVar: ['MARTA_BAGS', true] }, { advance: 'a00_bags' }])]),
     $.DO([{ eris: 20 }, { advance: 'prologue_arrival' }]),
   ], { entries: { join: 17 } }),

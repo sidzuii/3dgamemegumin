@@ -5,8 +5,9 @@ import { COMBAT_CLIPS } from '../data/story/combatClips.js';
 const CLIPS = { ...STORY_CLIPS, ...COMBAT_CLIPS };
 import { VOICE } from '../data/story/dsl.js';
 import { TRIGGERS } from '../data/story/triggers.js';
-import { STORY_PROPS, STORY_VOLLEY, STORY_WAVES, STORY_BLASTS } from '../data/story/props.js';
-import { SIDE_EPILOGUES } from '../data/story/epilogues.js';
+import { STORY_PROPS, STORY_VOLLEY, STORY_WAVES, STORY_BLASTS, STORY_LURES } from '../data/story/props.js';
+import { STOPS, STOP_R, STOPS_NEEDED } from '../data/travel.js';
+import { CITY_WALL, ORIGIN as AIN_ORIGIN } from '../world/AinstreyPlan.js';
 import { Clock } from './Clock.js';
 import { QuestManager } from './Quests.js';
 import { DialogueRunner } from './Dialogue.js';
@@ -15,6 +16,7 @@ import { Guild } from './Guild.js';
 import { WorldEvents } from './WorldEvents.js';
 import { Gathering } from './Gathering.js';
 import { REGIONS, REGION, HALF, ROADS } from '../world/MapData.js';
+import { SHEET as AIN_SHEET, EXPLORE as EXPLORE_AIN, inSheet as inAinSheet } from '../world/AinstreyPlan.js';
 import { ITEMS } from '../data/items.js';
 import { PROP_TEXTS } from '../data/dialogues.js';
 
@@ -47,6 +49,7 @@ export class RPG {
     this.saveTimer = 0;
     this.autosave = 30;
     this.explored = new Uint8Array(EXPLORE_N * EXPLORE_N);
+    this.exploredAin = new Uint8Array(EXPLORE_AIN.nx * EXPLORE_AIN.nz); // the map page of the Ainstrey sheet
     this.ui = null; // set by Game (dialogue, shop, menu, notify)
     this.events.on('custom', (e) => this.quests._count('custom', (o) => o.name === e.name, e.n ?? 1));
     // Audio feedback for story progress and loot (the player's own pickups, not shop restock).
@@ -142,6 +145,7 @@ export class RPG {
     this.clock.state = this.state;
     this._fixups();
     this._applyStateToWorld();
+    this._migrateCapital();
     this.gathering.syncFromState();
     this.npcs?.refresh();
     this._resumeEscort();
@@ -153,6 +157,22 @@ export class RPG {
     if (corrupted) this.notify('info', 'Сохранение повреждено — начата новая игра.');
     this.markDirty(true);
     return this.loaded;
+  }
+
+  /**
+   * Version 2.0 (the road to Ainstrey, the capital): a save that had finished the crypt (chapter 5) before the update gets the new chapters quietly.
+   * Not yet on the way to the post behind the ridge: the road quest is the next story step. Already further (ch6_relay and later): the road quest waits
+   * in the journal and does not take the pointer. The saved world, levels, bag, flags and decisions are kept; the old ENDING variable decides nothing.
+   */
+  _migrateCapital() {
+    const Q = this.quests;
+    if (Q.status('ch5_crypt') !== 'done' || Q.status('ainstrey_road') !== 'none') return;
+    const late = Q.status('ch6_relay') !== 'none';
+    const keep = Q.tracked;
+    Q.start('ainstrey_road', true);
+    if (late) Q.tracked = keep;
+    this.setFlag('ainstrey_migrated');
+    this.notify('info', late ? 'Открыта новая ветка: дорога к Айнстрею. Письмо для Селии Морн лежит у Луны; задание ждёт в журнале и не мешает основному.' : 'Открыта новая глава: дорога к Айнстрею. Поговори с Луной в гильдии.');
   }
 
   _fixups() {
@@ -180,6 +200,14 @@ export class RPG {
       S.storyRev = STORY_REV;
     }
     for (const id of Object.keys(S.quests)) if (!this.quests.def(id)) delete S.quests[id];
+    if (S.exploredAin) {
+      try {
+        const bin = atob(S.exploredAin);
+        for (let i = 0; i < this.exploredAin.length; i++) this.exploredAin[i] = (bin.charCodeAt(i >> 3) >> (i & 7)) & 1;
+      } catch {
+        /* corrupted fog map of the sheet: start blank */
+      }
+    }
     if (S.explored) {
       try {
         const bin = atob(S.explored);
@@ -267,8 +295,10 @@ export class RPG {
     this.game.world.relay?.sync(F);
     this.game.world.drain?.sync(F);
     this.game.world.pump?.sync(F, this.state.vars);
+    this.game.world.port?.sync(F, this.state.vars || {});
     this.game.world.core?.sync(F);
-    this.game.world.pumpYard?.sync(F, this.state.vars);
+    const led = this.game.world.ledge;
+    if (led) { led.rpg ||= this; led.sync(F, this.state.vars || {}); }
     for (const it of this.game.world.interactables) {
       if (!it.setActive) continue;
       const sp = STORY_PROPS[it.id];
@@ -442,8 +472,8 @@ export class RPG {
       case 'say': this.say(v); break;
       case 'sayChain': this._sayChain(v); break;
       case 'wave': this._startWave(v); break;
+      case 'cart': this.game.world.ledge?.runCart(v, () => this.apply(v === 'empty' ? [{ setFlag: 'cart_empty_ok' }, { scene: 'D09a' }] : [{ setFlag: 'cart_loaded_ok' }, { scene: 'D09b' }])); break;
       case 'save': this.save(); break;
-      case 'credits': this._credits(); break;
       case 'scene': setTimeout(() => { if (!this.dialogue.active) this.dialogue.start(v, null); }, 400); break;
       case 'startIfAvailable': if (this.quests.canStart(v)) this.quests.start(v); break;
       case 'ritualWave': {
@@ -668,23 +698,6 @@ export class RPG {
     n.escortSpeed = 3.0;
   }
 
-  /** The credits after the last scene of the main line: a summary of the choices (shown as a long text); the world stays as it is. */
-  _credits() {
-    const v = this.state.vars, F = this.state.flags;
-    const L = ['Аксель живёт дальше.'];
-    L.push(v.ENDING === 'rebuild'
-      ? 'Малый контур остался под ограничителем: подача в город только после проверки, два оператора, запись команд. Большой канал зацементирован.'
-      : 'Установка разобрана: воду город берёт из речного рукава и колодцев. Гаррет закончил две новые насосные рукояти.');
-    L.push('Вейр жив: после лечения он даст показания городскому суду.');
-    L.push(v.KHARZ_ROUTE === 'battle' ? 'Харз ушёл ослабленным в дальнюю пещеру: отвод проверяют со стороны дороги.' : 'Харз держит договор с гильдией: дальняя пещера остаётся за ним.');
-    L.push(v.WATER_FIRST === 'repair' ? 'Первую воду получили рабочие насосной, жителей выручил храмовый запас.' : 'Первую воду получили жители; рабочим принесли следующий запас.');
-    L.push(v.PUBLIC_REPORT ? 'Горожане получали отчёты гильдии по мере проверки.' : 'Имя Вейра хранилось в деле гильдии до проверки; для семей погибших назначили отдельную встречу.');
-    L.push((v.ROXY_TRUST ?? 0) >= 3 ? 'Рокси остаётся с Мегумин: назвать цель перед взрывом, назвать причину запрета до заклинания.' : 'Рокси продолжит работу с Мегумин на записанных условиях: цель, проверка, сигнал.');
-    for (const [key, text] of SIDE_EPILOGUES) if (v[key] || F[key]) L.push(text);
-    L.push('', 'Мегумин: Дорога приключений', 'Конец первой истории. Осмотр мира и побочные поручения остаются доступными.');
-    this.setFlag('game_complete');
-    this.game.hud.readBook({ icon: '🌟', name: 'Титры', text: L.join('\n\n') });
-  }
 
   /** V01 / V02: a short cry of the heroine, now and then (not in dialogues, never twice within `gap` seconds). */
   _combatBark(clip, chance, gap) {
@@ -776,16 +789,24 @@ export class RPG {
     if (STORY_WAVES[id].say) this._sayChain(STORY_WAVES[id].say);
   }
 
-  _spawnWave(id) {
+  _spawnWave(id, fromLoad = false) {
     const W = STORY_WAVES[id];
     const p = this.spotPos(W.spot);
     if (!p) return;
     const killed = this.state.counters['wk_' + id] || 0;
-    for (const [type, dx, dz, o] of W.enemies.slice(killed)) {
-      const e = this.game.enemies.spawn(type, new THREE.Vector3(p.x + dx, p.y, p.z + dz), W.camp);
+    const rest = W.enemies.slice(killed);
+    const put = (type, dx, dz, o) => {
+      const at = o?.at ? this.spotPos(o.at) : null; // a wave can stand on several named marks
+      const base = at || p;
+      const e = this.game.enemies.spawn(type, new THREE.Vector3(base.x + dx, base.y, base.z + dz), W.camp);
       e.noRespawn = true;
       if (o?.shield) e.shieldFlags = o.shield; // immune until these flags are set (the side posts of C24)
-    }
+    };
+    if (W.delay && !fromLoad) {
+      // The marks light up first; the enemies rise on them a moment later (never a hit from behind a tired heroine).
+      for (const [, dx, dz, o] of rest) { const b = (o?.at && this.spotPos(o.at)) || p; this.game.vfx.burst('magicPop', new THREE.Vector3(b.x + dx, b.y + 0.2, b.z + dz), 18); }
+      setTimeout(() => { for (const [type, dx, dz, o] of rest) put(type, dx, dz, o); }, W.delay * 1000);
+    } else for (const [type, dx, dz, o] of rest) put(type, dx, dz, o);
   }
 
   _waveKill(camp) {
@@ -804,7 +825,7 @@ export class RPG {
   /** Loaded in the middle of a wave: the enemies that were still alive are back. */
   _resumeWaves() {
     const F = this.state.flags;
-    for (const id of Object.keys(STORY_WAVES)) if (F['wv_' + id] && !F['wd_' + id]) this._spawnWave(id);
+    for (const id of Object.keys(STORY_WAVES)) if (F['wv_' + id] && !F['wd_' + id]) this._spawnWave(id, true);
   }
 
   /** After a load: an escort that was under way goes on from where it was saved. */
@@ -907,6 +928,14 @@ export class RPG {
   // Fog of war for the map.
   // ---------------------------------------------------------------------------------------
   _explore(p) {
+    if (inAinSheet(p.x, p.z)) {
+      const c = EXPLORE_AIN.cell, ci = Math.floor((p.x - AIN_SHEET.x0) / c), cj = Math.floor((p.z - AIN_SHEET.z0) / c), R = 5;
+      for (let j = cj - R; j <= cj + R; j++) for (let i = ci - R; i <= ci + R; i++) {
+        if (i < 0 || j < 0 || i >= EXPLORE_AIN.nx || j >= EXPLORE_AIN.nz || (i - ci) ** 2 + (j - cj) ** 2 > R * R) continue;
+        this.exploredAin[j * EXPLORE_AIN.nx + i] = 1;
+      }
+      return;
+    }
     const cell = (HALF * 2) / EXPLORE_N;
     const ci = Math.floor((p.x + HALF) / cell), cj = Math.floor((p.z + HALF) / cell);
     const R = 4;
@@ -918,6 +947,10 @@ export class RPG {
   }
 
   isExplored(x, z) {
+    if (inAinSheet(x, z)) {
+      const c = EXPLORE_AIN.cell, i = Math.floor((x - AIN_SHEET.x0) / c), j = Math.floor((z - AIN_SHEET.z0) / c);
+      return i >= 0 && j >= 0 && i < EXPLORE_AIN.nx && j < EXPLORE_AIN.nz && !!this.exploredAin[j * EXPLORE_AIN.nx + i];
+    }
     const cell = (HALF * 2) / EXPLORE_N;
     const i = Math.floor((x + HALF) / cell), j = Math.floor((z + HALF) / cell);
     return i >= 0 && j >= 0 && i < EXPLORE_N && j < EXPLORE_N && !!this.explored[j * EXPLORE_N + i];
@@ -942,6 +975,79 @@ export class RPG {
     }
   }
 
+  // ---------------------------------------------------------------------------------------
+  // Fast travel in the capital: the carts of the city and the river ferry between the safe stops (data/travel.js)
+  // ---------------------------------------------------------------------------------------
+  /** A stop opens when the player has been at it. */
+  _updateStops() {
+    if (!this.getVar('AINSTRAY_ENTERED')) return;
+    const pp = this.game.player.position;
+    for (const st of STOPS) {
+      if (this.state.flags['stop_' + st.id]) continue;
+      const s = this.spotPos(st.spot);
+      if (s && Math.hypot(pp.x - s.x, pp.z - s.z) < STOP_R) {
+        this.setFlag('stop_' + st.id);
+        const n = STOPS.filter((x) => this.state.flags['stop_' + x.id]).length;
+        this.notify('info', `Остановка открыта: ${st.name}.` + (n === STOPS_NEEDED ? ' Повозки и речной перевозчик теперь возят между известными остановками (карта, лист «Айнстрей»).' : ''));
+      }
+    }
+  }
+
+  knownStops() {
+    return STOPS.filter((st) => this.state.flags['stop_' + st.id]);
+  }
+
+  /** { ok, reason }: may the carts leave now? */
+  canFastTravel() {
+    const g = this.game;
+    if (!this.getVar('AINSTRAY_ENTERED')) return { ok: false, reason: 'Повозки столицы начинают возить после первого входа в город.' };
+    if (this.knownStops().length < STOPS_NEEDED) return { ok: false, reason: `Повозки возят между остановками, которые вы уже видели (нужно ${STOPS_NEEDED}, открыто ${this.knownStops().length}).` };
+    if (g.inDungeon || this.dialogue.active) return { ok: false, reason: 'Сейчас недоступно.' };
+    if (g.enemies.list.some((e) => e.alive && e.aggroed && e.position.distanceTo(g.player.position) < 40)) return { ok: false, reason: 'Рядом враги: повозка не подъедет.' };
+    const pp = g.player.position;
+    if (!inAinSheet(pp.x, pp.z) || !this._nearCity(pp)) return { ok: false, reason: 'Повозки ходят только внутри городских стен.' };
+    return { ok: true };
+  }
+
+  _nearCity(pp) {
+    const u = pp.x - AIN_ORIGIN.x, v = pp.z - AIN_ORIGIN.z;
+    let inside = false;
+    for (let i = 0, j = CITY_WALL.length - 1; i < CITY_WALL.length; j = i++) {
+      const a = CITY_WALL[i], b = CITY_WALL[j];
+      if (a.v > v !== b.v > v && u < ((b.u - a.u) * (v - a.v)) / (b.v - a.v) + a.u) inside = !inside;
+    }
+    return inside;
+  }
+
+  fastTravel(id) {
+    const st = STOPS.find((x) => x.id === id);
+    const can = this.canFastTravel();
+    if (!st || !can.ok) { if (!can.ok) this.game.hud.toast(can.reason, 3); return false; }
+    if (!this.state.flags['stop_' + id]) { this.game.hud.toast('Эту остановку вы ещё не видели.', 3); return false; }
+    this.game.travel(st.spot);
+    // the ride takes a quarter of an hour of the day
+    const t = this.state.time;
+    t.minutes += 15;
+    if (t.minutes >= 1440) { t.minutes -= 1440; t.day += 1; }
+    this.notify('info', `${st.ride[0].toUpperCase()}${st.ride.slice(1)}: ${st.name}.`);
+    this.npcs?.refresh();
+    this.markDirty(true);
+    return true;
+  }
+
+  /** Pits of STORY_LURES: an enemy of the camp that walks into one falls and is out of the fight (it counts as a kill of the wave). */
+  _updateLures() {
+    for (const L of STORY_LURES) {
+      if (!check(this, L.when)) continue;
+      const s = this.spotPos(L.spot);
+      if (!s) continue;
+      for (const e of this.game.enemies.list) {
+        if (!e.alive || e.camp !== L.camp) continue;
+        if (Math.hypot(e.position.x - s.x, e.position.z - s.z) <= L.r && e.position.y < s.y + 1.2) e.takeHit(1e6, s, 0);
+      }
+    }
+  }
+
   update(dt) {
     const newDay = this.clock.update(dt);
     if (newDay) {
@@ -955,6 +1061,8 @@ export class RPG {
       this._explore(pp);
       this.quests.update(pp);
       this._updateTriggers(0.5);
+      this._updateLures();
+      this._updateStops();
       this.gathering.update();
       // Schedules change on the hour.
       const hour = Math.floor(this.clock.hour);
@@ -1000,6 +1108,13 @@ export class RPG {
       bin += String.fromCharCode(b);
     }
     S.explored = btoa(bin);
+    let bin2 = '';
+    for (let i = 0; i < this.exploredAin.length; i += 8) {
+      let b = 0;
+      for (let k = 0; k < 8; k++) b |= (this.exploredAin[i + k] || 0) << k;
+      bin2 += String.fromCharCode(b);
+    }
+    S.exploredAin = btoa(bin2);
     const e = this.escort;
     S.escort = e ? { def: e.def, ambushed: e.ambushed, x: e.npc.position.x, z: e.npc.position.z } : null;
     if (!writeSave(S)) {

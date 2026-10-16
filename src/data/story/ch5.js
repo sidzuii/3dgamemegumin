@@ -48,7 +48,7 @@ export const CH5 = {
   // C04 — the pedestal, the third shard, Veyr's projection.
   ...S('C04', ($) => [
     $.L(1, 7),
-    $.CH('C04.1', [$.O(8, [$.L(9, 11)]), $.O(12, [$.L(13, 14)]), $.O(15, [$.L(16, 18)])]),
+    $.CH('C04.1', [$.O(8, [$.L(901), $.L(10, 11)]), $.O(12, [$.L(13, 14)]), $.O(15, [$.L(16, 18)])]),
     $.L(19),
     $.N('Проекция гаснет. В боковом канале поднимается вода.'),
     $.L(20, 21),
@@ -63,7 +63,8 @@ export const CH5 = {
       $.O(8, [$.L(9), $.DO({ setVar: ['PUBLIC_REPORT', false] })]),
       $.O(10, [$.L(11, 12), $.DO({ setVar: ['PUBLIC_REPORT', true] })]),
     ]),
-    $.L(13),
-    $.DO({ advance: 'ch5_crypt' }),
+    // v2.0: rank D for the confirmed crypt expedition, Edmund's request to Ilar, the sealed upper channel, the road to Olkhovka.
+    $.L(901, 906),
+    $.DO([{ promote: 'D' }, { setVar: ['AXEL_TRAVEL_STABLE', true] }, { advance: 'ch5_crypt' }]),
   ]),
 };

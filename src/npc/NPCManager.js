@@ -31,6 +31,7 @@ const ESCORT_SPEED = 2.6; // a merchant with a mule on the road (the walk clip i
 const SEAT_H = 0.46; // bench height; schedule entries may set `seat` (0.1 = on the ground)
 const _v = new THREE.Vector3();
 const _p = new THREE.Vector3();
+const _v2 = new THREE.Vector3();
 const _a = new THREE.Vector3();
 const _q = new THREE.Quaternion();
 const _wq = new THREE.Quaternion();
@@ -189,6 +190,7 @@ class NPC {
       this._setVisible(false);
       this.entry = entry;
       this.path = null;
+      this.pendingTarget = null;
       return;
     }
     const spot = this.game.rpg.spotPos(entry.spot);
@@ -203,6 +205,7 @@ class NPC {
       this.pos.y = this._ground(spot.x, spot.z, spot.y);
       this.yaw = this.game.rpg.spotYaw(entry.spot);
       this.path = null;
+      this.pendingTarget = null;
       this._setVisible(true);
     } else if (changed) {
       this._goTo(spot, entry.route);
@@ -225,6 +228,13 @@ class NPC {
       this.path.push(target.clone());
     } else {
       const grid = this.mgr.gridFor(this.pos, target);
+      if (!grid && this._lineBlocked(target)) {
+        // The cities without a walk grid (Ainstrey): a straight walk would cross houses. Far from the player: be there; near: wait out of her sight.
+        this.path = null;
+        if (this.pos.distanceTo(this.game.player.position) > 25) this._appear(target);
+        else this.pendingTarget = target.clone();
+        return;
+      }
       this.path = grid ? grid.path(this.pos.x, this.pos.z, target.x, target.z) : [target.clone()];
       if (!this.path) {
         // No walkable route: never walk through walls. Out of sight — just be there.
@@ -239,6 +249,27 @@ class NPC {
     }
     this.blocked = 0;
     this.state = 'walk';
+  }
+
+  /** Is the straight way to `target` shut by the static world (a wall, a house) at the height of the chest and of the knees? */
+  _lineBlocked(target) {
+    const w = this.game.world, dx = target.x - this.pos.x, dz = target.z - this.pos.z, L = Math.hypot(dx, dz);
+    if (L < 1.5) return false;
+    for (const h of [0.5, 1.3]) {
+      _v.set(this.pos.x, this.pos.y + h, this.pos.z);
+      _v2.set(dx / L, 0, dz / L);
+      if (w.raycast(_v, _v2, L - 0.3)) return true;
+    }
+    return false;
+  }
+
+  _appear(target) {
+    this.pos.copy(target);
+    this.pos.y = this._ground(target.x, target.z, target.y);
+    this.yaw = this.entry?.spot ? this.game.rpg.spotYaw(this.entry.spot) : this.yaw;
+    this.targetYaw = this.yaw;
+    this.pendingTarget = null;
+    this.path = null;
   }
 
   /** Follow the player (escort). target: { pos: () => Vector3, keep: metres } */
@@ -269,6 +300,7 @@ class NPC {
   update(dt, playerPos) {
     if (!this.visible) return;
     const d = this.pos.distanceTo(playerPos);
+    if (this.pendingTarget && d > 25 && !this.talking) this._appear(this.pendingTarget);
     // Movement.
     let moving = false;
     if (this.talking) {

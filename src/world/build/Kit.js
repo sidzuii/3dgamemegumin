@@ -570,13 +570,14 @@ export function cityWall(world, nodes, opts = {}) {
       const s0 = keep(i), s1 = L - keep((i + 1) % n);
       const m = Math.max(1, Math.round((s1 - s0) / 4.2));
       const len = (s1 - s0) / m;
+      const Hs = Math.min(A.h ?? H, B.h ?? H); // a node may carry its own wall height (the quay parapet of Ainstrey)
       const rot = Math.atan2(tx, tz) - Math.PI / 2; // local x along the wall
       world.group('side_' + i, { x: (A.x + B.x) / 2, z: (A.z + B.z) / 2, rot }, () => {
       const ground = (t) => Math.min(world.heightAt(A.x + tx * t - tz * T / 2, A.z + tz * t + tx * T / 2), world.heightAt(A.x + tx * t + tz * T / 2, A.z + tz * t - tx * T / 2));
       for (let k = 0; k < m; k++) {
         const t = s0 + (k + 0.5) * len, sx = len + OVER;
         const y0 = ground(t - sx / 2), y1 = ground(t + sx / 2);
-        _m.makeScale(sx, (H + 1.2) / 1.31, T)
+        _m.makeScale(sx, (Hs + 1.2) / 1.31, T)
           .premultiply(_mS.set(1, 0, 0, 0, (y1 - y0) / sx, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1))
           .premultiply(_mR.makeRotationY(rot))
           .setPosition(A.x + tx * t, (y0 + y1) / 2 - 1.2, A.z + tz * t);
@@ -596,14 +597,14 @@ export function cityWall(world, nodes, opts = {}) {
     if (N.gate) {
       inGroup(groupFor(N, i), { x: N.x, z: N.z, rot }, () => {
         const F = new Frame(world, N.x, world.heightAt(N.x, N.z), N.z, rot);
-        gatehouse2(world, F, GW, H, N);
+        gatehouse2(world, F, GW, N.h ?? H, N);
         gates.push({ node: N, frame: F });
       }, N.name || 'Ворота');
     } else {
       inGroup(groupFor(N, i), { x: N.x, z: N.z, rot }, () => {
         const S = TW(N);
         const F = new Frame(world, N.x, world.heightAt(N.x, N.z) - 1.2, N.z, rot);
-        kitTower(world, F, S, H + 1.2 + (N.big ? 6 : 3.5));
+        kitTower(world, F, S, (N.h ?? H) + 1.2 + (N.big ? 6 : 3.5));
         world.addFootprint(N.x, N.z, S, S, rot, 'tower');
       }, N.name || 'Башня');
     }
@@ -729,10 +730,13 @@ function drapeTri(world, tri, lift, pos) {
   }
   if (flat) { _tri(pos, p0, p1, p2, [0, 1, 0]); return; }
   const xs = T.map((q) => q[0]), zs = T.map((q) => q[1]);
-  const i0 = Math.floor((Math.min(...xs) + HALF) / GRID_STEP), i1 = Math.ceil((Math.max(...xs) + HALF) / GRID_STEP);
-  const j0 = Math.floor((Math.min(...zs) + HALF) / GRID_STEP), j1 = Math.ceil((Math.max(...zs) + HALF) / GRID_STEP);
+  // the grid of the sheet the triangle lies on (the old map or the Ainstrey sheet: other origin, other step)
+  const sh = world.heightfield?.sheetAt((xs[0] + xs[1] + xs[2]) / 3, (zs[0] + zs[1] + zs[2]) / 3);
+  const gx = sh ? sh.x0 : -HALF, gz = sh ? sh.z0 : -HALF, gs = sh ? sh.step : GRID_STEP;
+  const i0 = Math.floor((Math.min(...xs) - gx) / gs), i1 = Math.ceil((Math.max(...xs) - gx) / gs);
+  const j0 = Math.floor((Math.min(...zs) - gz) / gs), j1 = Math.ceil((Math.max(...zs) - gz) / gs);
   for (let j = j0; j < j1; j++) for (let i = i0; i < i1; i++) {
-    const x0 = -HALF + i * GRID_STEP, z0 = -HALF + j * GRID_STEP, x1 = x0 + GRID_STEP, z1 = z0 + GRID_STEP;
+    const x0 = gx + i * gs, z0 = gz + j * gs, x1 = x0 + gs, z1 = z0 + gs;
     for (const cell of [[[x0, z0], [x0, z1], [x1, z0]], [[x0, z1], [x1, z1], [x1, z0]]]) {
       const piece = clipToTri(ccwTri(cell), T);
       for (let k = 1; k + 1 < piece.length; k++) _tri(pos, v3(piece[0]), v3(piece[k]), v3(piece[k + 1]), [0, 1, 0]);
@@ -1183,4 +1187,4 @@ export function decor(world, x, z, name, height, rng, opts = {}) {
   if (!recordVeg(world, rec)) emit({ x, z, rot, s: 1, dy: 0 });
 }
 
-export { G as GEOMETRY, gableGeometry, pick };
+export { G as GEOMETRY, gableGeometry, pick, villageRoof, roofVariant, ROOF_TINTS };

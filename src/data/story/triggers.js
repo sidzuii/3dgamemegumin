@@ -15,6 +15,9 @@ export const TRIGGERS = [
   // C12: Marta's cart on the ledge; C14: before the directed blast.
   { id: 'C12', if: { quest: 'ch7_gorge', stage: 'ledge' }, spot: 'ledge_marta', r: 12, dialogue: 'C12' },
   { id: 'C14a', if: { quest: 'ch7_gorge', stage: 'explosion' }, spot: 'drain_wall', r: 12, say: ['C14_001', 'C14_002'] },
+  // Version 2.0: the winch route ends when the heroines are behind the poles; the first view of Ainstrey.
+  { id: 'winch_safe', if: [{ quest: 'ainstrey_road', stage: 'p_winch' }, { flag: 'winch_flow_b' }], spot: 'ledge_safe', r: 7, do: [{ setFlag: 'winch_safe' }, { setFlag: 'ledge_main_cleared' }] },
+  { id: 'D10', if: { quest: 'ainstrey_road', stage: 'view' }, spot: 'chalk_view', r: 26, dialogue: 'D10' },
   // Side stories: the night raid starts at night on the field (B10); scenes at the places of B14, B15, B18, B19, B22.
   { id: 'B10_raid', if: [{ quest: 'c_night_raid', stage: 'night' }, { hour: [21, 5] }], spot: 'night_field', r: 36, do: [{ wave: 'raid1' }] },
   { id: 'B14b', if: { quest: 's_roxy_water', stage: 'spring' }, spot: 'north_spring', r: 12, dialogue: 'B14b' },
@@ -22,5 +25,8 @@ export const TRIGGERS = [
   { id: 'B18b', if: { quest: 's_boris_gate', stage: 'upper' }, spot: 'upper_gate', r: 12, dialogue: 'B18b' },
   { id: 'B19b', if: { quest: 's_rann_nests', stage: 'pipe' }, spot: 'rann_pipe', r: 10, dialogue: 'B19b' },
   { id: 'B22b', if: { quest: 's_tobias_road', stage: 'post' }, spot: 'relay_gate_out', r: 14, dialogue: 'B22b' },
+  // Version 2.0, the capital: the watch at the mills (the camp of the goblins), the short talk at the garden after the chapter.
+  { id: 'N05b', if: { quest: 'n05_patrol', stage: 'camp' }, spot: 'n05_camp', r: 16, dialogue: 'N05b' },
+  { id: 'D28', if: [{ v: 'AINSTRAY_CHAPTER_COMPLETE' }, { notFlag: 'D28_DONE' }], spot: 'garden_bench', r: 14, dialogue: 'D28' },
   { id: 'B09_kids', if: { flag: 'ballad' }, spot: 'square', r: 18, say: ['B09b_014', 'B09b_015', 'B09b_016'] },
 ];

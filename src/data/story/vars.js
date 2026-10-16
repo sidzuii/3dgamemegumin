@@ -26,10 +26,10 @@ export const VARS = {
   C12_PLAN: ['cargo', 'roxy', 'rope'], // how Marta's cart was saved (C12.1)
   C17_PLAN: ['shield', 'hold', 'flow'], // how the pump was repaired (C17.1)
   C19_PLAN: ['lever', 'latch', 'breaker'], // how Osa was brought out (C19.1)
-  C22_PLAN: ['roxy_switch', 'megumin_switch', 'cable'], // who holds the switch in the small test (C22.1)
   C08_CHOICE: ['copies', 'council', 'orin'], // what was done with the documents (C08.1)
   KHARZ_ROUTE: ['treaty', 'battle'],
   WATER_FIRST: ['residents', 'repair'],
+  // legacy of the closed finale of version 1.x: no scene reads them any more; kept so a test save keeps its record (see rpg/RPG.js migration)
   VEYR_HELP: 'bool',
   ENDING: ['closure', 'rebuild'],
   B10_PLAN: ['carts', 'lantern'], B14_PLAN: ['gate', 'wash', 'blast'], B15_PLAN: ['clip', 'edge'], B18_PLAN: ['far', 'wash'], B19_PLAN: ['net', 'lure', 'rope'], B23_PLAN: ['bread', 'lamps'],
@@ -46,4 +46,28 @@ export const VARS = {
   AXEL_SHELTER: 'bool',
   IVO_HELP: 'bool',
   BORIS_NIGHT: 'bool',
+  // version 2.0: the road to Ainstrey (D00-D13), the capital (D14-D28), the capital side stories (N01-N05)
+  AXEL_TRAVEL_STABLE: 'bool', // the upper channel and the seal are prepared (end of C05)
+  AINSTRAY_EXPEDITION: 'bool', // Luna's letter and the order are taken (D00)
+  ROAD_SURVEY_WATER: 'bool', ROAD_SURVEY_SLAB: 'bool', ROAD_SURVEY_WINCH: 'bool', // the three points of the survey (D04)
+  DRAIN_ROUTE: ['ditch', 'service'], // where the water of the upper pocket goes (D05)
+  ROAD_BRACED: 'bool', // both supports are set and checked (D06)
+  ROAD_POST_DISABLED: 'bool', // the old guard post is switched off before the clearing
+  CLEARING_METHOD: ['explosion', 'winch'], // D07
+  AINSTRAY_ROAD_OPEN: 'bool', // permanent: after both carts (D09)
+  AINSTRAY_ENTERED: 'bool', // D14
+  CAPITAL_GUILD_REGISTERED: 'bool', // D15: the licence is recognised, the rank is not reset
+  PORT_EVACUATED: 'bool', PORT_PRESSURE_SAFE: 'bool', // D21-D22
+  PORT_METHOD: ['explosion', 'mechanical'], // D23
+  PORT_REPAIRED: 'bool', // the local manual control is back
+  PORT_REPORT: ['public', 'workers_first'], // D24
+  VARLEN_COOPERATES: 'bool', // D24.1.3
+  CAPITAL_PLANS_RECEIVED: 'bool', // D25: Ilar gave the annex and the plan of the post
+  AINSTRAY_CHAPTER_COMPLETE: 'bool', // D27
+  AXEL_LOCAL_FLOW_SAFE: 'bool', // C20: the city flow is separated from the unknown lower node
+  NEXT_NORTH_SURVEY: ['planned', 'available', 'accepted', 'complete'],
+  TAVIA_FREE_RESTS: [0, 9], // nights at Tavia's paid by the guild (D15: two)
+  PORT_GUARDS: ['top', 'pit'], // D22: the way past the two service guards (the panel above / the pit)
+  N01_PLAN: ['list', 'street'], N02_PLAN: ['prop', 'move'], N05_PLAN: ['lure', 'top', 'reserve'], // the capital side stories (answers that change the way, not the end)
+  LISSA_ADDRESS_FIXED: 'bool', TAVIA_OVEN: 'bool', ILAR_RECORD_CHECKED: 'bool', MILL_WATER_AGREEMENT: 'bool', MILLS_PATROL_READY: 'bool',
 };

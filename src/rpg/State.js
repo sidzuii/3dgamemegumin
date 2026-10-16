@@ -46,6 +46,7 @@ export function freshState() {
     props: {}, // questProp id -> state
     discovered: [],
     explored: '', // base64 bitmap (fog of war, 96x96)
+    exploredAin: '', // base64 bitmap of the Ainstrey page of the map (50 m cells)
     time: { day: 1, minutes: 7 * 60 + 30 },
     player: null, // { x, y, z, yaw, hp, mana, stamina, level, xp, character }
     inventory: null, // { eris, items, equipment }
@@ -166,6 +167,7 @@ export function check(rpg, cond) {
       case 'n': break;
       case 'eris': if (rpg.inventory.eris < v) return false; break;
       case 'level': if (rpg.game.player.level < v) return false; break;
+      case 'mana': { const f = rpg.game.player.fighters?.[v[0]]; if (!f || f.mana < v[1]) return false; break; } // [heroine, at least]
       case 'hour': {
         const h = rpg.clock.hour;
         const [a, b] = v;

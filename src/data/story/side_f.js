@@ -84,6 +84,8 @@ export const SIDE_F = {
   ...S('B06b', ($) => [$.L(1, 6)]),
   ...S('B06c', ($) => [
     $.L(1, 3),
+    // v2.0: beyond Olkhovka the trakt to Ainstrey is closed by the rockfall at the Stone Ledge (until the road is open).
+    $.IF({ nv: 'AINSTRAY_ROAD_OPEN' }, [$.L(901, 903)]),
     $.CH('B06c.1', [$.O(4, [$.L(5)]), $.O(6, [$.L(7)])]),
     $.DO({ advance: 'c_escort_tobias' }),
   ]),

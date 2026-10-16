@@ -817,7 +817,7 @@ function oldMines(W, rng) {
 function eastPass(W, rng) {
   const c = REGION.east_pass.center;
   for (let i = 0; i < 16; i++) rock(W, c.x + 4 + (rng() - 0.5) * 10, c.z + (rng() - 0.5) * 14, 1.5 + rng() * 2.5, rng, 'rock');
-  W.addSign(new THREE.Vector3(c.x - 8, 0, c.z + 3), Math.PI / 2, ['Перевал закрыт: камнепад. Караваны ждут, пока гильдия расчистит дорогу.']);
+  W.addSign(new THREE.Vector3(c.x - 8, 0, c.z + 3), Math.PI / 2, ['Налево: ворота Почтового подъёма — столичный тракт (Каменный уступ · Айнстрей)', 'Прямо: ворота Восточного поста Астрариума']);
   // Chapter 6: the stone gate of the relay post (build/Relay.js) at the foot of the ridge, Tobias' waiting place, the camp.
   const gx = c.x + 12, gz = c.z - 2, gy = H(W, gx, gz);
   const G = new Frame(W, gx, gy, gz, 0);

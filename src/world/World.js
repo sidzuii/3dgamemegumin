@@ -5,7 +5,8 @@ import { fbm, mulberry32, smoothstep, clamp } from '../core/math.js';
 import { createSky } from './Sky.js';
 import { createGrass } from './Grass.js';
 import { Signpost, ModelChest } from './Interactables.js';
-import { HALF, REGIONS, REGION, RIVERS, LAKES, LAVA, CAMPS, SIGNS, FORESTS } from './MapData.js';
+import { CITY_WALL as AIN_WALL, toWorld as AIN_TO_WORLD, SHEET as AIN_SHEET, TRAKT as AIN_TRAKT, ORIGIN as AIN_ORIGIN } from './AinstreyPlan.js';
+import { HALF, REGIONS, REGION, RIVERS, LAKES, LAVA, CAMPS, SIGNS, FORESTS, regionContains } from './MapData.js';
 import { Heightfield, GRID_N, GRID_STEP, roadInfo, riverDistance, surfaceAt, polygonDistance } from './Terrain.js';
 import { WALL, toWorld } from './AxelPlan.js';
 import { createWaterSurface, riverGeometry, lakeGeometry } from './Water.js';
@@ -13,6 +14,9 @@ import { createLava } from './Surfaces.js';
 import { makeNoiseTexture, makePavingTextures } from './textures.js';
 import { buildTown } from './build/Town.js';
 import { buildCountryside } from './build/Countryside.js';
+import { buildAinstrey } from './build/Ainstrey.js';
+import { buildLedge } from './build/AinstreyLedge.js';
+import { buildCity } from './build/AinstreyCity.js';
 import { buildDungeon, DUNGEON } from './build/Dungeon.js';
 import { buildCrypt } from './build/Crypt.js';
 import { buildRelay } from './build/Relay.js';
@@ -22,6 +26,7 @@ import { buildCore } from './build/Core.js';
 import { buildSideProps } from './build/SideProps.js';
 import { buildPlacement } from './build/Placements.js';
 import { TreeField } from './TreeField.js';
+import { STREAM_CELL } from './CityStream.js';
 import { tree, bush, rock, decor, pick } from './build/Kit.js';
 
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -38,13 +43,17 @@ const TERRAIN_CHUNK = 68; // terrain grid cells per chunk side (170 m)
 const LIGHT_POOL = 8; // fixed number of point lights (no shader recompiles)
 
 /** The city wall as a world polygon (+ bbox) for the "inside Axel" tests. */
-const CITY = WALL.nodes.map((n) => toWorld(n.u, n.v));
-const CITY_BOX = [Math.min(...CITY.map((p) => p[0])), Math.min(...CITY.map((p) => p[1])), Math.max(...CITY.map((p) => p[0])), Math.max(...CITY.map((p) => p[1]))];
-/** Signed distance to the city wall line (negative inside the walls); far away: a cheap lower bound. */
+const CITIES = [WALL.nodes.map((n) => toWorld(n.u, n.v)), AIN_WALL.map((n) => AIN_TO_WORLD(n.u, n.v))].map((pts) => ({
+  pts, box: [Math.min(...pts.map((p) => p[0])), Math.min(...pts.map((p) => p[1])), Math.max(...pts.map((p) => p[0])), Math.max(...pts.map((p) => p[1]))],
+}));
+/** Signed distance to the nearest city wall line (negative inside the walls; Axel and Ainstrey); far away: a cheap lower bound. */
 export function cityDistance(x, z) {
-  const dx = Math.max(CITY_BOX[0] - x, 0, x - CITY_BOX[2]), dz = Math.max(CITY_BOX[1] - z, 0, z - CITY_BOX[3]);
-  if (dx > 30 || dz > 30) return Math.hypot(dx, dz);
-  return polygonDistance(CITY, x, z);
+  let best = Infinity;
+  for (const C of CITIES) {
+    const dx = Math.max(C.box[0] - x, 0, x - C.box[2]), dz = Math.max(C.box[1] - z, 0, z - C.box[3]);
+    best = Math.min(best, dx > 30 || dz > 30 ? Math.hypot(dx, dz) : polygonDistance(C.pts, x, z));
+  }
+  return best;
 }
 const FOREST_BOX = FORESTS.map((f) => [Math.min(...f.pts.map((p) => p[0])), Math.min(...f.pts.map((p) => p[1])), Math.max(...f.pts.map((p) => p[0])), Math.max(...f.pts.map((p) => p[1]))]);
 /** Signed distance to the nearest forest polygon (negative inside) and that forest. */
@@ -86,6 +95,7 @@ export class World {
     this.dummies = [];
     this.updatables = [];
     this.footprints = []; // for the map: { x, z, w, d, rot, kind }
+    this.keepClear = []; // no plants here (the Stone Ledge work area): { x, z, r }
     this.lightSources = []; // { pos, color, intensity, distance, night, flicker }
     this.chimneys = [];
     this.gatherNodes = []; // filled by the gathering system
@@ -97,7 +107,13 @@ export class World {
     this.detailDistance = 75;
     this.lodDistance = 120;
     this.lodMode = null; // 'near' | 'far' while a builder emits the two versions of a building
+    this.stream = null; // CityStream: near models of a big city built on demand round the camera (Ainstrey)
+    this._streamSink = null; // while the stream builds a cell: material key -> geometries (no batches, no collision)
+    this._forceCell = null; // { x, z }: put the LOD parts of one building into this cell (near and far swap together)
+    this._bigChunk = 0; // > 0: static cell size while a dense city is built
     this.terrainChunks = [];
+    this.viewScale = 1; // fog / far-plane scale (DayNight): 1 on the old map, larger in the open country of the Ainstrey sheet
+    this.viewTarget = 1;
     this.rng = mulberry32(1337);
     this.campSpawns = [];
     this.regions = REGIONS;
@@ -277,38 +293,38 @@ export class World {
   locationAt(p) {
     let best = null;
     for (const R of REGIONS) {
-      const d = Math.hypot(p.x - R.center.x, p.z - R.center.z);
-      if (d < R.r && (!best || R.r < best.r)) best = R;
+      if (regionContains(R, p.x, p.z) && (!best || R.r < best.r)) best = R;
     }
     return best;
   }
 
   build() {
-    this._setupSkyAndLights();
-    this._buildMaterials();
-    Object.assign(this.mats, this.kits.materials);
-    this.heightfield = new Heightfield();
-    this._buildTerrain();
-    this._buildWater();
-    buildTown(this);
-    buildCountryside(this);
-    buildDungeon(this);
-    buildCrypt(this);
-    buildRelay(this);
-    buildDrain(this);
-    buildPump(this);
-    buildCore(this);
-    buildSideProps(this);
-    for (const a of this.layout.added || []) buildPlacement(this, a);
-    SIGNS.forEach(([x, z, rot, lines], i) => this.group('sign_' + i, { x, z, rot }, () => this.addSign(new THREE.Vector3(x, 0, z), rot, lines), 'Указатель: ' + lines[0].slice(0, 34)));
-    for (const c of CAMPS) this.camp(c.type, c.x, c.z, c.camp);
-    this._buildVegetation();
-    this._realizeVegetation();
-    this._flushVisualBatches();
-    this.trees.build(this.scene);
-    this._buildCollider();
-    this._buildGrass();
-    this._buildLightPool();
+    // build times of the big steps (ms), for the load-time report: window.__game.world.buildTimes
+    const times = (this.buildTimes = {});
+    const T = (name, fn) => { const t = performance.now(); fn(); times[name] = Math.round(performance.now() - t); };
+    T('sky', () => this._setupSkyAndLights());
+    T('materials', () => { this._buildMaterials(); Object.assign(this.mats, this.kits.materials); });
+    T('heightfield', () => { this.heightfield = new Heightfield(); });
+    T('terrain', () => this._buildTerrain());
+    T('water', () => this._buildWater());
+    T('town', () => buildTown(this));
+    T('countryside', () => buildCountryside(this));
+    T('ainstrey', () => buildAinstrey(this));
+    T('ledge', () => buildLedge(this));
+    T('city', () => buildCity(this));
+    T('dungeon', () => { buildDungeon(this); buildCrypt(this); buildRelay(this); buildDrain(this); buildPump(this); buildCore(this); });
+    T('props', () => {
+      buildSideProps(this);
+      for (const a of this.layout.added || []) buildPlacement(this, a);
+      SIGNS.forEach(([x, z, rot, lines], i) => this.group('sign_' + i, { x, z, rot }, () => this.addSign(new THREE.Vector3(x, 0, z), rot, lines), 'Указатель: ' + lines[0].slice(0, 34)));
+      for (const c of CAMPS) this.camp(c.type, c.x, c.z, c.camp);
+    });
+    T('vegetation', () => { this._buildVegetation(); this._realizeVegetation(); });
+    T('flush', () => this._flushVisualBatches());
+    T('trees', () => this.trees.build(this.scene));
+    T('collider', () => this._buildCollider());
+    T('grass', () => this._buildGrass());
+    T('lights', () => this._buildLightPool());
     return this;
   }
 
@@ -418,6 +434,7 @@ export class World {
       metal: M({ color: 0x3b3534, roughness: 0.45, metalness: 0.75 }),
       cloth: M({ color: 0xffffff, roughness: 0.95, side: THREE.DoubleSide }),
       flower: M({ color: 0xffffff, roughness: 0.8 }),
+      lawn: M({ color: 0x5f8a3e, roughness: 0.97, map: noise2 }),
       hay: M({ color: 0xd8b860, roughness: 1, map: noise2 }),
       bark: M({ color: 0x5a4230, roughness: 0.95, map: noise }),
       birch: M({ color: 0xe8e2d4, roughness: 0.9, map: noise }),
@@ -446,13 +463,20 @@ export class World {
 
   // ---------------------------------------------------------------------------
   _buildTerrain() {
-    const size = HALF * 2;
-    const seg = GRID_N - 1;
-    const geo = new THREE.PlaneGeometry(size, size, seg, seg);
+    this.terrainColors = null;
+    for (const sh of this.heightfield.sheets) this._buildTerrainSheet(sh);
+  }
+
+  /** One height grid -> chunked meshes (frustum culling) + the colours of the ground. */
+  _buildTerrainSheet(sh) {
+    const main = sh.id === 'main';
+    const NX = sh.nx, NZ = sh.nz;
+    const sizeX = (NX - 1) * sh.step, sizeZ = (NZ - 1) * sh.step;
+    const geo = new THREE.PlaneGeometry(sizeX, sizeZ, NX - 1, NZ - 1);
     geo.rotateX(-Math.PI / 2);
+    geo.translate(sh.x0 + sizeX / 2, 0, sh.z0 + sizeZ / 2);
     const pos = geo.attributes.position;
-    const hf = this.heightfield;
-    for (let i = 0; i < pos.count; i++) pos.setY(i, hf.data[i]);
+    for (let i = 0; i < pos.count; i++) pos.setY(i, sh.data[i]);
     geo.computeVertexNormals();
     const nrm = geo.attributes.normal;
     const colors = new Float32Array(pos.count * 3);
@@ -463,24 +487,40 @@ export class World {
       dirt: new THREE.Color(0x8d7454), trail: new THREE.Color(0x9a8a62), rock: new THREE.Color(0x857d70),
       snow: new THREE.Color(0xe8eef2), scorch: new THREE.Color(0x3b2a24), mud: new THREE.Color(0x6e5e44),
       sand: new THREE.Color(0xb9a77e), town: new THREE.Color(0x8e8a64), ruin: new THREE.Color(0x9a9a86),
+      chalk: new THREE.Color(0xc9c4b0), stone: new THREE.Color(0xa59d88), dry: new THREE.Color(0x9aa35a), gravel: new THREE.Color(0x9c927c), earth: new THREE.Color(0x7e7258), patch: new THREE.Color(0x6d8c46),
     };
     const farms = REGION.farms.center;
     const gorge = REGION.crimson_gorge.center, astra = REGION.astrarium.center;
+    const chalkC = REGION.chalk.center;
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i), z = pos.getZ(i), y = pos.getY(i);
       const n = fbm(x * 0.08, z * 0.08, 3) * 0.5 + 0.5;
       const big = fbm(x * 0.012 + 40, z * 0.012, 2) * 0.5 + 0.5;
       c.copy(T.grassA).lerp(T.grassB, n * 0.7 + big * 0.3);
-      // Biomes.
       const df = forestAt(x, z).d;
       c.lerp(T.forest, (1 - smoothstep(-25, 15, df)) * 0.75);
-      const dfa = Math.hypot(x - farms.x, z - farms.z);
-      c.lerp(T.farm, (1 - smoothstep(30, 70, dfa)) * 0.45);
+      if (main) {
+        const dfa = Math.hypot(x - farms.x, z - farms.z);
+        c.lerp(T.farm, (1 - smoothstep(30, 70, dfa)) * 0.45);
+      } else {
+        // Ainstrey: dry meadows, chalk on the slopes of the south-west, worn stone in and around the city.
+        c.lerp(T.dry, smoothstep(0.35, 0.7, big) * 0.4);
+        c.lerp(T.chalk, (1 - smoothstep(60, 240, Math.hypot(x - chalkC.x, z - chalkC.z))) * 0.55 * smoothstep(3, 9, y));
+      }
       c.lerp(T.meadow, smoothstep(0.62, 0.8, big) * 0.35);
-      // Town ground inside the walls: worn earth.
       const dt = cityDistance(x, z);
-      if (dt < 6) c.lerp(T.town, (1 - smoothstep(-6, 6, dt)) * 0.55);
-      // River banks.
+      if (dt < 6) c.lerp(main ? T.town : T.stone, (1 - smoothstep(-6, 6, dt)) * (main ? 0.55 : 0.92));
+      if (!main && dt < -10) {
+        // Ainstrey: the garden of the Council stays green (lawns), everything else inside the walls is trodden earth and gravel
+        const gu = x - AIN_ORIGIN.x, gv = z - AIN_ORIGIN.z;
+        if (gu > -310 && gu < 410 && gv < -690 && gv > -910) c.lerp(T.grassB, 0.8);
+        else {
+          const w = 1 - smoothstep(-40, -10, dt), g2 = fbm(x * 0.05 + 9, z * 0.05 - 4, 3) * 0.5 + 0.5;
+          c.lerp(T.gravel, (0.55 + 0.3 * n) * w);
+          c.lerp(T.earth, smoothstep(0.38, 0.62, g2) * 0.5 * w);
+          c.lerp(T.patch, smoothstep(0.62, 0.78, g2) * 0.65 * w); // grass in the yards
+        }
+      }
       const rd = riverDistance(x, z);
       c.lerp(T.mud, (1 - smoothstep(-1, 4, rd)) * 0.9);
       c.lerp(T.sand, (1 - smoothstep(2, 7, rd)) * smoothstep(-1, 2, rd) * 0.45);
@@ -488,33 +528,31 @@ export class World {
         const dl = Math.hypot(x - L.center.x, z - L.center.z);
         c.lerp(T.sand, (1 - smoothstep(L.radius * 0.95, L.radius * 1.25, dl)) * 0.8);
       }
-      // Roads.
       const r = roadInfo(x, z);
       const edge = 0.6 + fbm(x * 0.3, z * 0.3, 2) * 0.5;
       c.lerp(r.kind === 'trail' ? T.trail : T.dirt, smoothstep(edge + 0.6, edge - 0.6, r.d) * (r.kind === 'trail' ? 0.7 : 0.9));
-      // Slopes, altitude.
       const slope = 1 - nrm.getY(i);
-      c.lerp(T.rock, clamp(smoothstep(0.2, 0.42, slope) + smoothstep(14, 26, y) * 0.75, 0, 1));
+      c.lerp(T.rock, clamp(smoothstep(0.2, 0.42, slope) + smoothstep(main ? 14 : 30, main ? 26 : 50, y) * 0.75, 0, 1));
       c.lerp(T.snow, smoothstep(40, 52, y) * 0.85);
-      // Special places.
-      c.lerp(T.scorch, (1 - smoothstep(30, 70, Math.hypot(x - gorge.x, z - gorge.z))) * 0.9);
-      c.lerp(T.ruin, (1 - smoothstep(28, 46, Math.hypot(x - astra.x, z - astra.z))) * 0.4);
+      if (main) {
+        c.lerp(T.scorch, (1 - smoothstep(30, 70, Math.hypot(x - gorge.x, z - gorge.z))) * 0.9);
+        c.lerp(T.ruin, (1 - smoothstep(28, 46, Math.hypot(x - astra.x, z - astra.z))) * 0.4);
+      }
       colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
     }
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     const uv = geo.attributes.uv;
     for (let i = 0; i < uv.count; i++) uv.setXY(i, pos.getX(i) * 0.25, pos.getZ(i) * 0.25);
-    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.96, map: this.noiseTex });
-    this.terrainMaterial = mat;
+    this.terrainMaterial ??= new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.96, map: this.noiseTex });
+    const mat = this.terrainMaterial;
     // Chunks (frustum culling): each a slice of the full grid with the shared normals/colours.
-    const N = GRID_N;
     const nrmA = geo.attributes.normal.array, posA = pos.array, uvA = geo.attributes.uv.array;
-    for (let cj = 0; cj < N - 1; cj += TERRAIN_CHUNK) {
-      for (let ci = 0; ci < N - 1; ci += TERRAIN_CHUNK) {
-        const w = Math.min(TERRAIN_CHUNK, N - 1 - ci) + 1, h = Math.min(TERRAIN_CHUNK, N - 1 - cj) + 1;
+    for (let cj = 0; cj < NZ - 1; cj += TERRAIN_CHUNK) {
+      for (let ci = 0; ci < NX - 1; ci += TERRAIN_CHUNK) {
+        const w = Math.min(TERRAIN_CHUNK, NX - 1 - ci) + 1, h = Math.min(TERRAIN_CHUNK, NZ - 1 - cj) + 1;
         const P = new Float32Array(w * h * 3), Nn = new Float32Array(w * h * 3), Cc = new Float32Array(w * h * 3), U = new Float32Array(w * h * 2);
         for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
-          const src = (cj + j) * N + ci + i, dst = j * w + i;
+          const src = (cj + j) * NX + ci + i, dst = j * w + i;
           for (let k = 0; k < 3; k++) { P[dst * 3 + k] = posA[src * 3 + k]; Nn[dst * 3 + k] = nrmA[src * 3 + k]; Cc[dst * 3 + k] = colors[src * 3 + k]; }
           U[dst * 2] = uvA[src * 2]; U[dst * 2 + 1] = uvA[src * 2 + 1];
         }
@@ -540,8 +578,9 @@ export class World {
       }
     }
     geo.dispose();
-    // Low-res colour copy for the map screen.
-    this.terrainColors = colors;
+    // Low-res colour copy for the map screen (the old map; the Ainstrey sheet keeps its own).
+    if (main) this.terrainColors = colors;
+    else (this.sheetColors ??= {})[sh.id] = colors;
   }
 
   _buildWater() {
@@ -587,7 +626,7 @@ export class World {
     for (let i = 0; i < n; i++) { col[i * 3] = tc.r; col[i * 3 + 1] = tc.g; col[i * 3 + 2] = tc.b; }
     g.setAttribute('color', new THREE.BufferAttribute(col, 3));
     this._pushBatch(g, materialKey, castShadow, detail);
-    if (collide) this._staticCollision.push(g);
+    if (collide && !this._streamSink) this._staticCollision.push(g);
     return g;
   }
 
@@ -599,8 +638,9 @@ export class World {
    * `detail` puts the parts into the distance-culled detail batches; `retex: { mat, scale }`
    * swaps the material for a tiling one (e.g. the village stone) with world-space planar UVs.
    */
-  addKit(name, matrix, { collide = true, castShadow = true, tint = null, variant = null, detail = false, retex = null } = {}) {
+  addKit(name, matrix, { collide = true, castShadow = true, tint = null, variant = null, detail = false, retex = null, tintOnly = null } = {}) {
     if (this._mute) return;
+    if (this._streamSink) collide = false;
     const parts = this.kits.get(name);
     if (this._D) matrix = _dm.multiplyMatrices(this._D, matrix);
     if (tint !== null) _tint.set(tint);
@@ -613,7 +653,7 @@ export class World {
         planarUVs(g, retex.scale ?? 0.5);
         mat = retex.mat;
       }
-      if (tint !== null) {
+      if (tint !== null && (!tintOnly || part.mat.includes(tintOnly))) {
         const c = g.attributes.color;
         for (let i = 0; i < c.count; i++) c.setXYZ(i, c.getX(i) * _tint.r, c.getY(i) * _tint.g, c.getZ(i) * _tint.b);
       }
@@ -631,19 +671,29 @@ export class World {
   }
 
   _pushBatch(g, materialKey, castShadow, detail = false) {
+    if (this._streamSink) {
+      const key = materialKey + '|1'; // one mesh per material and cell (small parts cast shadows too)
+      if (!this._streamSink.has(key)) this._streamSink.set(key, []);
+      this._streamSink.get(key).push(g);
+      return;
+    }
     if (this._group?.batches) {
       // Map editor: each editable group keeps its own meshes so it can move live.
-      const tier = detail ? 'd' : this.lodMode === 'near' ? 'n' : this.lodMode === 'far' ? 'f' : '';
+      const tier = detail ? 'd' : this.lodMode === 'near' ? 'n' : this.lodMode === 'far' || this.lodMode === 'stream' ? 'f' : '';
       const key = `${materialKey}|${castShadow ? 1 : 0}|${tier}`;
       if (!this._group.batches.has(key)) this._group.batches.set(key, []);
       this._group.batches.get(key).push(g);
       return;
     }
     g.computeBoundingSphere();
-    const tier = detail ? 'd' : this.lodMode === 'near' ? 'n' : this.lodMode === 'far' ? 'f' : '';
-    const S = tier === 'd' ? DETAIL_CHUNK : tier ? LOD_CHUNK : CHUNK;
-    const cx = Math.floor(g.boundingSphere.center.x / S), cz = Math.floor(g.boundingSphere.center.z / S);
-    const key = `${materialKey}|${castShadow && tier !== 'd' && tier !== 'f' ? 1 : 0}|${cx},${cz}${tier ? '|' + tier : ''}`;
+    // 's' = the far proxy of a streamed building (CityStream): hidden while the near model of its stream cell exists
+    const tier = this.lodMode === 'stream' ? 's' : detail ? 'd' : this.lodMode === 'near' ? 'n' : this.lodMode === 'far' ? 'f' : '';
+    // `_bigChunk`: a dense big city (Ainstrey) batches its static pieces in coarser cells (fewer draw calls when it is seen whole)
+    const big = !tier && this._bigChunk;
+    const S = tier === 'd' ? DETAIL_CHUNK : tier === 's' ? STREAM_CELL : tier ? LOD_CHUNK : big || CHUNK;
+    const c = tier && tier !== 'd' && this._forceCell ? this._forceCell : g.boundingSphere.center;
+    const cx = Math.floor(c.x / S), cz = Math.floor(c.z / S);
+    const key = `${materialKey}|${castShadow && tier !== 'd' && tier !== 'f' && tier !== 's' ? 1 : 0}|${big ? 'B' : ''}${cx},${cz}${tier ? '|' + tier : ''}`;
     if (!this._visualBatches.has(key)) this._visualBatches.set(key, []);
     this._visualBatches.get(key).push(g);
   }
@@ -686,7 +736,7 @@ export class World {
     const inv = obj.matrixWorld.clone().invert();
     for (const [key, list] of rec.batches) {
       const [matKey, shadow, tier] = key.split('|');
-      const merged = mergeGeometries(list, false);
+      const merged = mergeMixed(list);
       if (!merged) continue;
       merged.applyMatrix4(inv);
       merged.computeBoundingSphere();
@@ -708,7 +758,7 @@ export class World {
     if (this.editorMode) for (const rec of this.groups.values()) this.buildGroupObject(rec);
     for (const [key, list] of this._visualBatches) {
       const [matKey, shadow, cell, tier] = key.split('|');
-      const merged = mergeGeometries(list, false);
+      const merged = mergeMixed(list);
       if (!merged) { console.warn('[world] batch did not merge', key); continue; }
       merged.computeBoundingSphere();
       const mesh = new THREE.Mesh(merged, this.mats[matKey]);
@@ -719,11 +769,11 @@ export class World {
       this.scene.add(mesh);
       if (tier) {
         // Visibility by the cell (near / far versions of one cell swap exactly together).
-        const S = tier === 'd' ? DETAIL_CHUNK : LOD_CHUNK;
+        const S = tier === 'd' ? DETAIL_CHUNK : tier === 's' ? STREAM_CELL : LOD_CHUNK;
         const [cx, cz] = cell.split(',').map(Number);
         const center = new THREE.Vector3((cx + 0.5) * S, merged.boundingSphere.center.y, (cz + 0.5) * S);
         if (tier === 'd') this.detailMeshes.push({ mesh, center, r: S * 0.71 });
-        else this.lodMeshes.push({ mesh, center, r: S * 0.71, far: tier === 'f' });
+        else this.lodMeshes.push({ mesh, center, r: S * 0.71, far: tier !== 'n', stream: tier === 's', cell });
       }
     }
     this._visualBatches.clear();
@@ -760,6 +810,9 @@ export class World {
     }
     for (const R of REGIONS) {
       if (R.keepClear && Math.hypot(x - R.center.x, z - R.center.z) < R.keepClear) return false;
+    }
+    for (const K of this.keepClear) {
+      if (K.poly) { if (polygonDistance(K.poly, x, z) < (K.margin ?? 0) + pad) return false; } else if (Math.hypot(x - K.x, z - K.z) < K.r + pad) return false;
     }
     return true;
   }
@@ -882,6 +935,39 @@ export class World {
     }
     const G = REGION.glade.center;
     for (let i = 0; i < 40; i++) { const a = rng() * Math.PI * 2, r = Math.sqrt(rng()) * 20; floor(G.x + Math.cos(a) * r, G.z + Math.sin(a) * r); }
+    this._buildAinstreyVegetation(rng, inClearing);
+  }
+
+  /** The Ainstrey sheet: groves and bushes on the plain, scrub and rocks on the chalk slopes, meadow flowers. */
+  _buildAinstreyVegetation(rng, inClearing) {
+    const S = AIN_SHEET, m = 120;
+    const rx = () => S.x0 + m + rng() * (S.x1 - S.x0 - 2 * m), rz = () => S.z0 + m + rng() * (S.z1 - S.z0 - 2 * m);
+    let placed = 0;
+    for (let i = 0; i < 40000 && placed < 700; i++) {
+      const x = rx(), z = rz();
+      if (!this._freeForPlants(x, z, 2) || inClearing(x, z, 6)) continue;
+      const y = this.heightAt(x, z);
+      if (y > 34 || y < 0.9) continue;
+      const grove = fbm(x * 0.02 + 7, z * 0.02 - 3, 2);
+      if (rng() > 0.2 + grove * 0.9) continue;
+      tree(this, x, z, 0.8 + rng() * 0.6, rng, y > 18 ? 'pine' : rng() < 0.2 ? 'birch' : 'oak');
+      placed++;
+    }
+    for (let i = 0; i < 3200; i++) {
+      const x = rx(), z = rz();
+      if (!this._freeForPlants(x, z, 1)) continue;
+      const y = this.heightAt(x, z);
+      if (y > 30 || y < 0.6) continue;
+      if (rng() < (y > 8 ? 0.45 : 0.65)) bush(this, x, z, 0.8 + rng() * 0.8, rng);
+      else rock(this, x, z, 0.4 + rng() * 1.6, rng);
+    }
+    const FLOWERS = ['flower_redA', 'flower_yellowA', 'flower_yellowB', 'flower_purpleA', 'flower_redB', 'flower_yellowC'];
+    for (let i = 0; i < 7000; i++) {
+      const x = rx(), z = rz();
+      if (fbm(x * 0.03 + 11, z * 0.03 - 5, 2) < 0.25) continue;
+      if (this.heightAt(x, z) > 22 || !this._freeForPlants(x, z, 0.3)) continue;
+      decor(this, x, z, FLOWERS[Math.floor(rng() * FLOWERS.length)], 0.35 + rng() * 0.25, rng);
+    }
   }
 
   _buildGrass() {
@@ -903,6 +989,8 @@ export class World {
     add(R('astrarium').x, R('astrarium').z, 50, 2500, { skip: notFree, hue: 0.16, scale: 0.9 });
     // Gardens and yards inside the walls (never on the paving or in the houses).
     if (this.cityGround) add(-330, 20, 125, 6000, { hue: 0.22, scale: 0.8, skip: (x, z) => !this.cityGround(x, z) });
+    // Ainstrey: meadows along the road, the mills and the dam.
+    for (let i = 0; i < AIN_TRAKT.length; i += 4) { const [x, z] = AIN_TO_WORLD(...AIN_TRAKT[i]); add(x, z, 85, 3200, { skip: notFree, hue: 0.19 }); }
     this.grass = createGrass(this, patches);
     this.scene.add(this.grass.mesh);
     this.updatables.push(this.grass);
@@ -987,7 +1075,13 @@ export class World {
       // Small building parts only near the camera (the walls keep their window panes).
       const cp = ctx.camera.position, D = this.detailDistance, L = this.lodDistance;
       for (const d of this.detailMeshes) d.mesh.visible = Math.hypot(d.center.x - cp.x, d.center.z - cp.z) - d.r < D;
-      for (const d of this.lodMeshes) d.mesh.visible = (Math.hypot(d.center.x - cp.x, d.center.z - cp.z) - d.r < L) !== d.far;
+      const st = this.stream;
+      if (st) st.update(cp, L);
+      // A streamed far proxy stays until the near model of its cell is ready (no holes while it builds).
+      for (const d of this.lodMeshes) {
+        if (d.stream) d.mesh.visible = !st?.ready(d.cell);
+        else d.mesh.visible = (Math.hypot(d.center.x - cp.x, d.center.z - cp.z) - d.r < L) !== d.far;
+      }
     }
     if (ctx.camera) this.trees.update(dt, ctx.camera);
     // Chimney smoke near the player (daytime cooking fires, evenings).
@@ -1047,6 +1141,12 @@ const EMPTY = [];
 const polyArea = (pts) => Math.abs(pts.reduce((s, p, i) => { const q = pts[(i + 1) % pts.length]; return s + p[0] * q[1] - q[0] * p[1]; }, 0)) / 2;
 
 /** World-space planar UV projection per face (cheap triplanar bake). */
+/** mergeGeometries of a list that may mix indexed kit parts and non-indexed solids (a kit material used by a plain box). */
+export function mergeMixed(list) {
+  if (list.some((g) => g.index) && list.some((g) => !g.index)) list = list.map((g) => (g.index ? g.toNonIndexed() : g));
+  return mergeGeometries(list, false);
+}
+
 function planarUVs(g, scale) {
   const pos = g.attributes.position;
   if (!g.attributes.normal) g.computeVertexNormals();

@@ -12,6 +12,29 @@
  *  appear    condition for being in the world at all
  */
 import { clipText } from './story/index.js';
+import { CITIZENS } from './citizens.js';
+
+/** Stages of the road quest `ainstrey_road` in order (data/quests.js): schedules of the road crew follow them. */
+const ROAD_STAGES = ['luna', 'nera', 'edmund', 'sack', 'doren', 'survey', 'drain_talk', 'p_ditch', 'p_service', 'brace', 'method', 'p_expl', 'p_winch', 'g_off', 'g_fight', 'cleanup', 'carts_empty', 'carts_loaded', 'act', 'view', 'fork', 'mills_talk', 'mills_task', 'dam'];
+/** Where the road quest is: -1 not started, an index into ROAD_STAGES, 99 done. */
+export const roadAt = (rpg) => {
+  const st = rpg.quests.status('ainstrey_road');
+  if (st === 'done') return 99;
+  if (st !== 'active') return -1;
+  return ROAD_STAGES.indexOf(rpg.quests.stageId('ainstrey_road'));
+};
+
+/** Stages of the main quest of the capital `ainstrey_city` (data/quests_capital.js) in order: schedules of the capital's people follow them. */
+const CITY_STAGES = ['gate', 'meet', 'archive', 'academy', 'invoice', 'varlen', 'permit', 'prep', 'route', 'p_top', 'p_pit', 'coupling', 'p_expl', 'p_mech', 'check_gate', 'report', 'wrap', 'finish'];
+/** Where the capital quest is: -1 not started, an index into CITY_STAGES, 99 done. */
+export const cityAt = (rpg) => {
+  const st = rpg.quests.status('ainstrey_city');
+  if (st === 'done') return 99;
+  if (st !== 'active') return -1;
+  return CITY_STAGES.indexOf(rpg.quests.stageId('ainstrey_city'));
+};
+const CS = (stage) => ({ quest: 'ainstrey_city', stage });
+const VARLEN_BARK = (rpg) => [clipText(rpg.getVar('VARLEN_COOPERATES') ? 'V08_009' : 'V08_010')];
 
 const NIGHT_HOME = { time: [22, 6], hidden: true };
 const M = (parts, colors = {}, extra = {}) => ({ pack: 'm', parts, colors, ...extra });
@@ -28,7 +51,7 @@ export const NPCS = [
       { time: [0, 24], spot: 'ledge_marta', anim: 'idle', if: { any: ['ledge', 'p12_cargo', 'p12_roxy', 'p12_rope', 'ledge_out'].map((stage) => ({ quest: 'ch7_gorge', stage })) } },
       { time: [6, 12], spot: 'caravan_master', anim: 'idle' }, { time: [12, 17], spot: 'caravan_office_desk', anim: 'sit', seat: 0.5 }, { time: [17, 21], spot: 'caravan_master', anim: 'idle' }, { time: [21, 24], spot: 'tavern_table4', anim: 'sit' }, NIGHT_HOME],
     talk: [
-      { if: [{ flag: 'game_complete' }, { v: 'MARTA_BRIDGE' }], bark: [clipText('V06_006')] },
+      { if: { v: 'MARTA_BRIDGE' }, bark: [clipText('V06_006')] },
       { if: { quest: 'c_cache_tar', status: 'available' }, dialogue: 'B13d' },
       { if: { quest: 's_marta_bridge', status: 'available' }, dialogue: 'B15a' },
       { if: { quest: 's_marta_bridge', stage: 'pay' }, dialogue: 'B15c' },
@@ -40,6 +63,206 @@ export const NPCS = [
       { if: { quest: 'a00_bags', stage: 'carry' }, bark: ['Два у заднего колеса. Потом можешь спорить.'] },
       { if: { quest: 'prologue_arrival', stage: 'marta' }, dialogue: 'A00' },
       { dialogue: 'marta_idle' },
+    ],
+  },
+  // ------------------------------------------------------------------ version 2.0: the road crew (D01-D13)
+  {
+    id: 'nera', name: 'Нэра Вальд', title: 'Дорожный инженер',
+    model: F(['Soldier_Head', 'Adventurer_Body', 'Adventurer_Legs', 'Adventurer_Feet'], { Hair_Brown: 0x3a2a22, 'Adventurer_Body:Green': 0x6a7a8a, 'Adventurer_Body:LightGreen': 0x4a5a6a, 'Adventurer_Legs:Brown': 0x4a4a52, 'Adventurer_Legs:Brown2': 0x3a3a44 }),
+    look: { skin: 0xf0d0b8, hair: 0x3a2a22, hairStyle: 'ponytail', top: 0x6a7a8a, vest: 0x8a6a3a, bottom: 0x4a4a52, hat: 'cap', hatColor: 0xb8903a, tallBoots: true, bag: 0x7a5232 },
+    schedule: (rpg) => {
+      const at = roadAt(rpg);
+      if (at >= 1 && at <= 3) return [{ time: [0, 24], spot: 'olkhovka_well', anim: 'idle' }];
+      if (at >= 4 && at <= 18) return [{ time: [0, 24], spot: 'ledge_nera', anim: 'idle' }];
+      const cy = cityAt(rpg); // after the act she goes ahead to the city: the batch number, the store, the pump
+      if (cy === 4 || cy === 99 || cy === 16 || cy === 17) return [{ time: [8, 20], spot: 'guild_yard_nera', anim: 'idle' }, { time: [20, 8], hidden: true }];
+      if (cy === 5 || cy === 6) return [{ time: [0, 24], spot: 'port_store_nera', anim: 'idle' }];
+      if (cy >= 7 && cy <= 14) return [{ time: [0, 24], spot: 'pump_nera', anim: 'idle' }];
+      if (cy === 15) return [{ time: [0, 24], spot: 'port_office_nera', anim: 'idle' }];
+      return [{ time: [0, 24], hidden: true }];
+    },
+    talk: [
+      { if: { quest: 'ainstrey_road', stage: 'nera' }, dialogue: 'D01' },
+      { if: { quest: 'ainstrey_road', stage: 'drain_talk' }, dialogue: 'D05' },
+      { if: { quest: 'ainstrey_road', stage: 'method' }, dialogue: 'D07' },
+      { if: { quest: 'ainstrey_road', stage: 'g_off' }, dialogue: 'D08a' },
+      { if: { quest: 'ainstrey_road', stage: 'act' }, dialogue: 'D09' },
+      { if: CS('invoice'), dialogue: 'D19' },
+      { if: { any: [CS('varlen'), CS('permit')] }, bark: ['Склад и журнал сначала, спор потом. Я рядом с Варленом.'] },
+      { if: { any: [CS('prep'), CS('p_top'), CS('p_pit'), CS('coupling')] }, bark: ['Крепления сняла, скобы лежат у стены. Без белой отметки ничего не трогаем.'] },
+      { if: { any: [CS('p_expl'), CS('p_mech')] }, bark: ['Упор держу. Только на мой знак.'] },
+      { if: { quest: 'ainstrey_city', status: 'done' }, bark: [clipText('V08_001')] },
+      { if: { quest: 'ainstrey_road', stage: 'edmund' }, bark: ['Эдмунд живёт у теплицы за площадью. Прибор нужен будет на склоне: после обвала старые посты иногда включаются сами.'] },
+      { if: { quest: 'ainstrey_road', stage: 'sack' }, bark: ['Мешок креплений Гаррета лежит у выхода. Две скобы, вторую держи, пока затягиваешь.'] },
+      { if: { quest: 'ainstrey_road', stage: 'survey' }, bark: ['Три места: верхний карман, шов плиты, лебёдка. Порядок любой. Мел у меня на плане.'] },
+      { if: { quest: 'ainstrey_road', stage: 'p_ditch' }, bark: ['Шест у входа в канаву, потом ограда. Воду пускаем только после предупреждения.'] },
+      { if: { quest: 'ainstrey_road', stage: 'p_service' }, bark: ['Решётки снимает рычаг, выход промывает Рокси. Торопиться некуда.'] },
+      { if: { quest: 'ainstrey_road', stage: 'brace' }, bark: ['Опоры ставим под шов, не под край. Потом проверка под малой нагрузкой.'] },
+      { if: { any: [{ quest: 'ainstrey_road', stage: 'p_expl' }, { quest: 'ainstrey_road', stage: 'p_winch' }] }, bark: ['Рабочие за шестами. Я не снимаю людей с безопасных мест, пока вы не закончите.'] },
+      { if: { quest: 'ainstrey_road', stage: 'g_fight' }, bark: ['Стражи у отметок! Не подпускай их к отводу.'] },
+      { if: { quest: 'ainstrey_road', stage: 'cleanup' }, bark: ['Цепь, три обломка, настил. Остальное сделают люди по двое.'] },
+      { if: { any: [{ quest: 'ainstrey_road', stage: 'carts_empty' }, { quest: 'ainstrey_road', stage: 'carts_loaded' }] }, bark: ['Колокол у шестов. Сначала пустая, потом гружёная.'] },
+      { bark: ['Тракт работает. После дождя пост смотрит склон; если понадобится ремонт, дадим отдельное задание.'] },
+    ],
+  },
+  {
+    id: 'doren', name: 'Дорен Крей', title: 'Бригадир расчистки',
+    model: M(['Casual2_Head', 'Farmer_Body', 'Worker_Legs', 'Worker_Feet'], { Hair: 0x3a2a1e, Skin: 0xc89070, Skin_Darker: 0xa87050, LightBrown: 0x7a6a4a }, { scale: 1.02 }),
+    look: { skin: 0xc89070, hair: 0x3a2a1e, hairStyle: 'short', beard: true, top: 0x7a6a4a, sleeves: 'short', bottom: 0x4a3a2a, hat: 'cap', hatColor: 0xb8903a, build: 1.2, height: 1.04, tallBoots: true },
+    schedule: [{ time: [0, 24], spot: 'ledge_doren', anim: 'idle' }],
+    talk: [
+      { if: { quest: 'ainstrey_road', stage: 'doren' }, dialogue: 'D03' },
+      { if: { quest: 'ainstrey_road', stage: 'survey' }, bark: ['От шестов дальше только по плану. На верхней площадке лестница, перила держат.'] },
+      { if: { quest: 'ainstrey_road', stage: 'brace' }, bark: ['Вторую скобу держи, пока затягиваю. Бригада за шестами.'] },
+      { if: { any: [{ quest: 'ainstrey_road', stage: 'p_expl' }, { quest: 'ainstrey_road', stage: 'p_winch' }] }, bark: ['Бригада ждёт. Дам знак, как только площадка свободна.'] },
+      { if: { quest: 'ainstrey_road', stage: 'cleanup' }, bark: ['Рабочие, по двое к лебёдке. Остальные ждут у нижнего края.'] },
+      { if: { quest: 'ainstrey_road', status: 'active' }, bark: ['Делай по списку Нэры. Люди ценнее скорости.'] },
+      { bark: ['Дорога открыта. Двое моих остаются на склоне до конца работ, потом пост смотрит после дождя.'] },
+    ],
+  },
+  {
+    id: 'lissa', name: 'Лисса Рейн', title: 'Посыльная',
+    model: F(['Casual_Head', 'Adventurer_Body', 'Adventurer_Legs', 'Adventurer_Feet'], { Hair_Blond: 0xb8602a, Hair_Brown: 0xb8602a, 'Adventurer_Body:Green': 0x3a6a5a, 'Adventurer_Body:LightGreen': 0x5a8a7a, 'Adventurer_Legs:Brown': 0x4a3a2a }),
+    look: { skin: 0xf6d0b0, hair: 0xb8602a, hairStyle: 'braids', top: 0x3a6a5a, vest: 0x8a6a3a, bottom: 0x4a3a2a, hat: 'cap', hatColor: 0x3a6a5a, bag: 0x7a5232, tallBoots: true, height: 0.97 },
+    schedule: (rpg) => {
+      const at = roadAt(rpg);
+      if (at === 7) return [{ time: [0, 24], spot: 'ledge_camp', anim: 'idle' }]; // the lower camp: she will carry the warning down to the mills
+      if (at === 20) return [{ time: [0, 24], spot: 'lissa_fork', anim: 'idle' }];
+      if (at === 21 || at === 22) return [{ time: [0, 24], spot: 'mill_wheel', anim: 'idle' }];
+      if (at === 23) return [{ time: [0, 24], spot: 'dam_south', anim: 'idle' }];
+      const cy = cityAt(rpg);
+      if (rpg.quests.status('n05_patrol') === 'active' && ['camp', 'p_lure', 'p_top', 'p_reserve'].includes(rpg.quests.stageId('n05_patrol'))) return [{ time: [0, 24], spot: 'n05_camp_lissa', anim: 'idle' }];
+      if (cy >= 1 || cy === 99) return [{ time: [7, 21], spot: 'guild_lissa', anim: 'idle' }, { time: [21, 7], hidden: true }];
+      if (at === 99) return [{ time: [7, 20], spot: 'mills_camp', anim: 'idle' }, { time: [20, 7], hidden: true }];
+      return [{ time: [0, 24], hidden: true }];
+    },
+    talk: [
+      { if: { quest: 'ainstrey_road', stage: 'fork' }, dialogue: 'D11' },
+      { if: { quest: 'ainstrey_road', stage: 'mills_talk' }, dialogue: 'D12' },
+      { if: { quest: 'ainstrey_road', stage: 'mills_task' }, bark: ['Рычаг держит один, обломок вынимает второй. Без большого заклинания.'] },
+      { if: { quest: 'ainstrey_road', stage: 'dam' }, dialogue: 'D13' },
+      { if: { quest: 'ainstrey_city', stage: 'wrap', notFlag: 'D26_DONE' }, dialogue: 'D26' },
+      { if: { quest: 'n01_letter', stage: 'compare' }, dialogue: 'N01b' },
+      { if: { quest: 'n01_letter', stage: 'report' }, dialogue: 'N01c' },
+      { if: { quest: 'n01_letter', status: 'available' }, dialogue: 'N01a' },
+      { if: { any: [{ quest: 'n01_letter', stage: 'record' }, { quest: 'n01_letter', stage: 'deliver' }] }, bark: ['Запись и подпись: без них письмо снова вернётся. Конверт не открываю.'] },
+      { if: { flag: 'D15_DONE' }, bark: [clipText('V08_003')] },
+      { if: { quest: 'ainstrey_road', stage: 'p_ditch' }, bark: ['Я у нижнего привала. Предупреждение мельникам донесу быстрее телеги, как только вы поставите шест.'] },
+      { bark: ['Дороги покажу по заказу. Короткий путь не обязан быть хорошим.'] },
+    ],
+  },
+  // ------------------------------------------------------------------ version 2.0: the capital Ainstrey (D14-D28, N01-N05)
+  {
+    id: 'oskar', name: 'Оскар', title: 'Старший стражи ворот',
+    model: M(['Adventurer_Head', 'King_Body', 'King_Legs', 'King_Feet', 'Sword'], { Hair: 0x3a2e24, Blue: 0x3a5a7a }, { scale: 1.02 }),
+    look: { skin: 0xe0b896, hair: 0x3a2e24, hairStyle: 'short', beard: true, top: 0x3a5a7a, bottom: 0x3a3a48, armor: 0xa2a8b0, hat: 'helmet', hatColor: 0xa2a8b0, build: 1.15, height: 1.05 },
+    schedule: (rpg) => {
+      const cy = cityAt(rpg);
+      if (cy >= 6 && cy <= 14) return [{ time: [0, 24], spot: 'pump_oskar', anim: 'guard' }];
+      return [{ time: [5, 22], spot: 'oskar_post', anim: 'guard' }, { time: [22, 5], spot: 'oskar_post', anim: 'guard' }];
+    },
+    talk: [
+      { if: CS('gate'), dialogue: 'D14' },
+      { if: { quest: 'n05_patrol', stage: 'brief' }, dialogue: 'N05a' },
+      { if: { quest: 'n05_patrol', stage: 'report' }, dialogue: 'N05c' },
+      { if: { quest: 'n05_patrol', status: 'available' }, dialogue: 'N05a' },
+      { if: { quest: 'n05_patrol', status: 'active' }, bark: ['Три поста и фонарь. Проверка ночью, не днём: днём всё видно и так.'] },
+      { if: { any: [CS('permit'), CS('prep'), CS('route'), CS('p_top'), CS('p_pit'), CS('coupling')] }, bark: ['Нижний проход перекрыт. Границы допуска: рабочая зона, верхний мосток, боковой проход. Городскую стену в допуск не вписали.'] },
+      { dialogue: 'oskar_idle' },
+    ],
+  },
+  {
+    id: 'selia', name: 'Селия Морн', title: 'Распорядитель гильдии Айнстрея',
+    model: F(['Formad_Head', 'Formal_Body', 'Formal_Legs', 'Formal_Feet'], { Hair_Brown: 0x4a3a30, Hair_Blond: 0x4a3a30, LimeGreen: 0x3a5a7a, Gold: 0xf0e8d0 }),
+    look: { skin: 0xf0d0b8, hair: 0x4a3a30, hairStyle: 'bun', top: 0x3a5a7a, dress: true, dressLong: true, dressColor: 0x2f4a6a, apron: 0xf0e8d0, chestShape: true, height: 1.0 },
+    schedule: (rpg) => {
+      const cy = cityAt(rpg);
+      if (cy === 5 || cy === 6) return [{ time: [0, 24], spot: 'port_store_selia', anim: 'idle' }];
+      if (cy === 15) return [{ time: [0, 24], spot: 'port_office_selia', anim: 'idle' }];
+      return [{ time: [7, 21], spot: 'guild_selia', anim: 'shop' }, { time: [21, 7], hidden: true }];
+    },
+    talk: [
+      { if: [CS('meet'), { notFlag: 'D15_DONE' }], dialogue: 'D15' },
+      { if: [{ quest: 'n03_handwriting', stage: 'compare' }, { notFlag: 'n03_log' }], dialogue: 'selia_log' },
+      { if: CS('permit'), bark: ['Заказ на обследование оформлен: сто восемьдесят эрис отряду. Возврат материалов Нэры не вычитаем.'] },
+      { if: CS('finish'), dialogue: 'D27' },
+      { dialogue: 'selia_idle' },
+    ],
+  },
+  {
+    id: 'tavia', name: 'Тавия', title: 'Хозяйка «Двора Тавии»',
+    model: F(['Medieval_Head', 'Medieval_Body', 'Formal_Legs', 'Formal_Feet'], { Hair_Brown: 0x6a3a22, Hair_Blond: 0x6a3a22, LimeGreen: 0x9a5a3a, Gold: 0xf4ecd8 }),
+    look: { skin: 0xe8b890, hair: 0x6a3a22, hairStyle: 'bun', top: 0xd88a6a, dress: true, dressLong: true, dressColor: 0x5a4a3a, apron: 0xf4f0e8, chestShape: true, height: 0.98 },
+    schedule: [{ time: [6, 24], spot: 'inn_tavia', anim: 'shop' }, { time: [0, 6], hidden: true }],
+    talk: [
+      { if: [{ quest: 'ainstrey_city', status: 'active' }, { notFlag: 'D16_DONE' }, { flag: 'oskar_met' }], dialogue: 'D16' },
+      { if: { quest: 'n02_ovens', stage: 'brief' }, dialogue: 'N02a' },
+      { if: { quest: 'n02_ovens', stage: 'plan' }, dialogue: 'N02b' },
+      { if: { quest: 'n02_ovens', stage: 'bread' }, dialogue: 'N02c' },
+      { if: { quest: 'n02_ovens', status: 'available' }, dialogue: 'N02a' },
+      { if: { quest: 'n02_ovens', status: 'active' }, bark: ['Печь не трогайте, пока доска на месте. Дом мне нужен целиком.'] },
+      { if: { flag: 'D16_DONE' }, dialogue: 'tavia_idle' },
+      { bark: [clipText('V08_008')] },
+    ],
+  },
+  {
+    id: 'ilar', name: 'Илар', title: 'Архивариус Айнстрея',
+    model: M(['Suit_Head', 'King_Body', 'Worker_Legs', 'Worker_Feet'], { Hair: 0x7a7468, Skin: 0xe0b896, Blue: 0x4a4a62 }),
+    look: { skin: 0xe0b896, hair: 0x8a8478, hairStyle: 'short', beard: true, top: 0x4a4a62, bottom: 0x3a3a48, glasses: true, build: 0.92, height: 1.0 },
+    schedule: [{ time: [7, 20], spot: 'archive_ilar', anim: 'sit', seat: 0.5 }, { time: [20, 7], hidden: true }],
+    talk: [
+      { if: { any: [CS('meet'), CS('archive')] }, dialogue: 'D17' },
+      { if: { quest: 'ainstrey_city', stage: 'wrap', notFlag: 'D25_DONE' }, dialogue: 'D25' },
+      { if: { quest: 'n03_handwriting', stage: 'brief' }, dialogue: 'N03a' },
+      { if: [{ quest: 'n03_handwriting', stage: 'compare' }, { notFlag: 'n03_book' }], dialogue: 'ilar_book' },
+      { if: { quest: 'n03_handwriting', stage: 'fix' }, dialogue: 'N03c' },
+      { if: { quest: 'n03_handwriting', status: 'available' }, dialogue: 'N03a' },
+      { if: { flag: 'D17_DONE' }, dialogue: 'ilar_idle' },
+      { bark: [clipText('V08_006')] },
+    ],
+  },
+  {
+    id: 'mirena', name: 'Мирена', title: 'Инженер водяной службы',
+    model: F(['Suit_Head', 'Witch_Body', 'Witch_Legs', 'Witch_Feet'], { Hair_Brown: 0x2a2a3a, Hair_Blond: 0x2a2a3a, Purple: 0x3a6a8a }),
+    look: { skin: 0xe8c0a0, hair: 0x2a2a3a, hairStyle: 'ponytail', top: 0x3a6a8a, vest: 0x8a6a3a, bottom: 0x3a3a48, glasses: true, tallBoots: true, height: 0.99 },
+    schedule: (rpg) => {
+      const cy = cityAt(rpg);
+      if (cy >= 5 && cy <= 14) return [{ time: [0, 24], spot: cy >= 7 ? 'pump_mirena' : 'pump_yard_mirena', anim: 'idle' }];
+      if (rpg.quests.status('n04_bucket') === 'active' && ['mills', 'measure', 'talk_b', 'leak', 'statements'].includes(rpg.quests.stageId('n04_bucket'))) return [{ time: [0, 24], spot: 'n04_upper', anim: 'idle' }];
+      return [{ time: [8, 19], spot: 'academy_mirena', anim: 'idle' }, { time: [19, 8], hidden: true }];
+    },
+    talk: [
+      { if: CS('academy'), dialogue: 'D18' },
+      { if: CS('permit'), dialogue: 'D21' },
+      { if: CS('coupling'), dialogue: 'D23' },
+      { if: { any: [CS('prep'), CS('route'), CS('p_top'), CS('p_pit')] }, bark: ['Давление смотрим по двум шкалам. Мостик к лестнице свободен, люди выходят по одному. Стражи у панели: я вижу их с поста.'] },
+      { if: { any: [CS('p_expl'), CS('p_mech')] }, bark: ['Муфта отделяется только по белой отметке или домкратом. Несущую стену не трогаем.'] },
+      { if: [{ quest: 'n03_handwriting', stage: 'compare' }, { notFlag: 'n03_list' }], dialogue: 'mirena_list' },
+      { if: { quest: 'n03_handwriting', stage: 'sign' }, dialogue: 'N03b' },
+      { if: { quest: 'n04_bucket', stage: 'brief' }, dialogue: 'N04a' },
+      { if: { quest: 'n04_bucket', stage: 'talk_b' }, dialogue: 'N04b' },
+      { if: { quest: 'n04_bucket', stage: 'mark' }, dialogue: 'N04c' },
+      { if: { quest: 'n04_bucket', status: 'available' }, dialogue: 'N04a' },
+      { if: { quest: 'n04_bucket', status: 'active' }, bark: ['Замеры, ремонт, подписи. Порядок — как на схеме.'] },
+      { dialogue: 'mirena_idle' },
+    ],
+  },
+  {
+    id: 'varlen', name: 'Варлен Дорн', title: 'Инспектор перевозок порта',
+    model: M(['Casual2_Head', 'Adventurer_Body', 'Worker_Legs', 'Worker_Feet', 'Backpack'], { Hair: 0x3a3a3a, Skin: 0xd0a080, LightBrown: 0x6a5a4a }, { scale: 1.0 }),
+    look: { skin: 0xd0a080, hair: 0x3a3a3a, hairStyle: 'short', beard: true, top: 0x6a5a4a, bottom: 0x3a3a48, hat: 'cap', hatColor: 0x4a4a52, build: 1.05, height: 1.02 },
+    schedule: (rpg) => {
+      const cy = cityAt(rpg);
+      if (cy === 5 || cy === 6) return [{ time: [0, 24], spot: 'port_store_varlen', anim: 'idle' }];
+      if (cy >= 7 && cy <= 14) return [{ time: [0, 24], spot: 'port_store_varlen', anim: 'idle' }];
+      return [{ time: [7, 20], spot: 'port_varlen', anim: 'sit', seat: 0.5 }, { time: [20, 7], hidden: true }];
+    },
+    talk: [
+      { if: CS('varlen'), dialogue: 'D20' },
+      { if: CS('report'), dialogue: 'D24' },
+      { if: { any: [CS('permit'), CS('prep'), CS('route'), CS('p_top'), CS('p_pit'), CS('coupling'), CS('p_expl'), CS('p_mech'), CS('check_gate')] }, bark: ['Новые поставки остановил. Рабочие наверху. Спорить буду после, у конторы.'] },
+      { if: { any: [CS('wrap'), CS('finish'), { quest: 'ainstrey_city', status: 'done' }] }, bark: VARLEN_BARK },
+      { bark: ['Порт работает. По делам перевозок обращайтесь к стойке.'] },
     ],
   },
   // ------------------------------------------------------------------ Axel
@@ -82,7 +305,6 @@ export const NPCS = [
       { if: { quest: 'c_cache_bridge', status: 'available' }, dialogue: 'B13a' },
       { if: { quest: 's_lina_day', status: 'available' }, dialogue: 'B23a' },
       { if: { quest: 's_lina_day', stage: 'last' }, dialogue: 'B23c' },
-      { if: { quest: 'ch10_finale', stage: 'epilogue', notFlag: 'C32_DONE' }, dialogue: 'C32' },
       { if: { quest: 'ch8_city', stage: 'shelter' }, dialogue: 'C16' },
       { if: { quest: 'ch8_city', status: 'active', flag: 'C16_DONE' }, bark: ['Пока все не получат воду, я здесь. Хлеб вечером будет холодный.'] },
       { if: { quest: 'prologue_arrival', stage: 'lina', flag: 'A02_LATER' }, dialogue: 'A02b' },
@@ -98,7 +320,7 @@ export const NPCS = [
     look: { skin: 0xe8b890, hair: 0x2a1a12, hairStyle: 'bald', beard: true, top: 0x8a5a3a, sleeves: 'short', apron: 0x3a2a1e, bottom: 0x3a3028, build: 1.25, height: 1.06 },
     schedule: [{ time: [0, 24], spot: 'pump_garret', anim: 'work', if: { any: [{ quest: 'ch8_city', stage: 'pump_talk' }, { quest: 'ch8_city', stage: 'pump_key' }, { quest: 'ch8_city', stage: 'p17_shield' }, { quest: 'ch8_city', stage: 'p17_hold' }, { quest: 'ch8_city', stage: 'p17_flow' }, { quest: 'ch8_city', stage: 'pump_out' }] } }, { time: [7, 19], spot: 'forge_anvil', anim: 'work' }, { time: [19, 22], spot: 'tavern_bar_front', anim: 'idle' }, NIGHT_HOME],
     talk: [
-      { if: [{ flag: 'game_complete' }, { v: 'GARRET_RECORD' }], bark: [clipText('V06_005')] },
+      { if: { v: 'GARRET_RECORD' }, bark: [clipText('V06_005')] },
       { if: { quest: 's_garret_tag', status: 'available' }, dialogue: 'B16a' },
       { if: { quest: 's_garret_tag', stage: 'report' }, dialogue: 'B16c' },
       { if: { quest: 'ch8_city', stage: 'pump_talk' }, dialogue: 'C17' },
@@ -118,7 +340,7 @@ export const NPCS = [
     look: { skin: 0xffe8d8, hair: 0xa06a3a, hairStyle: 'long', top: 0xf2ead8, vest: 0x2f5a8a, dress: true, dressLong: true, dressColor: 0x2f3a5a, chestShape: true },
     schedule: [{ time: [8, 20], spot: 'guild_counter', anim: 'idle' }, { time: [20, 22], spot: 'tavern_table2', anim: 'sit' }, NIGHT_HOME],
     talk: [
-      { if: { quest: 'ch10_finale', stage: 'epilogue', notFlag: 'C30_DONE' }, dialogue: 'C30' },
+      { if: { quest: 'ainstrey_road', stage: 'luna' }, dialogue: 'D00' },
       { if: { quest: 'ch8_city', stage: 'hq' }, dialogue: 'C15' },
       { if: { quest: 'ch7_gorge', stage: 'luna' }, dialogue: 'C11' },
       { if: { quest: 'join_guild', stage: 'go' }, dialogue: 'A04' },
@@ -201,7 +423,7 @@ export const NPCS = [
     look: { skin: 0xffe8d8, hair: 0xe8789a, hairStyle: 'braids', top: 0xf0a0c0, dress: true, dressColor: 0xf0a0c0, stockings: 0xffffff, height: 0.72 },
     schedule: [{ time: [0, 24], spot: 'shelter_mia', anim: 'idle', if: { any: [{ quest: 'ch8_city', stage: 'shelter' }, { quest: 'ch8_city', stage: 'route_res' }, { quest: 'ch8_city', stage: 'route_rep' }, { quest: 'ch8_city', stage: 'pump_talk' }, { quest: 'ch8_city', stage: 'pump_key' }, { quest: 'ch8_city', stage: 'p17_shield' }, { quest: 'ch8_city', stage: 'p17_hold' }, { quest: 'ch8_city', stage: 'p17_flow' }, { quest: 'ch8_city', stage: 'pump_out' }, { quest: 'ch8_city', stage: 'veyr' }, { quest: 'ch8_city', stage: 'deep' }, { quest: 'ch8_city', stage: 'p19_lever' }, { quest: 'ch8_city', stage: 'p19_latch' }, { quest: 'ch8_city', stage: 'p19_breaker' }, { quest: 'ch8_city', stage: 'deep_out' }, { quest: 'ch8_city', stage: 'link' }, { quest: 'ch8_city', stage: 'link_check' }] } }, { time: [9, 18], spot: 'square_west', anim: 'idle' }, { time: [18, 9], hidden: true }],
     talk: [
-      { if: [{ flag: 'game_complete' }, { v: 'AXEL_SHELTER' }], bark: [clipText('V06_010')] },
+      { if: { v: 'AXEL_SHELTER' }, bark: [clipText('V06_010')] },
       { if: { quest: 's_lina_day', stage: 'bag' }, dialogue: 'B23b' },
       { if: { quest: 'ch8_city', status: 'active' }, bark: ['Уголёк сегодня сидит в корзине. Сам. Это очень подозрительно.', 'Лина нарисовала линию мелом. Мы за неё не заходим.'] },
       { if: { quest: 'c_lost_cat', stage: 'mia' }, dialogue: 'B02a' },
@@ -221,7 +443,6 @@ export const NPCS = [
       : [{ time: [7, 21], spot: 'temple_altar', anim: 'idle' }, NIGHT_HOME]),
     talk: [
       { if: { quest: 's_clara_book', status: 'available' }, bark: ['Агата ждёт за архивным столом: поговори с ней.'] },
-      { if: { quest: 'ch10_finale', stage: 'epilogue', notFlag: 'C31_DONE' }, dialogue: 'C31' },
       { if: { quest: 'ch5_crypt', stage: 'rest' }, bark: ['Водяной знак у шва не потемнел. Отдыхайте. Крипту я открою, когда мы подготовимся.'] },
       { if: { quest: 'ch5_crypt', stage: 'clara' }, dialogue: 'C00' },
       { if: { quest: 'ch5_crypt', stage: 'prep' }, bark: ['Гаррет проверит лестницу. Луна выделит лампы. Нижнюю комнату я прошу осмотреть вас.'] },
@@ -265,7 +486,7 @@ export const NPCS = [
         ? [{ time: [7, 21], spot: 'olkhovka_tobias', anim: 'idle' }, { time: [21, 7], hidden: true }]
         : [{ time: [8, 20], spot: 'tobias_wait', anim: 'idle' }, { time: [20, 8], hidden: true }]),
     talk: [
-      { if: [{ flag: 'game_complete' }, { v: 'TOBIAS_ROAD' }], bark: [clipText('V06_007')] },
+      { if: { v: 'TOBIAS_ROAD' }, bark: [clipText('V06_007')] },
       { if: { quest: 's_tobias_road', status: 'available' }, dialogue: 'B22a' },
       { if: { quest: 's_tobias_road', stage: 'report' }, dialogue: 'B22c' },
       { if: { quest: 'ch6_relay', stage: 'tobias' }, dialogue: 'C06' },
@@ -314,7 +535,7 @@ export const NPCS = [
     look: { skin: 0xe8b890, hair: 0x8a5a2a, hairStyle: 'short', beard: true, top: 0xa0b060, sleeves: 'short', bottom: 0x5a4a3a, hat: 'wide', hatColor: 0xd8b060, build: 1.15 },
     schedule: [{ time: [6, 12], spot: 'field_0', anim: 'work' }, { time: [12, 13], spot: 'farmhouse', anim: 'idle' }, { time: [13, 19], spot: 'field_2', anim: 'work' }, { time: [19, 6], hidden: true }],
     talk: [
-      { if: [{ flag: 'game_complete' }, { v: 'BORIS_GATE' }], bark: [clipText('V06_004')] },
+      { if: { v: 'BORIS_GATE' }, bark: [clipText('V06_004')] },
       { if: { quest: 'c_night_raid', status: 'available' }, dialogue: 'B10a' },
       { if: { quest: 'c_night_raid', stage: 'after' }, dialogue: 'B10b' },
       { if: { quest: 'c_night_raid', status: 'active' }, bark: ['Ночью выйду с лампой на поле. Что надо — расскажи.', 'Телеги и фонарь — всё, что я могу. Остальное за тобой.'] },
@@ -333,7 +554,7 @@ export const NPCS = [
     look: { skin: 0xc89070, hair: 0x3a2418, hairStyle: 'short', top: 0x4a5a3a, vest: 0x6a5040, bottom: 0x3a3a2a, hat: 'hood', hatColor: 0x3a4a2a, cape: 0x3a4a2a, tallBoots: true },
     schedule: [{ time: [6, 20], spot: 'hunter_rann', anim: 'idle' }, { time: [20, 6], spot: 'hunters_fire', anim: 'sit', seat: 0.12 }],
     talk: [
-      { if: [{ flag: 'game_complete' }, { v: 'RANN_NESTS' }], bark: [clipText('V06_003')] },
+      { if: { v: 'RANN_NESTS' }, bark: [clipText('V06_003')] },
       { if: { quest: 'c_cache_oak', status: 'available' }, dialogue: 'B13b' },
       { if: { quest: 's_rann_nests', status: 'available' }, dialogue: 'B19a' },
       { if: { quest: 's_rann_nests', stage: 'report' }, dialogue: 'B19c' },
@@ -354,6 +575,7 @@ export const NPCS = [
     look: { skin: 0xf6d0b0, hair: 0xe8e8e8, hairStyle: 'short', beard: true, top: 0x3a4a7a, dress: true, dressLong: true, dressColor: 0x2a3a6a, cape: 0x2a3a6a, height: 0.97 },
     schedule: [{ time: [20, 2], spot: 'olkhovka_green', anim: 'magic' }, { time: [8, 20], spot: 'scholar', anim: 'idle' }, { time: [2, 8], hidden: true }],
     talk: [
+      { if: { quest: 'ainstrey_road', stage: 'edmund' }, dialogue: 'D02' },
       { if: { quest: 's_edmund_team', status: 'available' }, dialogue: 'B20a' },
       { if: { quest: 's_edmund_team', stage: 'sign' }, dialogue: 'B20c' },
       { if: { quest: 'ch3_lights', stage: 'edmund' }, dialogue: 'A17' },
@@ -389,7 +611,7 @@ export const NPCS = [
     appear: { flag: 'event_caravan' },
     schedule: [{ time: [0, 24], spot: 'caravan_trader', anim: 'idle' }],
     talk: [
-      { if: { flag: 'game_complete' }, bark: [clipText('V06_002')] },
+      { if: { flag: 'B12_DONE' }, bark: [clipText('V06_002')] },
       { if: { flag: 'B12_READY', notFlag: 'B12_DONE' }, dialogue: 'B12b' },
       { if: { item: 'astra_token', notFlag: 'B12_ASKED' }, dialogue: 'B12a' },
       { dialogue: 'trader_main' },
@@ -451,7 +673,7 @@ export const NPCS = [
     look: { skin: 0xf0d0b8, hair: 0x3a2a4a, hairStyle: 'braids', top: 0x4a6a8a, bottom: 0x3a3a48 },
     schedule: [{ time: [8, 20], spot: 'scholar', anim: 'idle' }, { time: [20, 8], hidden: true }],
     talk: [
-      { if: [{ flag: 'game_complete' }, { v: 'EDMUND_TEAM' }], bark: [clipText('V06_008')] },{ bark: ['Журнал сегодня веду я. Эдмунд проверяет, потом поменяемся.', 'Я записываю время и положение. Без этого число ничего не значит.'] }],
+      { if: { v: 'EDMUND_TEAM' }, bark: [clipText('V06_008')] },{ bark: ['Журнал сегодня веду я. Эдмунд проверяет, потом поменяемся.', 'Я записываю время и положение. Без этого число ничего не значит.'] }],
   },
   {
     id: 'agata', name: 'Агата', title: 'Свидетельница',
@@ -460,7 +682,7 @@ export const NPCS = [
     look: { skin: 0xf0d0b8, hair: 0x8a7a6a, hairStyle: 'bun', top: 0x5a4a5a, dress: true, dressColor: 0x5a4a5a },
     schedule: [{ time: [8, 19], spot: 'temple_altar', anim: 'idle' }, { time: [19, 8], hidden: true }],
     talk: [
-      { if: [{ flag: 'game_complete' }, { v: 'CLARA_RECORD' }], bark: [clipText('V06_009')] },
+      { if: { v: 'CLARA_RECORD' }, bark: [clipText('V06_009')] },
       { if: { quest: 's_clara_book', status: 'available' }, dialogue: 'B21a' },
       { if: { quest: 's_clara_book', stage: 'read' }, dialogue: 'B21c' },
       { bark: ['Я принесла письмо того дня. В нём тоже про вёдра.', 'Его имя не сокращайте. Он голосовал, и это тоже правда.'] },
@@ -485,4 +707,6 @@ export const NPCS = [
       { dialogue: 'roxy_waiting' },
     ],
   },
+  // ------------------------------------------------------------------ version 2.0: the people of the capital (ambient, data/citizens.js)
+  ...CITIZENS,
 ];

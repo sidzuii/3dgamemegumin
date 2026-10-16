@@ -1,6 +1,7 @@
 import { ITEMS, KIND_NAMES, RARITY_NAMES } from '../data/items.js';
 import { SLOTS } from '../systems/Inventory.js';
 import { MapView } from './MapView.js';
+import { STOPS, CLOSED_PARTS } from '../data/travel.js';
 import { RANK_TITLES } from '../rpg/Guild.js';
 import { RANK_POINTS } from '../rpg/State.js';
 import { XP_TABLE } from '../rpg/RPG.js';
@@ -88,6 +89,42 @@ export class GameMenu {
       const cv = div('mapcanvas');
       const leg = div('map-legend');
       leg.innerHTML = '<b>Карта</b><br>Колесо — масштаб<br>Перетаскивание — сдвиг<br><br><span style="color:#ff5a3a">▲</span> Мегумин<br><span style="color:#ffd36a">◆</span> цель задания<br>Тёмные области — ещё не исследованы.<br><br>Регионы открываются, когда вы их посещаете.';
+      // Two pages: the old map and the Ainstrey region (the north is up on both).
+      const pages = document.createElement('div');
+      pages.style.cssText = 'display:flex;gap:6px;margin:10px 0';
+      for (const [id, label] of [['main', 'Окрестности Акселя'], ['ainstrey', 'Айнстрей и тракт']]) {
+        const b = document.createElement('button');
+        b.className = 'menu-tab';
+        b.textContent = label;
+        b.addEventListener('click', () => { this.map.setSheet(id); });
+        pages.appendChild(b);
+      }
+      leg.appendChild(pages);
+      // The capital: the carts of the city and the river ferry (fast travel between the stops you have seen) + the closed parts
+      const trip = document.createElement('div');
+      trip.style.cssText = 'margin-top:10px;font-size:12px;line-height:1.35';
+      const can = this.rpg.canFastTravel();
+      const known = new Set(this.rpg.knownStops().map((x) => x.id));
+      const head = document.createElement('b');
+      head.textContent = 'Повозки города и речной перевозчик';
+      trip.appendChild(head);
+      if (!can.ok) { const why = document.createElement('div'); why.style.opacity = 0.75; why.textContent = can.reason; trip.appendChild(why); }
+      for (const st of STOPS) {
+        const b = document.createElement('button');
+        b.className = 'menu-tab';
+        b.style.cssText = 'display:block;width:100%;text-align:left;margin:3px 0;font-size:12px';
+        const open = known.has(st.id);
+        b.textContent = (open ? '➤ ' : '🔒 ') + st.name + (open ? ` · ${st.district}` : ' · ещё не видели');
+        b.disabled = !open || !can.ok;
+        b.title = open ? `Поехать ${st.ride}` : 'Остановка откроется, когда вы дойдёте до неё';
+        b.addEventListener('click', () => { if (this.rpg.fastTravel(st.id)) this.close(); });
+        trip.appendChild(b);
+      }
+      const closed = document.createElement('div');
+      closed.style.cssText = 'margin-top:8px;opacity:0.85';
+      closed.innerHTML = '<b>Закрытые части:</b><br>' + CLOSED_PARTS.map((c) => `🔒 ${c.name}: ${c.note}`).join('<br>');
+      trip.appendChild(closed);
+      leg.appendChild(trip);
       wrap.append(cv, leg);
       body.appendChild(wrap);
       this.map.attach(cv);

@@ -34,6 +34,8 @@ export const VOICE = {
   МИЯ: 'mia', БОРИС: 'boris', ТОБИАС: 'tobias', ФЕНРИК: 'fenrik', КЛАРА: 'clara', РАНН: 'rann', ЭДМУНД: 'edmund', ИВО: 'ivo',
   САЙРУС: 'caravan_trader', РОКСИ: 'roxy', ВЕЙР: 'veyr', ХАРЗ: 'kharz', АГАТА: 'agata', ДАН: 'dan', ОСА: 'osa', ТЕРА: 'tera',
   ВОЗЧИК: 'carter', ДЕТИ: 'kids',
+  // version 2.0
+  НЭРА: 'nera', ДОРЕН: 'doren', ЛИССА: 'lissa', ОСКАР: 'oskar', СЕЛИЯ: 'selia', ИЛАР: 'ilar', ТАВИЯ: 'tavia', МИРЕНА: 'mirena', ВАРЛЕН: 'varlen',
 };
 
 const pad3 = (n) => String(n).padStart(3, '0');

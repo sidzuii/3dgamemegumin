@@ -9,15 +9,16 @@ import { CH5 } from './ch5.js';
 import { CH6 } from './ch6.js';
 import { CH7 } from './ch7.js';
 import { CH8 } from './ch8.js';
-import { CH9 } from './ch9.js';
-import { CH10 } from './ch10.js';
+import { CHD1 } from './chD1.js';
+import { CHD2 } from './chD2.js';
+import { CHN } from './chN.js';
 import { SIDE_G } from './side_g.js';
 import { SIDE_H } from './side_h.js';
 import { SIDE_I } from './side_i.js';
 import { COMBAT } from './combat.js';
 
 /** Every compiled story scene (dialogue id -> graph). Merged into DIALOGUES (data/dialogues.js). */
-export const STORY_SCENES = { ...CH0, ...SIDE_F, ...SIDE_E, ...CH2, ...CH3, ...CH4, ...CH5, ...CH6, ...CH7, ...CH8, ...CH9, ...CH10, ...SIDE_G, ...SIDE_H, ...SIDE_I, ...COMBAT };
+export const STORY_SCENES = { ...CH0, ...SIDE_F, ...SIDE_E, ...CH2, ...CH3, ...CH4, ...CH5, ...CH6, ...CH7, ...CH8, ...CHD1, ...CHD2, ...CHN, ...SIDE_G, ...SIDE_H, ...SIDE_I, ...COMBAT };
 
 /** Text of one recorded line, e.g. clipText('A07_006') — for barks and toasts that reuse the package's lines. */
 export const clipText = (id) => CLIPS[id]?.[1] ?? '';

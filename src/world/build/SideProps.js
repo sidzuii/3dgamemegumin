@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Frame } from './Kit.js';
 import { QuestProp } from '../Interactables.js';
 import { SIDE_SPOTS, SIDE_PROPS, SIDE_CAMPS } from '../../data/story/sideprops.js';
+import { toWorld } from '../AinstreyPlan.js';
 
 /**
  * Places and props of the side stories (data/story/sideprops.js): named spots and simple props at spots / points of interest.
@@ -10,14 +11,15 @@ import { SIDE_SPOTS, SIDE_PROPS, SIDE_CAMPS } from '../../data/story/sideprops.j
 export function buildSideProps(W) {
   const base = (e) => {
     if (e.abs) return { x: e.abs[0] + (e.dx || 0), z: e.abs[1] + (e.dz || 0), y: 0 };
-    let x, z;
+    let x, z, sy = null;
     if (e.spot) {
       const s = W.npcSpots[e.spot]?.pos;
       if (!s) return null;
-      x = s.x; z = s.z;
-    } else [x, z] = e.at;
+      x = s.x; z = s.z; sy = s.y;
+    } else if (e.local) [x, z] = toWorld(e.local[0], e.local[1]); // coordinates of the sheet of Ainstrey
+    else [x, z] = e.at;
     x += e.dx || 0; z += e.dz || 0;
-    return { x, z, y: W.heightAt(x, z) };
+    return { x, z, y: e.floor && sy !== null ? sy + (e.dy || 0) : W.heightAt(x, z) + (e.dy || 0) };
   };
   for (const s of SIDE_SPOTS) {
     const b = base(s);

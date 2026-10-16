@@ -71,9 +71,9 @@ export class Fighter {
     return '';
   }
 
-  spendStamina(n) {
+  spendStamina(n, delay = NUM.regen.stamina_delay) {
     this.stamina = Math.max(0, this.stamina - n);
-    this.staminaDelay = NUM.regen.stamina_delay;
+    this.staminaDelay = Math.max(this.staminaDelay, delay);
     if (this.stamina <= 0) this.staminaDepleted = true;
   }
 

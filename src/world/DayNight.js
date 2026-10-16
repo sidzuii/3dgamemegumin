@@ -72,8 +72,12 @@ export class DayNight {
     const fog = this.scene.fog;
     _c.copy(FOG.day).lerp(FOG.dusk, dusk).lerp(FOG.night, this.night);
     fog.color.copy(_c.lerp(FOG.cave, inside));
-    fog.near = 90 * (1 - inside) + 6 * inside;
-    fog.far = 420 * (1 - inside) + 60 * inside;
+    // Open country of the Ainstrey sheet is seen far (the capital must show from the chalk slopes): `viewTarget` is set by
+    // the region the player is in (MapData `view`), the scale eases in.
+    W.viewScale += ((W.viewTarget ?? 1) - W.viewScale) * Math.min(1, dt * 1.2);
+    const vs = W.viewScale;
+    fog.near = 90 * vs * (1 - inside) + 6 * inside;
+    fog.far = 420 * vs * (1 - inside) + 60 * inside;
     // Windows + lamps glow at night (and stay warm underground).
     const glow = clamp(this.night * 1.2 + dusk * 0.4, 0, 1);
     W.mats.window.emissiveIntensity = glow * 1.3;
