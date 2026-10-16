@@ -8,6 +8,8 @@ import { cityPlan, CLASS, PIERS, BRIDGES, GARDEN_ALLEYS, eastWallU, nearStreet, 
 import { buildPort } from './AinstreyPort.js';
 import { QuestProp } from '../Interactables.js';
 import { CITIZEN_SPOTS } from '../../data/citizens.js';
+import { CityStream } from '../CityStream.js';
+import { decorateSquares, boulevards } from './AinstreyDecor.js';
 import * as AIN from '../AinstreyPlan.js';
 
 /**
@@ -34,7 +36,6 @@ function offsetLine(pts, d) {
 
 export function buildCity(W) {
   const P = cityPlan();
-  const rng0 = mulberry32(8080);
   // nobody plants a tree inside the walls
   W.keepClear.push({ poly: AIN.CITY_WALL.map((n) => w2(n.u, n.v)), margin: 22 });
 
@@ -43,6 +44,14 @@ export function buildCity(W) {
     const [x, z] = w2(sq.u, sq.v);
     W.spot('ain_sq_' + sq.id, new THREE.Vector3(x, H(W, x, z), z), Math.PI);
   }
+  // the plain houses get their kit models on demand round the camera (the editor shows the light ones)
+  if (!W.editorMode) W.stream ??= new CityStream(W);
+  W._bigChunk = 256;
+  try { buildParts(W, P); } finally { W._bigChunk = 0; }
+}
+
+function buildParts(W, P) {
+  const rng0 = mulberry32(8080);
   streets(W, P);
   squares(W, P, rng0);
   terraces(W, P);
@@ -56,6 +65,9 @@ export function buildCity(W) {
   northIntake(W, P);
   signs(W, P);
   lamps(W, P);
+  // the dressing goes last: it keeps clear of every named place and piece already there
+  decorateSquares(W, P);
+  boulevards(W, P);
 }
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -304,7 +316,7 @@ function wallRun(W, run, rng) {
     if (L < 0.5) continue;
     const y = Math.min(H(W, ax, az), H(W, bx, bz), H(W, (ax + bx) / 2, (az + bz) / 2)) - 0.35;
     const F = new Frame(W, (ax + bx) / 2, y, (az + bz) / 2, Math.atan2(bx - ax, bz - az));
-    F.box(0.55, 3.15, L + 0.15, 0, 0, 0, 'stone', { tint });
+    F.box(0.55, 3.15, L + 0.15, 0, 0, 0, W.mats.kit_village_MI_UnevenBrick ? 'kit_village_MI_UnevenBrick' : 'stone', { tint: W.mats.kit_village_MI_UnevenBrick ? 0xf0ece4 : tint });
     F.box(0.9, 0.22, L + 0.2, 0, 3.15, 0, 'stone', { tint: 0xe0d6bc, collide: false });
     if (i % 3 === 0) F.box(0.95, 3.5, 0.95, 0, 0, -L / 2, 'stone', { tint: 0xd8ccb0, collide: false });
   }

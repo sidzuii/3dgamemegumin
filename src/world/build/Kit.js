@@ -1187,4 +1187,4 @@ export function decor(world, x, z, name, height, rng, opts = {}) {
   if (!recordVeg(world, rec)) emit({ x, z, rot, s: 1, dy: 0 });
 }
 
-export { G as GEOMETRY, gableGeometry, pick };
+export { G as GEOMETRY, gableGeometry, pick, villageRoof, roofVariant, ROOF_TINTS };

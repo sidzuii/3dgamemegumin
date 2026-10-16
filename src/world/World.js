@@ -26,6 +26,7 @@ import { buildCore } from './build/Core.js';
 import { buildSideProps } from './build/SideProps.js';
 import { buildPlacement } from './build/Placements.js';
 import { TreeField } from './TreeField.js';
+import { STREAM_CELL } from './CityStream.js';
 import { tree, bush, rock, decor, pick } from './build/Kit.js';
 
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
@@ -106,6 +107,10 @@ export class World {
     this.detailDistance = 75;
     this.lodDistance = 120;
     this.lodMode = null; // 'near' | 'far' while a builder emits the two versions of a building
+    this.stream = null; // CityStream: near models of a big city built on demand round the camera (Ainstrey)
+    this._streamSink = null; // while the stream builds a cell: material key -> geometries (no batches, no collision)
+    this._forceCell = null; // { x, z }: put the LOD parts of one building into this cell (near and far swap together)
+    this._bigChunk = 0; // > 0: static cell size while a dense city is built
     this.terrainChunks = [];
     this.viewScale = 1; // fog / far-plane scale (DayNight): 1 on the old map, larger in the open country of the Ainstrey sheet
     this.viewTarget = 1;
@@ -429,6 +434,7 @@ export class World {
       metal: M({ color: 0x3b3534, roughness: 0.45, metalness: 0.75 }),
       cloth: M({ color: 0xffffff, roughness: 0.95, side: THREE.DoubleSide }),
       flower: M({ color: 0xffffff, roughness: 0.8 }),
+      lawn: M({ color: 0x5f8a3e, roughness: 0.97, map: noise2 }),
       hay: M({ color: 0xd8b860, roughness: 1, map: noise2 }),
       bark: M({ color: 0x5a4230, roughness: 0.95, map: noise }),
       birch: M({ color: 0xe8e2d4, roughness: 0.9, map: noise }),
@@ -620,7 +626,7 @@ export class World {
     for (let i = 0; i < n; i++) { col[i * 3] = tc.r; col[i * 3 + 1] = tc.g; col[i * 3 + 2] = tc.b; }
     g.setAttribute('color', new THREE.BufferAttribute(col, 3));
     this._pushBatch(g, materialKey, castShadow, detail);
-    if (collide) this._staticCollision.push(g);
+    if (collide && !this._streamSink) this._staticCollision.push(g);
     return g;
   }
 
@@ -632,8 +638,9 @@ export class World {
    * `detail` puts the parts into the distance-culled detail batches; `retex: { mat, scale }`
    * swaps the material for a tiling one (e.g. the village stone) with world-space planar UVs.
    */
-  addKit(name, matrix, { collide = true, castShadow = true, tint = null, variant = null, detail = false, retex = null } = {}) {
+  addKit(name, matrix, { collide = true, castShadow = true, tint = null, variant = null, detail = false, retex = null, tintOnly = null } = {}) {
     if (this._mute) return;
+    if (this._streamSink) collide = false;
     const parts = this.kits.get(name);
     if (this._D) matrix = _dm.multiplyMatrices(this._D, matrix);
     if (tint !== null) _tint.set(tint);
@@ -646,7 +653,7 @@ export class World {
         planarUVs(g, retex.scale ?? 0.5);
         mat = retex.mat;
       }
-      if (tint !== null) {
+      if (tint !== null && (!tintOnly || part.mat.includes(tintOnly))) {
         const c = g.attributes.color;
         for (let i = 0; i < c.count; i++) c.setXYZ(i, c.getX(i) * _tint.r, c.getY(i) * _tint.g, c.getZ(i) * _tint.b);
       }
@@ -664,19 +671,29 @@ export class World {
   }
 
   _pushBatch(g, materialKey, castShadow, detail = false) {
+    if (this._streamSink) {
+      const key = materialKey + '|1'; // one mesh per material and cell (small parts cast shadows too)
+      if (!this._streamSink.has(key)) this._streamSink.set(key, []);
+      this._streamSink.get(key).push(g);
+      return;
+    }
     if (this._group?.batches) {
       // Map editor: each editable group keeps its own meshes so it can move live.
-      const tier = detail ? 'd' : this.lodMode === 'near' ? 'n' : this.lodMode === 'far' ? 'f' : '';
+      const tier = detail ? 'd' : this.lodMode === 'near' ? 'n' : this.lodMode === 'far' || this.lodMode === 'stream' ? 'f' : '';
       const key = `${materialKey}|${castShadow ? 1 : 0}|${tier}`;
       if (!this._group.batches.has(key)) this._group.batches.set(key, []);
       this._group.batches.get(key).push(g);
       return;
     }
     g.computeBoundingSphere();
-    const tier = detail ? 'd' : this.lodMode === 'near' ? 'n' : this.lodMode === 'far' ? 'f' : '';
-    const S = tier === 'd' ? DETAIL_CHUNK : tier ? LOD_CHUNK : CHUNK;
-    const cx = Math.floor(g.boundingSphere.center.x / S), cz = Math.floor(g.boundingSphere.center.z / S);
-    const key = `${materialKey}|${castShadow && tier !== 'd' && tier !== 'f' ? 1 : 0}|${cx},${cz}${tier ? '|' + tier : ''}`;
+    // 's' = the far proxy of a streamed building (CityStream): hidden while the near model of its stream cell exists
+    const tier = this.lodMode === 'stream' ? 's' : detail ? 'd' : this.lodMode === 'near' ? 'n' : this.lodMode === 'far' ? 'f' : '';
+    // `_bigChunk`: a dense big city (Ainstrey) batches its static pieces in coarser cells (fewer draw calls when it is seen whole)
+    const big = !tier && this._bigChunk;
+    const S = tier === 'd' ? DETAIL_CHUNK : tier === 's' ? STREAM_CELL : tier ? LOD_CHUNK : big || CHUNK;
+    const c = tier && tier !== 'd' && this._forceCell ? this._forceCell : g.boundingSphere.center;
+    const cx = Math.floor(c.x / S), cz = Math.floor(c.z / S);
+    const key = `${materialKey}|${castShadow && tier !== 'd' && tier !== 'f' && tier !== 's' ? 1 : 0}|${big ? 'B' : ''}${cx},${cz}${tier ? '|' + tier : ''}`;
     if (!this._visualBatches.has(key)) this._visualBatches.set(key, []);
     this._visualBatches.get(key).push(g);
   }
@@ -719,7 +736,7 @@ export class World {
     const inv = obj.matrixWorld.clone().invert();
     for (const [key, list] of rec.batches) {
       const [matKey, shadow, tier] = key.split('|');
-      const merged = mergeGeometries(list, false);
+      const merged = mergeMixed(list);
       if (!merged) continue;
       merged.applyMatrix4(inv);
       merged.computeBoundingSphere();
@@ -741,7 +758,7 @@ export class World {
     if (this.editorMode) for (const rec of this.groups.values()) this.buildGroupObject(rec);
     for (const [key, list] of this._visualBatches) {
       const [matKey, shadow, cell, tier] = key.split('|');
-      const merged = mergeGeometries(list, false);
+      const merged = mergeMixed(list);
       if (!merged) { console.warn('[world] batch did not merge', key); continue; }
       merged.computeBoundingSphere();
       const mesh = new THREE.Mesh(merged, this.mats[matKey]);
@@ -752,11 +769,11 @@ export class World {
       this.scene.add(mesh);
       if (tier) {
         // Visibility by the cell (near / far versions of one cell swap exactly together).
-        const S = tier === 'd' ? DETAIL_CHUNK : LOD_CHUNK;
+        const S = tier === 'd' ? DETAIL_CHUNK : tier === 's' ? STREAM_CELL : LOD_CHUNK;
         const [cx, cz] = cell.split(',').map(Number);
         const center = new THREE.Vector3((cx + 0.5) * S, merged.boundingSphere.center.y, (cz + 0.5) * S);
         if (tier === 'd') this.detailMeshes.push({ mesh, center, r: S * 0.71 });
-        else this.lodMeshes.push({ mesh, center, r: S * 0.71, far: tier === 'f' });
+        else this.lodMeshes.push({ mesh, center, r: S * 0.71, far: tier !== 'n', stream: tier === 's', cell });
       }
     }
     this._visualBatches.clear();
@@ -1058,7 +1075,13 @@ export class World {
       // Small building parts only near the camera (the walls keep their window panes).
       const cp = ctx.camera.position, D = this.detailDistance, L = this.lodDistance;
       for (const d of this.detailMeshes) d.mesh.visible = Math.hypot(d.center.x - cp.x, d.center.z - cp.z) - d.r < D;
-      for (const d of this.lodMeshes) d.mesh.visible = (Math.hypot(d.center.x - cp.x, d.center.z - cp.z) - d.r < L) !== d.far;
+      const st = this.stream;
+      if (st) st.update(cp, L);
+      // A streamed far proxy stays until the near model of its cell is ready (no holes while it builds).
+      for (const d of this.lodMeshes) {
+        if (d.stream) d.mesh.visible = !st?.ready(d.cell);
+        else d.mesh.visible = (Math.hypot(d.center.x - cp.x, d.center.z - cp.z) - d.r < L) !== d.far;
+      }
     }
     if (ctx.camera) this.trees.update(dt, ctx.camera);
     // Chimney smoke near the player (daytime cooking fires, evenings).
@@ -1118,6 +1141,12 @@ const EMPTY = [];
 const polyArea = (pts) => Math.abs(pts.reduce((s, p, i) => { const q = pts[(i + 1) % pts.length]; return s + p[0] * q[1] - q[0] * p[1]; }, 0)) / 2;
 
 /** World-space planar UV projection per face (cheap triplanar bake). */
+/** mergeGeometries of a list that may mix indexed kit parts and non-indexed solids (a kit material used by a plain box). */
+export function mergeMixed(list) {
+  if (list.some((g) => g.index) && list.some((g) => !g.index)) list = list.map((g) => (g.index ? g.toNonIndexed() : g));
+  return mergeGeometries(list, false);
+}
+
 function planarUVs(g, scale) {
   const pos = g.attributes.position;
   if (!g.attributes.normal) g.computeVertexNormals();
