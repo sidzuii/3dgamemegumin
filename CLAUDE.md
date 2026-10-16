@@ -104,3 +104,7 @@ Full description, file map and how-to guides: see `README.md` (Russian). The use
   `data/quests_capital.js` (ainstrey_road → ainstrey_city → ch6_relay), NPCs `cityAt()` in data/npcs.js, dialogues `dialogues_capital.js`,
   townsfolk `data/citizens.js`, fast travel `data/travel.js` (spots `stop_*`, `RPG.fastTravel`), pit lures `STORY_LURES`. Old saves past ch5
   get the road via `RPG._migrateCapital`. Citadel and north intake are closed future parts (gate props only).
+  Ainstrey houses: `lightHouse()` = collision + an always-drawn far proxy set inside the kit shell; the village-kit near model
+  (`AinstreyFacade.kitHouse`, keys: `keySkin`) is built on demand by `world/CityStream.js` (64 m cells, ~105 m, `W._streamSink`, never
+  collides; disabled in the editor). Dressing: `build/AinstreyDecor.js` (parterres, boulevards, statues, goods) runs last and keeps clear
+  of spots, streets, keys. City statics use `W._bigChunk = 256`. Staff series: 2/2/3 stamina, a press during a swing chains at `cancel_at`.
