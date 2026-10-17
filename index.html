@@ -4,9 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Мегумин: Дорога приключений</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Ccircle cx=%2216%22 cy=%2216%22 r=%2212%22 fill=%22%23ff5a1f%22/%3E%3C/svg%3E" />
+  <link rel="icon" type="image/png" href="/icon.png" />
   <link rel="stylesheet" href="/src/ui/hud.css" />
   <link rel="stylesheet" href="/src/ui/rpg.css" />
+  <link rel="stylesheet" href="/src/ui/menu.css" />
 </head>
 <body>
   <div id="app"></div>
@@ -116,20 +117,8 @@
     <div class="vignette" id="vignette"></div>
   </div>
 
-  <div id="overlay" class="overlay">
-    <div class="overlay-card">
-      <div class="overlay-title">Мегумин</div>
-      <div class="overlay-tag">Дорога приключений</div>
-      <div class="overlay-sub" id="overlay-sub">Загрузка мира… <span id="load-pct">0%</span></div>
-      <div class="overlay-bar"><div id="load-bar"></div></div>
-      <div class="overlay-buttons">
-        <button id="play-btn" class="play-btn" disabled>Продолжить</button>
-        <button id="new-btn" class="play-btn secondary" disabled>Новая игра</button>
-      </div>
-      <div class="overlay-note" id="overlay-note"></div>
-      <div class="overlay-hint">Клик — захват мыши · Esc — освободить курсор</div>
-    </div>
-  </div>
+  <!-- the main menu: loading, title, pause, settings (src/ui/MainMenu.js) -->
+  <div id="overlay" class="mm" data-view="loading"></div>
 
   <script type="module" src="/src/main.js"></script>
 </body>

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Frame, tree, lamp, bench, prop, stall, wagon } from './Kit.js';
+import { Frame, tree, lamp, bench, prop, stall, wagon, heroKit } from './Kit.js';
 import { toW } from './AinstreyBuildings.js';
 import { nearStreet, polyDist, CLASS } from '../AinstreyCityPlan.js';
 import * as AIN from '../AinstreyPlan.js';
@@ -121,9 +121,12 @@ export function decorateSquares(W, P) {
         const kind = sq.kind === 'academy' ? 'head' : sq.kind === 'steps' || sq.kind === 'council' ? 'obelisk' : 'column';
         for (const [lx, lz] of [[0, -sq.d * 0.28], [0, sq.d * 0.28], [-sq.w * 0.12, 0], [sq.w * 0.12, 0], [0, 0]]) {
           const p = at(lx, lz);
-          if (!O.free(p, 3.5)) continue;
-          plinthStatue(W, F, lx, lz, kind, rng);
-          O.add(p, 3);
+          if (!O.free(p, sq.kind === 'steps' ? 4.5 : 3.5)) continue;
+          // the founder of the capital on the square of the Steps (obj/founder_statue: the pedestal is part of the model)
+          const st = sq.kind === 'steps' ? heroKit(F, 'obj/founder_statue', { h: 8.5 }, lx, 0, lz, { ry: lz > 0 ? Math.PI : 0 }) : null;
+          if (st) F.box(st.w * 0.75, 2.2, st.d * 0.75, lx, 0, lz, 'stone', { collideOnly: true });
+          else plinthStatue(W, F, lx, lz, kind, rng);
+          O.add(p, st ? 4.2 : 3);
           break;
         }
       } else {
@@ -144,6 +147,22 @@ export function decorateSquares(W, P) {
         }
       }
       if (sq.kind === 'market' || sq.kind === 'wagons') stallRows(W, F, sq, O, rng);
+      // a noble carriage waiting by the halls; vendor carts on the busy squares
+      const vehicles = sq.kind === 'council' || sq.kind === 'guild' || sq.kind === 'theatre' || sq.kind === 'cathedral' ? [['obj/noble_carriage', 5.4, 1]]
+        : sq.kind === 'market' || sq.kind === 'wagons' || sq.kind === 'steps' ? [['obj/vendor_cart', 3.0, 3]] : [];
+      for (const [name, w, n] of vehicles) {
+        let left = n;
+        for (let i = 0; i < 30 && left > 0; i++) {
+          const lx = (rng() - 0.5) * (sq.w - 18), lz = (rng() < 0.5 ? -1 : 1) * (sq.d / 2 - 8 - rng() * 6), p = at(lx, lz);
+          if (!O.free(p, w * 0.6 + 0.6)) continue;
+          const ry = (rng() < 0.5 ? 0 : Math.PI) + (rng() - 0.5) * 0.4;
+          const m = heroKit(F, name, { w }, lx, 0, lz, { ry });
+          if (!m) break;
+          F.box(m.w * 0.85, 1.6, m.d * 0.85, lx, 0, lz, 'wood', { collideOnly: true, ry });
+          O.add(p, w * 0.6);
+          left--;
+        }
+      }
       // banners at the two long sides
       const tint = [0x8a2a2a, 0x2a4a8a, 0x2a6a4a, 0x6a2a6a][Math.abs(Math.round(sq.u + sq.v)) % 4];
       for (const s of [-1, 1]) for (const fx of [-0.42, 0.42]) {
@@ -224,9 +243,10 @@ function parterres(W, F, sq, O, rng) {
 /** Rows of stalls / carts on the market and the wagon square (the existing ones and the well stay). */
 function stallRows(W, F, sq, O, rng) {
   const cols = [0xb8453a, 0x3a6a8a, 0x4a7a4a, 0xc89a3a, 0x8a4a7a, 0xd8cfb8];
-  for (let lx = -sq.w / 2 + 14; lx <= sq.w / 2 - 14; lx += 11) for (let lz = -sq.d / 2 + 14; lz <= sq.d / 2 - 14; lz += 13) {
+  // rows of stalls with aisles of ~5 m between them
+  for (let lx = -sq.w / 2 + 12; lx <= sq.w / 2 - 12; lx += 8.5) for (let lz = -sq.d / 2 + 12; lz <= sq.d / 2 - 12; lz += 9.5) {
     const p = F.at(lx, 0, lz);
-    if (rng() < 0.3 || !O.free(p, 3.6)) continue;
+    if (rng() < 0.12 || !O.free(p, 3.2)) continue;
     if (sq.kind === 'market') stall(W, p.x, p.z, sq.rot + (rng() < 0.5 ? 0 : Math.PI), cols[Math.floor(rng() * cols.length)], ['fruit', 'mixed', 'bread'][Math.floor(rng() * 3)], rng);
     else wagon(W, p.x, p.z, sq.rot + (rng() < 0.5 ? 0 : Math.PI) + (rng() - 0.5) * 0.3, [0xe8dcc0, 0xd8c8a0, 0xc8d0d8][Math.floor(rng() * 3)]);
     O.add(p, 3.4);

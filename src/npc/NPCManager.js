@@ -20,10 +20,14 @@ import { dampAngle, clamp } from '../core/math.js';
  * beyond, hidden beyond 140 m. Walking NPCs raycast the ground only while moving.
  */
 const CLIPS = {
-  idle: 'Idle_Loop', walk: 'Walk_Loop', talk: 'Idle_Talking_Loop', work: 'Interact', shop: 'PickUp_Table',
-  // The library has no sitting clip: 'sit' = the idle upper body + legs posed in NPC._sitPose.
-  guard: 'Sword_Idle', sit: 'Idle_Loop', dance: 'Dance_Loop', magic: 'Spell_Simple_Idle_Loop', wave: 'Interact',
+  idle: 'mx:Standing Idle', walk: 'Walk_Loop', talk: 'mx:Talking', work: 'Interact', shop: 'PickUp_Table',
+  // 'sit' = the Mixamo sitting idle (hands in the lap), its legs re-posed to the seat in NPC._sitPose.
+  guard: 'Sword_Idle', sit: 'mx:Sitting Idle', dance: 'Dance_Loop', magic: 'Spell_Simple_Idle_Loop', wave: 'mx:Waving',
+  // second variants: every other NPC (by id) idles / talks with these, so a crowd does not move in step
+  idle2: 'mx:Happy Idle', talk2: 'mx:Talking2',
 };
+/** The main library's clips when the Mixamo pack did not load. */
+const FALLBACK = { idle: 'Idle_Loop', talk: 'Idle_Talking_Loop', sit: 'Idle_Loop', wave: 'Interact', idle2: 'Idle_Loop', talk2: 'Idle_Talking_Loop' };
 /** How much of the clips' downward gaze is lifted (hands-on work keeps looking down). */
 const LEVEL_HEAD = { work: 0.3, shop: 0.4, magic: 0.5, dance: 0.6 };
 const WALK_SPEED = 1.35;
@@ -84,7 +88,15 @@ export class NPCManager {
       const tpl = this.people.create({ pack, parts: BASE[pack], scale: 1 });
       const ctx = lib.prepareTarget(tpl.root, 'qp');
       const set = (this.clips[pack] = {});
-      for (const [k, src] of Object.entries(CLIPS)) set[k] = lib.bake(ctx, src, { name: `npc_${pack}_${k}`, hipsY: 'keep', levelHead: LEVEL_HEAD[k] ?? 0.8 });
+      for (const [k, src0] of Object.entries(CLIPS)) set[k] = lib.bake(ctx, lib.clips[src0] ? src0 : FALLBACK[k], { name: `npc_${pack}_${k}`, hipsY: 'keep', levelHead: LEVEL_HEAD[k] ?? 0.8 });
+      lib.restore(ctx);
+    }
+    // whole-character bodies (Mixamo skeletons): one clip set per body
+    for (const id of Object.keys(this.people.bodies)) {
+      const tpl = this.people.createBody(id);
+      const ctx = lib.prepareTarget(tpl.root, 'mixamo');
+      const set = (this.clips['body:' + id] = {});
+      for (const [k, src0] of Object.entries(CLIPS)) set[k] = lib.bake(ctx, lib.clips[src0] ? src0 : FALLBACK[k], { name: `npc_${id}_${k}`, hipsY: 'keep', levelHead: LEVEL_HEAD[k] ?? 0.8 });
       lib.restore(ctx);
     }
   }
@@ -107,9 +119,10 @@ export class NPCManager {
     for (const n of this.list) n.update(dt, pp);
   }
 
-  /** Re-evaluate visibility conditions and schedules (after story changes / loading). */
-  refresh() {
-    for (const n of this.list) n.refresh();
+  /** Re-evaluate visibility conditions and schedules (after story changes / loading). `teleport` (start / load): everyone stands
+   * at the spot of the hour at once instead of walking there from wherever the world build left them (escorts keep their place). */
+  refresh(teleport = false) {
+    for (const n of this.list) n.refresh(teleport && !(n.escorting || n.follow));
   }
 }
 
@@ -121,14 +134,17 @@ class NPC {
     this.def = def;
     this.id = def.id;
     // Roxy (before she joins) is drawn with her real model; she only needs the hit volume.
-    const { root, mesh } = def.model ? mgr.people.create(def.model) : { root: new THREE.Group(), mesh: null };
+    // a whole-character body (`body`, People BODIES) when it loaded, else the modular people body
+    this.bodyId = def.body && mgr.people.bodies[def.body] ? def.body : null;
+    const H0 = def.bodyHeight ?? 1.78;
+    const { root, mesh } = this.bodyId ? mgr.people.createBody(this.bodyId, H0) : def.model ? mgr.people.create(def.model) : { root: new THREE.Group(), mesh: null };
     this.root = root;
     this.mesh = mesh;
-    this.height = def.model ? 1.86 * root.scale.y : 1.6;
+    this.height = this.bodyId ? H0 : def.model ? 1.86 * root.scale.y : 1.6;
     root.name = 'NPC:' + def.id;
     this.mixer = new THREE.AnimationMixer(root);
     this.actions = {};
-    for (const [k, clip] of Object.entries(def.model ? mgr.clips[def.model.pack] : {})) {
+    for (const [k, clip] of Object.entries(this.bodyId ? mgr.clips['body:' + this.bodyId] : def.model ? mgr.clips[def.model.pack] : {})) {
       const a = this.mixer.clipAction(clip);
       a.setEffectiveWeight(0);
       this.actions[k] = a;
@@ -286,6 +302,8 @@ class NPC {
   }
 
   _play(name, fade = 0.3) {
+    if (this.variant === undefined) this.variant = [...(this.def?.id || '')].reduce((h, c) => h + c.charCodeAt(0), 0) % 2;
+    if (this.variant && (name === 'idle' || name === 'talk') && this.actions[name + '2']) name += '2';
     if (this.anim === name) return;
     const next = this.actions[name] || this.actions.idle;
     if (!next) return;
@@ -369,6 +387,7 @@ class NPC {
    * or stretched out (on the ground); the pelvis drops to the seat.
    */
   _sitPose() {
+    if (this.bodyId) { this.sitDrop = 0; return; } // the Mixamo sitting idle already sits at chair height
     const r = this.root;
     if (!this._legs) {
       const g = (n) => r.getObjectByName(n);

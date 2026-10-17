@@ -3,7 +3,15 @@
 Full description, file map and how-to guides: see `README.md` (Russian). The user writes in Russian.
 
 - Run: `npm run dev` (http://127.0.0.1:5173). Check: `npx vite build` and the browser console.
+  Portable desktop build for Windows: `npm run portable` -> release/Megumin (Play.bat makes «Мегумин» shortcuts; app/serve.ps1 =
+  PowerShell HttpListener on localhost:4173 on a runspace thread + Edge/Chrome `--app` window with its own profile, exits when the
+  window closes; app/megumin.ico; app/game = vite build; release/ is gitignored). Keep serve.ps1 Windows PowerShell 5.1 compatible.
 - Debug handle: `window.__game` (`.rpg`, `.npcs`, `.world`, `.travel(spot)`). Game loop: `src/core/Game.js`.
+- Main menu = `src/ui/MainMenu.js` + `menu.css` (`game.mainMenu`): loading screen, title (live flight over Axel = `Game.attract()`), pause on
+  Esc / pointer release (`pauseOpen` is part of `uiBlocking`; `_blockedAt` tells a window's own release from Esc), settings
+  (`megumin-settings`: fov, mouse sens, invertY, dynamic res, fps; quality/sound/combat keep their keys), controls, credits, `ask()` modal.
+  `tools/debug_helpers.js` `__init` clicks the primary menu button. New game: A00 at the caravan camp OUTSIDE the south gate
+  (spots `caravan_arrival`, `marta_road`, sacks there); `RPG.autoIntro` waits for 15 game frames; `npcs.refresh(true)` on load.
 - RPG layer: `src/rpg/` (state, quests, dialogue, guild, economy, gathering, events, clock); content is data
   in `src/data/` (items, quests, dialogues, npcs, shops, resources). Map data: `src/world/MapData.js`;
   builders: `src/world/build/` (Kit, Town, Countryside, Dungeon). NPCs: `src/npc/`.
@@ -69,7 +77,9 @@ Full description, file map and how-to guides: see `README.md` (Russian). The use
   (`A00`, entry points `A00:join`); NPC `talk` entries in `data/npcs.js` route to them by quest stage. Story variables:
   `state.vars` (`{ setVar }` / `{ addVar }` / `{ var: [name, op, value] }`, names declared in `story/vars.js`).
   `node tools/story/check.mjs [A|B|C]` = static check + coverage (run it after every change). The WHOLE package is ported (A00-A29, B01-B23,
-  C00-C33; the voice-over is still not touched: `Озвучка/` of the package and core/Audio.js stay as they are). Story props / Water Volley
+  C00-C33; the voice-over is still not touched: `Озвучка/` of the package and core/Audio.js stay as they are). Voice-over files (when hooked up):
+  `public/audio/voice/<line ID>.mp3|.ogg` (mixed formats, one file per ID), levelled by `tools/audio/normalize_voice.ps1` (-18 LUFS, mono).
+  MEGUMIN IS NEVER VOICED (the user's decision): her lines stay text only. Story props / Water Volley
   targets / enemy waves / directed blasts are DATA in `story/props.js` (`STORY_PROPS`, `STORY_VOLLEY`, `STORY_WAVES` with optional shields,
   `STORY_BLASTS`; effects `{ wave }`, `{ scene }`, `{ save }`, `{ credits }`); side-story places/props/camps are DATA in `story/sideprops.js`
   (built by `world/build/SideProps.js`, after every other builder). Interiors beyond the map edge: zones in `build/Dungeon.js` (mine, crypt,
@@ -105,6 +115,14 @@ Full description, file map and how-to guides: see `README.md` (Russian). The use
   townsfolk `data/citizens.js`, fast travel `data/travel.js` (spots `stop_*`, `RPG.fastTravel`), pit lures `STORY_LURES`. Old saves past ch5
   get the road via `RPG._migrateCapital`. Citadel and north intake are closed future parts (gate props only).
   Ainstrey houses: `lightHouse()` = collision + an always-drawn far proxy set inside the kit shell; the village-kit near model
-  (`AinstreyFacade.kitHouse`, keys: `keySkin`) is built on demand by `world/CityStream.js` (64 m cells, ~105 m, `W._streamSink`, never
+  (`AinstreyFacade.kitHouse`, keys: `keySkin`) is built on demand by `world/CityStream.js` (64 m cells, NEAR_MAX 90 m, `W._streamSink`, never
   collides; disabled in the editor). Dressing: `build/AinstreyDecor.js` (parterres, boulevards, statues, goods) runs last and keeps clear
-  of spots, streets, keys. City statics use `W._bigChunk = 256`. Staff series: 2/2/3 stamina, a press during a swing chains at `cancel_at`.
+  of spots, streets, keys. City statics use `W._bigChunk = 256`. Dense lots (~4860: frontage + lane + back rows round courtyards,
+  sheds; STYLE fw/fd/fgap/pass/vac, segment hash `onStreet`); `lot.simple` (back/inner) = kit house without shutters/balconies/chimneys
+  + `lightRoof`; far body = `facadeBox` with the canvas facade tile (`W.mats.facade`, night glow from DayNight). Staff series: 2/2/3 stamina, a press during a swing chains at `cancel_at`.
+- User assets (2026-10): Mixamo clips -> `tools/pack_mixamo_anims.mjs` -> public/models/anim/mixamo.glb, loaded as a second retarget
+  source (`AnimationLibrary.addSource`, clip names 'mx:<name>'; idle/talk/wave/sit of heroines and townsfolk). Rigged Mixamo
+  characters -> `tools/pack_body.mjs` -> public/models/bodies/<id>.glb, worn by a named NPC via `body` in data/npcs.js
+  (People BODIES; Edmund = Astrey). Single objects -> `tools/pack_objects.mjs` -> public/models/objects/<id>.glb, kit pieces
+  'obj/<id>' (KitLibrary OBJECTS, vertex colours kept), placed with `Kit.heroKit()` (Ainstrey statue, fountains, dome, towers,
+  cranes, ships, carriages, carts, books). Raw sources stay in model/ (FBX2glTF unpacks .fbm folders there: delete them).

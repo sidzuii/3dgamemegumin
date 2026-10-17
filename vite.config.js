@@ -45,7 +45,7 @@ export default defineConfig({
     // optimised copies in public/models. Don't watch them (large files can be locked
     // while they are being copied in, which crashes the watcher on Windows).
     // The map layout is saved by the editor while it runs: no reload on that write.
-    watch: { ignored: ['**/model/**', '**/dist/**', '**/public/data/**'] },
+    watch: { ignored: ['**/model/**', '**/dist/**', '**/release/**', '**/public/data/**'] },
   },
   // The map editor's gizmo: pre-bundled so the first ?editor load doesn't trigger a reload.
   optimizeDeps: { include: ['three/examples/jsm/controls/TransformControls.js'] },

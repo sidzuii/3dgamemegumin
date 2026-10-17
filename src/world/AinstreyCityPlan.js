@@ -121,15 +121,19 @@ export function districtAt(u, v) {
   for (const D of DISTRICTS) { const d = polygonSDF(D.pts, u, v); if (d < bd) { bd = d; best = D; } }
   return best?.id ?? 'posad';
 }
-/** floors [min, max], lot width [min, max], lot depth [min, max], pitch gap, palettes (hex), roof kinds */
+/**
+ * floors [min, max], lot width [min, max], lot depth [min, max], pitch gap, palettes (hex), roof kinds.
+ * fw / fd / fgap / pass: the dense frontage (rows of houses wall to wall along every street, a passage into the courtyard
+ * every `pass` houses); vac: share of the frontage left as a garden / a yard.
+ */
 export const STYLE = {
-  posad: { floors: [2, 3], w: [16, 24], d: [11, 15], gap: 3, vac: 0.3, wall: [0xe3d6bb, 0xe8d8b8, 0xdccaa6, 0xd9c3a0], roof: [0xa9664c, 0xb5724f, 0x9a5a44], shop: 0.4, roofs: ['gable', 'gable', 'hip'] },
-  steps: { floors: [3, 5], w: [20, 28], d: [14, 19], gap: 3.5, vac: 0.16, wall: [0xe3d6bb, 0xc9bda4, 0xd8ccb0], roof: [0x6a7c92, 0x7c8a9c, 0xa9664c], shop: 0.7, roofs: ['gable', 'hip', 'flat'] },
-  guilds: { floors: [3, 4], w: [24, 32], d: [15, 20], gap: 4.5, vac: 0.24, wall: [0xc9bda4, 0xd0c4aa, 0xe3d6bb], roof: [0x6a7c92, 0x5d7189, 0x72849a], shop: 0.3, roofs: ['gable', 'hip'] },
-  port: { floors: [1, 2], w: [22, 38], d: [14, 20], gap: 5, vac: 0.18, wall: [0xc9bda4, 0xb09a78, 0xa89070], roof: [0x6a5a48, 0x7a6a56, 0x6a7c92], shop: 0.1, roofs: ['gable', 'gable'] },
-  old: { floors: [2, 4], w: [12, 18], d: [10, 15], gap: 3, vac: 0.24, wall: [0xd8c8a4, 0xcdbd9a, 0xe3d6bb, 0xc4b494], roof: [0xa9664c, 0x6a7c92, 0x8a5a48, 0x7c8a9c], shop: 0.2, roofs: ['gable', 'gable', 'hip'] },
-  academy: { floors: [3, 4], w: [23, 31], d: [15, 20], gap: 5, vac: 0.18, wall: [0xe3d6bb, 0xd8ccb0, 0xc9bda4], roof: [0x4f6888, 0x56708e, 0x6a7c92], shop: 0.15, roofs: ['gable', 'hip'] },
-  garden: { floors: [1, 2], w: [14, 20], d: [12, 16], gap: 6, vac: 0, wall: [0xe3d6bb], roof: [0x5c8b80, 0x6a7c92], shop: 0, roofs: ['hip'] },
+  posad: { floors: [2, 3], w: [16, 24], d: [11, 15], gap: 3, fw: [8, 13], fd: [10, 13], fgap: 0.6, pass: [5, 8], vac: 0.03, wall: [0xe3d6bb, 0xe8d8b8, 0xdccaa6, 0xd9c3a0], roof: [0xa9664c, 0xb5724f, 0x9a5a44], shop: 0.4, roofs: ['gable', 'gable', 'hip'] },
+  steps: { floors: [3, 5], w: [20, 28], d: [14, 19], gap: 3.5, fw: [10, 16], fd: [12, 16], fgap: 0.6, pass: [6, 9], vac: 0.02, wall: [0xe3d6bb, 0xc9bda4, 0xd8ccb0], roof: [0x6a7c92, 0x7c8a9c, 0xa9664c], shop: 0.7, roofs: ['gable', 'hip', 'flat'] },
+  guilds: { floors: [3, 4], w: [24, 32], d: [15, 20], gap: 4.5, fw: [11, 17], fd: [12, 16], fgap: 0.8, pass: [5, 8], vac: 0.03, wall: [0xc9bda4, 0xd0c4aa, 0xe3d6bb], roof: [0x6a7c92, 0x5d7189, 0x72849a], shop: 0.3, roofs: ['gable', 'hip'] },
+  port: { floors: [1, 2], w: [22, 38], d: [14, 20], gap: 5, fw: [14, 24], fd: [12, 18], fgap: 1.4, pass: [3, 5], vac: 0.05, wall: [0xc9bda4, 0xb09a78, 0xa89070], roof: [0x6a5a48, 0x7a6a56, 0x6a7c92], shop: 0.1, roofs: ['gable', 'gable'] },
+  old: { floors: [2, 4], w: [12, 18], d: [10, 15], gap: 3, fw: [7, 12], fd: [9, 13], fgap: 0.5, pass: [5, 8], vac: 0.03, wall: [0xd8c8a4, 0xcdbd9a, 0xe3d6bb, 0xc4b494], roof: [0xa9664c, 0x6a7c92, 0x8a5a48, 0x7c8a9c], shop: 0.2, roofs: ['gable', 'gable', 'hip'] },
+  academy: { floors: [3, 4], w: [23, 31], d: [15, 20], gap: 5, fw: [14, 21], fd: [13, 17], fgap: 1.6, pass: [4, 6], vac: 0.04, wall: [0xe3d6bb, 0xd8ccb0, 0xc9bda4], roof: [0x4f6888, 0x56708e, 0x6a7c92], shop: 0.15, roofs: ['gable', 'hip'] },
+  garden: { floors: [1, 2], w: [14, 20], d: [12, 16], gap: 6, fw: [14, 20], fd: [12, 16], fgap: 9, pass: [99, 99], vac: 0.25, wall: [0xe3d6bb], roof: [0x5c8b80, 0x6a7c92], shop: 0, roofs: ['hip'] },
 };
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -280,10 +284,28 @@ export function cityPlan() {
     for (let x = -r.w / 2; x <= r.w / 2 + 0.01; x += Math.max(3, r.w / Math.ceil(r.w / 4))) for (let z = -r.d / 2; z <= r.d / 2 + 0.01; z += Math.max(3, r.d / Math.ceil(r.d / 4))) out.push([r.u + x * c + z * sn, r.v - x * sn + z * c]);
     return out;
   };
-  const offStreets = (r) => streets.every((S) => S.kind === 'lane' || S.cls === 'stair' || sampleRect(r).every(([x, z]) => polyDist(S.pts, x, z) >= streetNeed(S)));
+  const offStreets = (r) => sampleRect(r).every(([x, z]) => !onStreet(x, z, 0));
   const offBands = (r) => TERRACES.every((T) => rectCorners(r, 0).every(([x, z]) => Math.abs(z - T.edge(x)) > T.half + 5));
   // the pier streets first: the key plots keep off them
   PIERS.filter((pr) => pr.v > -100).forEach((pr, k) => addStreet({ kind: 'pier', cls: 'street', name: pr.name.split(' (')[0].replace('Пристань', 'Пирс'), pts: [[COLS[6] + 6, pr.v], [eastWallU(pr.v) - 28, pr.v], [eastWallU(pr.v) + 4, pr.v]], width: CLASS.street.width, pieces: 1, pier: pr.id }));
+  // the street segments hashed in 20 m cells (each with the clearance its street needs): a lot asks only the few near it
+  const SEG = 20, segH = new Map();
+  for (const S of streets) {
+    if (S.kind === 'lane' || S.cls === 'stair') continue;
+    const need = S.width / 2 + (CLASS[S.cls].kerb ?? 1) + 0.15;
+    for (let k = 1; k < S.pts.length; k++) {
+      const [ax, az] = S.pts[k - 1], [bx, bz] = S.pts[k], seg = [ax, az, bx, bz, need];
+      for (let i = Math.floor((Math.min(ax, bx) - need) / SEG); i <= Math.floor((Math.max(ax, bx) + need) / SEG); i++) for (let j = Math.floor((Math.min(az, bz) - need) / SEG); j <= Math.floor((Math.max(az, bz) + need) / SEG); j++) {
+        const key = i * 100003 + j;
+        if (!segH.has(key)) segH.set(key, []);
+        segH.get(key).push(seg);
+      }
+    }
+  }
+  const onStreet = (x, z, slack) => {
+    for (const [ax, az, bx, bz, need] of segH.get(Math.floor(x / SEG) * 100003 + Math.floor(z / SEG)) || []) if (segDist(x, z, ax, az, bx, bz) < need - slack) return true;
+    return false;
+  };
   const keys = [];
   const yardRect = (k) => ({ u: k.u + Math.sin(k.rot) * (k.d / 2 + k.yard / 2), v: k.v + Math.cos(k.rot) * (k.d / 2 + k.yard / 2), w: 22, d: k.yard, rot: k.rot });
   for (const K of KEY_PLOTS) {
@@ -310,7 +332,7 @@ export function cityPlan() {
   for (const B of blocks) {
     const [a, b, c, d] = B.corners;
     const lenH = hyp(b[0] - a[0], b[1] - a[1]), lenV = hyp(d[0] - a[0], d[1] - a[1]);
-    if (Math.min(lenH, lenV) < 140 || rng() < 0.18) continue;
+    if (Math.min(lenH, lenV) < 120 || rng() < 0.08) continue;
     const hitsPlot = (pts2) => [...squares, ...keys].some((q) => { for (let k = 0; k <= 10; k++) { const x = pts2[0][0] + (pts2[1][0] - pts2[0][0]) * k / 10, z = pts2[0][1] + (pts2[1][1] - pts2[0][1]) * k / 10; if (pointInRect(q, x, z, 6)) return true; } return false; });
     // across the long direction: the lane joins the middles of the two short sides' ... (north-south when the block is wider than tall)
     const t = R(0.42, 0.58);
@@ -333,116 +355,135 @@ export function cityPlan() {
     lanes.push(B.lane);
   }
 
-  // ---- lots along the sides of the blocks
+  // ---- lots: dense rows along every side of every block, a second row round the courtyards, the lanes, a few sheds
   const lots = [];
-  const placed = []; // all rectangles (lots and obstacles) for the overlap checks
-  for (const o of obstacles) placed.push({ ...o, obstacle: true });
-  const laneClear = (r, except) => lanes.some((L) => { // keep a lot off a lane
-    if (L === except) return false;
-    for (const [x, z] of rectCorners(r, 0)) if (polyDist(L.pts, x, z) < L.width / 2 + 1.5) return true;
-    return polyDist(L.pts, r.u, r.v) < L.width / 2 + 1.5 + Math.min(r.w, r.d) / 2;
-  });
-  const streetClear = (r, own) => { // never on a street other than the side it faces (a few metres of margin)
-    for (const S of streets) {
-      if (S.kind === 'lane' || S.cls === 'stair') continue;
-      const need = S.width / 2 + (CLASS[S.cls].kerb ?? 1) + 0.15;
-      for (const [x, z] of rectCorners(r, 0)) if (polyDist(S.pts, x, z) < need - 0.01) return false;
-      if (polyDist(S.pts, r.u, r.v) < need) return false;
+  const placed = []; // all rectangles (lots and obstacles) for the overlap checks, hashed in 40 m cells
+  const GRID = 40, cellsH = new Map();
+  const addPlaced = (r) => {
+    placed.push(r);
+    const rr = Math.hypot(r.w, r.d) / 2 + (r.margin || 0) + 1;
+    for (let i = Math.floor((r.u - rr) / GRID); i <= Math.floor((r.u + rr) / GRID); i++) for (let j = Math.floor((r.v - rr) / GRID); j <= Math.floor((r.v + rr) / GRID); j++) {
+      const k = i * 100003 + j;
+      if (!cellsH.has(k)) cellsH.set(k, []);
+      cellsH.get(k).push(r);
     }
+  };
+  const hitPlaced = (r, m) => {
+    const rr = Math.hypot(r.w, r.d) / 2 + 6, seen = new Set();
+    for (let i = Math.floor((r.u - rr) / GRID); i <= Math.floor((r.u + rr) / GRID); i++) for (let j = Math.floor((r.v - rr) / GRID); j <= Math.floor((r.v + rr) / GRID); j++) {
+      for (const p of cellsH.get(i * 100003 + j) || []) {
+        if (seen.has(p)) continue;
+        seen.add(p);
+        if (rectsOverlap(p, r, p.obstacle ? p.margin : m)) return true;
+      }
+    }
+    return false;
+  };
+  for (const o of obstacles) addPlaced({ ...o, obstacle: true });
+  // the yard beside the inn (N02: the chimney is looked at from there)
+  { const k = keys.find((q) => q.id === 'inn_tavia'); if (k) { const c = Math.cos(k.rot), sn = Math.sin(k.rot), lx = k.w / 2 + 5; addPlaced({ u: k.u + lx * c, v: k.v - lx * sn, w: 10, d: k.d + 4, rot: k.rot, margin: 0.5, obstacle: true }); } }
+  // streets with their bounding boxes (most are far from a given lot)
+  const sbox = new Map(streets.map((S) => { let a0 = Infinity, a1 = -Infinity, b0 = Infinity, b1 = -Infinity; for (const [x, z] of S.pts) { a0 = Math.min(a0, x); a1 = Math.max(a1, x); b0 = Math.min(b0, z); b1 = Math.max(b1, z); } return [S, [a0, a1, b0, b1]]; }));
+  const near = (S, r, pad) => { const [a0, a1, b0, b1] = sbox.get(S), rr = Math.hypot(r.w, r.d) / 2 + pad; return r.u > a0 - rr && r.u < a1 + rr && r.v > b0 - rr && r.v < b1 + rr; };
+  const laneClear = (r, except) => lanes.some((L) => { // keep a lot off a lane
+    if (!near(L, r, L.width + 2)) return false;
+    if (L === except) return rectCorners(r, 0).some(([x, z]) => polyDist(L.pts, x, z) < L.width / 2 + 0.3); // its own lane: only off the paving
+    for (const [x, z] of rectCorners(r, 0)) if (polyDist(L.pts, x, z) < L.width / 2 + 1.2) return true;
+    return polyDist(L.pts, r.u, r.v) < L.width / 2 + 1.2 + Math.min(r.w, r.d) / 2;
+  });
+  const streetClear = (r) => { // never on a street (a few centimetres of margin)
+    if (onStreet(r.u, r.v, 0)) return false;
+    for (const [x, z] of rectCorners(r, 0)) if (onStreet(x, z, 0.01)) return false;
     return true;
   };
   const stairClear = (r) => TERRACES.every((T) => rectCorners(r, 0).every(([x, z]) => Math.abs(z - T.edge(x)) > T.half + 6));
   const WALL_MARGIN = 14;
+  const fits = (lot, m, except) => streetClear(lot) && !hitPlaced(lot, m) && stairClear(lot) && !laneClear(lot, except) && insideCity(lot.u, lot.v, WALL_MARGIN + Math.max(lot.w, lot.d) / 2);
+  const RI = ([a, b]) => Math.floor(R(a, b + 1));
+  const R2 = ([a, b]) => Math.round(R(a, b) * 2) / 2;
+  /** Arclength sampler of a polyline: s -> [x, z, tx, tz]. */
+  const sampler = (pts) => {
+    const acc = [0];
+    for (let k = 1; k < pts.length; k++) acc.push(acc[k - 1] + hyp(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]));
+    const total = acc[acc.length - 1];
+    const at = (q) => {
+      q = clamp(q, 0, total);
+      let k = 1;
+      while (k < acc.length - 1 && acc[k] < q) k++;
+      const f = (q - acc[k - 1]) / (acc[k] - acc[k - 1] || 1), tx = pts[k][0] - pts[k - 1][0], tz = pts[k][1] - pts[k - 1][1], L = hyp(tx, tz) || 1;
+      return [pts[k - 1][0] + tx * f, pts[k - 1][1] + tz * f, tx / L, tz / L];
+    };
+    return { total, at };
+  };
+  /**
+   * A row of lots along a line: `off` = distance of the lot's near edge from the line, `face` +1 = the lots face the line,
+   * -1 = they turn their backs on it (the second row looks into the courtyard). Wall to wall (`gap`), a passage every few lots,
+   * a too-wide lot that does not fit is tried narrower before the row moves on.
+   */
+  const row = (B, pts, side, inward, o) => {
+    const { total, at } = sampler(pts);
+    let q = o.from, run = 0, nextPass = RI(o.pass), guard = 0;
+    while (q < total - o.to && guard++ < 600) {
+      const d = R2(o.fd);
+      let w = R2(o.fw), lot = null;
+      if (rng() < (o.vac ?? 0)) { q += w + o.gap; run = 0; continue; }
+      for (const k of [1, 0.75, 0.55]) {
+        const ww = Math.round(w * k * 2) / 2;
+        if (ww < 6) break;
+        const [cx, cz, tx, tz] = at(q + ww / 2);
+        let lnx = -tz, lnz = tx;
+        if (lnx * inward[0] + lnz * inward[1] < 0) { lnx = -lnx; lnz = -lnz; }
+        const off = o.off + d / 2;
+        const cand = { u: cx + lnx * off, v: cz + lnz * off, w: ww, d, rot: o.face > 0 ? Math.atan2(-lnx, -lnz) : Math.atan2(lnx, lnz), block: B.id, side, district: B.district, ...o.tag };
+        if (fits(cand, o.margin, o.lane)) { lot = cand; w = ww; break; }
+      }
+      if (!lot) { q += 1.5; run = 0; continue; }
+      addPlaced(lot);
+      B.lots.push(lot);
+      q += w + o.gap;
+      if (++run >= nextPass) { q += 4.5; run = 0; nextPass = RI(o.pass); } // the gate of a courtyard passage
+    }
+  };
+  const inwardOf = (B, pts) => { const { total, at } = sampler(pts); const [mx, mz, tx, tz] = at(total / 2); let nx = -tz, nz = tx; if ((B.u - mx) * nx + (B.v - mz) * nz < 0) { nx = -nx; nz = -nz; } return [nx, nz]; };
+  for (const B of blocks) B.lots = [];
+  // 1. the street frontage of every block (all blocks first: the corners go to whoever reaches them first)
   for (const B of blocks) {
     const sty = STYLE[B.district] || STYLE.posad;
-    B.lots = [];
-    B.sides.forEach((S, si) => {
-      const pts = S.pts;
-      // arclength table
-      const acc = [0];
-      for (let k = 1; k < pts.length; k++) acc.push(acc[k - 1] + hyp(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]));
-      const total = acc[acc.length - 1];
-      const at = (s) => {
-        s = clamp(s, 0, total);
-        let k = 1;
-        while (k < acc.length - 1 && acc[k] < s) k++;
-        const f = (s - acc[k - 1]) / (acc[k] - acc[k - 1] || 1);
-        const x = pts[k - 1][0] + (pts[k][0] - pts[k - 1][0]) * f, z = pts[k - 1][1] + (pts[k][1] - pts[k - 1][1]) * f;
-        const tx = pts[k][0] - pts[k - 1][0], tz = pts[k][1] - pts[k - 1][1], L = hyp(tx, tz) || 1;
-        return [x, z, tx / L, tz / L];
-      };
-      // the inward normal: towards the block centre
-      const [mx, mz, mtx, mtz] = at(total / 2);
-      let nx = -mtz, nz = mtx;
-      if ((B.u - mx) * nx + (B.v - mz) * nz < 0) { nx = -nx; nz = -nz; }
-      const sideOrder = si; // sides 0 and 2 (the long rows) first take the corners
-      void sideOrder;
-      let s = S.hw + 4;
-      // corners: the row sides (0, 2) keep a wider corner clear for the column sides' street and depth
-      let guard = 0;
-      while (s < total - S.hw - 4 && guard++ < 80) {
-        const w = Math.round(R(sty.w[0], sty.w[1]) * 2) / 2, d = Math.round(R(sty.d[0], sty.d[1]) * 2) / 2;
-        const [cx, cz, tx, tz] = at(s + w / 2);
-        // inward normal from the local tangent
-        let lnx = -tz, lnz = tx;
-        if (lnx * nx + lnz * nz < 0) { lnx = -lnx; lnz = -lnz; }
-        const off = S.hw + d / 2 + 0.4;
-        const lot = { u: cx + lnx * off, v: cz + lnz * off, w, d, rot: Math.atan2(-lnx, -lnz), block: B.id, side: si, district: B.district };
-        s += w + sty.gap + (rng() < 0.12 ? 4.5 : 0); // now and then a gap for a passage into the courtyard
-        if (rng() < (sty.vac ?? 0)) continue; // a vacant lot: a garden, a yard
-        if (!insideCity(lot.u, lot.v, WALL_MARGIN + Math.max(w, d) / 2)) continue;
-        if (!streetClear(lot) || !stairClear(lot) || laneClear(lot)) continue;
-        if (placed.some((p) => rectsOverlap(p, lot, p.obstacle ? p.margin : 1.2))) continue;
-        placed.push(lot);
-        B.lots.push(lot);
-      }
-    });
-    // the lane through the block is a street too: smaller houses face it from both sides
-    if (B.lane) {
-      const L = B.lane, lp = L.pts, acc = [0];
-      for (let k = 1; k < lp.length; k++) acc.push(acc[k - 1] + hyp(lp[k][0] - lp[k - 1][0], lp[k][1] - lp[k - 1][1]));
-      const total = acc[acc.length - 1];
-      const atL = (q) => {
-        q = clamp(q, 0, total);
-        let k = 1;
-        while (k < acc.length - 1 && acc[k] < q) k++;
-        const f = (q - acc[k - 1]) / (acc[k] - acc[k - 1] || 1), tx = lp[k][0] - lp[k - 1][0], tz = lp[k][1] - lp[k - 1][1], LL = hyp(tx, tz) || 1;
-        return [lp[k - 1][0] + tx * f, lp[k - 1][1] + tz * f, tx / LL, tz / LL];
-      };
-      for (const side of [-1, 1]) {
-        let q = 20;
-        while (q < total - 20) {
-          const w = Math.round(R(11, 17) * 2) / 2, d = Math.round(R(10, 13) * 2) / 2;
-          const [cx, cz, tx, tz] = atL(q + w / 2);
-          const nx = -tz * side, nz = tx * side; // away from the lane on this side
-          const off = L.width / 2 + 0.9 + d / 2;
-          const lot = { u: cx + nx * off, v: cz + nz * off, w, d, rot: Math.atan2(-nx, -nz), block: B.id, side: 10 + (side > 0 ? 1 : 0), district: B.district, laneLot: true };
-          q += w + 2.2;
-          if (rng() < (sty.vac ?? 0) + 0.5) continue;
-          if (!insideCity(lot.u, lot.v, WALL_MARGIN + Math.max(w, d) / 2) || !streetClear(lot) || !stairClear(lot) || laneClear(lot, L)) continue;
-          if (placed.some((p) => rectsOverlap(p, lot, p.obstacle ? p.margin : 1.4))) continue;
-          placed.push(lot);
-          B.lots.push(lot);
-        }
-      }
-    }
-    // courtyard buildings (workshops, sheds) in the middle: only in the dense districts
+    B.sides.forEach((S, si) => row(B, S.pts, si, inwardOf(B, S.pts), { from: S.hw + 0.8, to: S.hw + 0.8, off: S.hw + 0.3, face: 1, fw: sty.fw, fd: sty.fd, gap: sty.fgap, pass: sty.pass, vac: sty.vac, margin: 0.2 }));
+  }
+  // 2. the lanes through the blocks: smaller houses on both sides
+  for (const B of blocks) {
+    if (!B.lane) continue;
+    const sty = STYLE[B.district] || STYLE.posad, L = B.lane;
+    const { at, total } = sampler(L.pts);
+    const [, , tx, tz] = at(total / 2);
+    for (const side of [-1, 1]) row(B, L.pts, 10 + (side > 0 ? 1 : 0), [-tz * side, tx * side], { from: 10, to: 10, off: L.width / 2 + 0.8, face: 1, fw: [8, 13], fd: [9, 12], gap: 0.8, pass: [4, 7], vac: (sty.vac ?? 0) + 0.08, margin: 0.3, lane: L, tag: { laneLot: true } });
+  }
+  // 3. the second row round the courtyard: back houses, workshops and stores behind the frontage, facing the yard
+  for (const B of blocks) {
+    const sty = STYLE[B.district] || STYLE.posad;
+    if (B.district === 'garden') continue;
+    const [a, b, , d] = B.corners;
+    if (Math.min(hyp(b[0] - a[0], b[1] - a[1]), hyp(d[0] - a[0], d[1] - a[1])) < 2 * (sty.fd[1] + 26)) continue; // a small block: one row only
+    B.sides.forEach((S, si) => row(B, S.pts, 20 + si, inwardOf(B, S.pts), { from: S.hw + sty.fd[1] + 8, to: S.hw + sty.fd[1] + 8, off: S.hw + sty.fd[1] + 5, face: -1, fw: [8, 13], fd: [7, 10], gap: 2.2, pass: [3, 5], vac: 0.2, margin: 1.2, tag: { back: true } }));
+  }
+  // 4. a few sheds in the middle of the courtyards (the old town and the posad)
+  for (const B of blocks) {
     const inner = B.district === 'old' || B.district === 'posad' ? 2 : 1;
-    for (let k = 0; k < inner * 4; k++) {
-      const f1 = R(0.3, 0.7), f2 = R(0.3, 0.7);
+    let n = 0;
+    for (let k = 0; k < inner * 6 && n < inner; k++) {
+      const f1 = R(0.35, 0.65), f2 = R(0.35, 0.65);
       const [a, b, c, d] = B.corners;
       const px = (a[0] * (1 - f1) + b[0] * f1) * (1 - f2) + (d[0] * (1 - f1) + c[0] * f1) * f2;
       const pz = (a[1] * (1 - f1) + b[1] * f1) * (1 - f2) + (d[1] * (1 - f1) + c[1] * f1) * f2;
-      const lot = { u: px, v: pz, w: Math.round(R(8, 14)), d: Math.round(R(7, 11)), rot: R(-0.3, 0.3) + (B.i % 2) * 0.0, block: B.id, side: -1, district: B.district, inner: true };
-      if (!insideCity(lot.u, lot.v, WALL_MARGIN + 6) || !streetClear(lot) || !stairClear(lot) || laneClear(lot)) continue;
-      if (placed.some((p) => rectsOverlap(p, lot, p.obstacle ? p.margin + 2 : 3))) continue;
-      // keep the middle of the block as a yard: at most `inner` sheds
-      if (B.lots.filter((l) => l.inner).length >= inner) break;
-      placed.push(lot);
+      const lot = { u: px, v: pz, w: Math.round(R(7, 12)), d: Math.round(R(6, 9)), rot: R(-0.3, 0.3), block: B.id, side: -1, district: B.district, inner: true };
+      if (!fits(lot, 3)) continue;
+      addPlaced(lot);
       B.lots.push(lot);
+      n++;
     }
-    for (const l of B.lots) lots.push(l);
   }
+  for (const B of blocks) for (const l of B.lots) lots.push(l);
 
   // ---- the quay: the road along the embankment, the roads to the piers, the warehouses between the road and the street behind
   const quayPts = [];
@@ -464,9 +505,9 @@ export function cityPlan() {
       v += wlen + R(6, 10);
       if (nearPier(lot.v, 12 + wlen / 2)) continue;
       if (rng() < 0.12 + row * 0.25) continue;
-      if (!insideCity(lot.u, lot.v, 6) || !offBands(lot) || placed.some((p) => rectsOverlap(p, lot, p.obstacle ? p.margin : 2))) continue;
+      if (!insideCity(lot.u, lot.v, 6) || !offBands(lot) || hitPlaced(lot, 2)) continue;
       if (!streets.every((S) => S === quayRoad || S.cls === 'stair' || S.kind === 'lane' || rectCorners(lot, 0).every(([x, z]) => polyDist(S.pts, x, z) >= streetNeed(S)))) continue;
-      placed.push(lot);
+      addPlaced(lot);
       lots.push(lot);
     }
   }
@@ -492,12 +533,13 @@ export function cityPlan() {
     const sty = STYLE[l.district] || STYLE.posad;
     const avenueFront = l.side >= 0 && (blocks.find((b) => b.id === l.block)?.sides[l.side]?.cls === 'avenue' || blocks.find((b) => b.id === l.block)?.sides[l.side]?.cls === 'axis');
     l.id = 'L' + k;
-    l.floors = l.inner ? 1 : clamp(Math.round(R(sty.floors[0], sty.floors[1] + (avenueFront ? 0.9 : 0))), 1, 5);
+    l.floors = l.inner ? 1 : l.back ? (rng() < 0.6 ? 2 : 1) : clamp(Math.round(R(sty.floors[0], sty.floors[1] + (avenueFront ? 0.9 : 0))), 1, 5);
     l.wall = pick(sty.wall);
     l.roofColor = pick(sty.roof);
-    l.roof = l.inner ? 'gable' : pick(sty.roofs);
-    l.shop = !l.inner && avenueFront ? rng() < sty.shop + 0.2 : rng() < sty.shop * 0.4;
-    l.kind = l.inner ? 'shed' : l.warehouse || l.district === 'port' ? 'warehouse' : 'house';
+    l.roof = l.inner || l.back ? 'gable' : pick(sty.roofs);
+    l.shop = l.back || l.inner ? false : avenueFront ? rng() < sty.shop + 0.2 : rng() < sty.shop * 0.4;
+    l.kind = l.inner ? 'shed' : l.warehouse || (l.district === 'port' && !l.back && !l.laneLot && l.w >= 14) ? 'warehouse' : 'house';
+    l.simple = !!(l.back || l.inner); // seen only from the courtyards: a lighter kit model (AinstreyFacade)
     if (l.warehouse) { l.floors = rng() < 0.4 ? 2 : 1; l.shop = false; l.wall = pick([0xb09a78, 0xa89070, 0xc9bda4]); l.roofColor = pick([0x6a5a48, 0x7a6a56, 0x6a7c92]); }
     l.seed = Math.floor(rng() * 1e9);
   });

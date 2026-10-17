@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mulberry32, fbm } from '../../core/math.js';
-import { Frame, cityWall, paveRibbon, pavePoly, lamp, tree, stall, wagon, well, bench, barrel, crate, fence } from './Kit.js';
+import { Frame, cityWall, paveRibbon, pavePoly, lamp, tree, stall, wagon, well, bench, barrel, crate, fence, heroKit } from './Kit.js';
 import { lightHouse, keyBuilding, toW } from './AinstreyBuildings.js';
 import { interiorBuilding, INTERIOR_IDS } from './AinstreyInteriors.js';
 import { pumpHouse } from './AinstreyPump.js';
@@ -96,6 +96,13 @@ function streets(W, P) {
 function fountain(W, x, z, r = 3.4, tint = 0xcfc4a8) {
   const y = H(W, x, z);
   const F = new Frame(W, x, y, z, 0);
+  // the three-tier fountain model (obj/grand_fountain) when it is there; its basin collides as a low drum
+  const m = heroKit(F, 'obj/grand_fountain', { w: r * 2 + 1.6 }, 0, 0.05, 0);
+  if (m) {
+    F.cyl(m.w / 2 - 0.2, 1.1, 0, 0, 0, 'stone', { seg: 16, collideOnly: true });
+    W.addFootprint(x, z, m.w, m.w, 0, 'fountain');
+    return;
+  }
   F.cyl(r, 0.9, 0, 0, 0, 'stone', { seg: 16, tint });
   F.cyl(r - 0.35, 0.18, 0, 0.75, 0, 'water', { seg: 16, collide: false, castShadow: false });
   F.cyl(0.5, 2.4, 0, 0, 0, 'stone', { seg: 12, tint });
@@ -282,7 +289,7 @@ function frontage(W, P, B) {
       let lnx = -tz, lnz = tx;
       if (lnx * nx + lnz * nz < 0) { lnx = -lnx; lnz = -lnz; }
       const u = x + lnx * off, v = z + lnz * off;
-      const blocked = B.lots.some((l) => pointNear(l, u, v, 1.2)) || P.keys.some((k) => pointNear(k, u, v, 2.5)) || P.squares.some((q) => pointNear(q, u, v, 2)) || P.lanes.some((L) => polyDist(L.pts, u, v) < L.width / 2 + 3.2) || !insideCityPt(u, v, 18);
+      const blocked = B.lots.some((l) => pointNear(l, u, v, 1.2)) || P.keys.some((k) => pointNear(k, u, v, 2.5)) || P.squares.some((q) => pointNear(q, u, v, 14)) || P.lanes.some((L) => polyDist(L.pts, u, v) < L.width / 2 + 3.2) || !insideCityPt(u, v, 18);
       free.push(blocked ? null : [u, v]);
     }
     // runs of free samples -> walls (a gate gap every 5th-9th piece)
@@ -552,9 +559,19 @@ function citadel(W) {
     F.box(7.6, 8.6, 0.8, 0, 0, 0, 'door', { tint: 0x4a3a2c });
     for (const y of [1.2, 4.0, 7.2]) F.box(7.7, 0.35, 0.95, 0, y, 0, 'metal', { collide: false });
     F.box(0.5, 8.6, 0.95, 0, 0, 0, 'metal', { collide: false });
-    const front = frame.at(0, 0, -7);
-    W.spot('ain_citadel_gate', new THREE.Vector3(front.x, H(W, front.x, front.z), front.z), frame.rot + Math.PI);
-    W.addSign(new THREE.Vector3(front.x + 4, 0, front.z), frame.rot + Math.PI, ['Внутренняя цитадель закрыта', 'Проход откроется в одном из следующих обновлений']);
+    // the outer side of the gate: the city lies south (+z) of the citadel; the gate frame's local z may point either way
+    const out = F.at(0, 0, 1).z > F.origin.z ? 1 : -1;
+    const yaw = out > 0 ? frame.rot + Math.PI : frame.rot; // facing the gate from outside
+    // two watchtowers outside the gate (obj/watchtower), solid as round drums
+    for (const sx of [-1, 1]) {
+      const p = F.at(sx * 13, 0, 9 * out);
+      const T = new Frame(W, p.x, H(W, p.x, p.z) - 0.1, p.z, F.rot + (sx > 0 ? Math.PI : 0));
+      const m = heroKit(T, 'obj/watchtower', { h: 15 }, 0, 0, 0);
+      if (m) T.cyl(m.w * 0.42, 13, 0, 0, 0, 'stone', { seg: 12, collideOnly: true });
+    }
+    const front = frame.at(0, 0, 7 * out);
+    W.spot('ain_citadel_gate', new THREE.Vector3(front.x, H(W, front.x, front.z), front.z), yaw);
+    W.addSign(new THREE.Vector3(front.x + 4, 0, front.z), yaw, ['Внутренняя цитадель закрыта', 'Проход откроется в одном из следующих обновлений']);
     // the leaf answers when examined (the status of the closed part: it is shown on the map as well)
     W.addInteractable(new QuestProp({ id: 'citadel_gate', name: 'Ворота цитадели', prompt: 'Осмотреть закрытые ворота', position: new THREE.Vector3(front.x, H(W, front.x, front.z) + 1.4, front.z), shape: 'none' }));
   }

@@ -47,6 +47,8 @@ export const NPCS = [
     model: F(['Soldier_Head', 'Adventurer_Body', 'Medieval_Legs', 'Adventurer_Feet'], { Hair_Brown: 0x6a3a1a, 'Adventurer_Body:Green': 0x8a6a4a, 'Adventurer_Body:LightGreen': 0x5a4030, Black: 0x4a3a2a }),
     look: { skin: 0xe8b890, hair: 0x6a3a1a, hairStyle: 'bun', top: 0x8a6a4a, vest: 0x5a4030, bottom: 0x4a3a2a, hat: 'wide', hatColor: 0x7a5a3a, build: 1.05, chestShape: true },
     schedule: [
+      // A00: at her cart in the caravan camp before the south gate until Megumin is through the gate (and the sacks are carried)
+      { time: [0, 24], spot: 'marta_road', anim: 'idle', if: { any: [{ quest: 'prologue_arrival', stage: 'marta' }, { quest: 'prologue_arrival', stage: 'gate' }, { quest: 'a00_bags', status: 'active' }] } },
       { time: [0, 24], spot: 'bridge_marta', anim: 'idle', if: { any: ['bridge', 'p_clip', 'p_edge'].map((stage) => ({ quest: 's_marta_bridge', stage })) } },
       { time: [0, 24], spot: 'ledge_marta', anim: 'idle', if: { any: ['ledge', 'p12_cargo', 'p12_roxy', 'p12_rope', 'ledge_out'].map((stage) => ({ quest: 'ch7_gorge', stage })) } },
       { time: [6, 12], spot: 'caravan_master', anim: 'idle' }, { time: [12, 17], spot: 'caravan_office_desk', anim: 'sit', seat: 0.5 }, { time: [17, 21], spot: 'caravan_master', anim: 'idle' }, { time: [21, 24], spot: 'tavern_table4', anim: 'sit' }, NIGHT_HOME],
@@ -571,6 +573,7 @@ export const NPCS = [
   },
   {
     id: 'edmund', name: 'Эдмунд', title: 'Учёный-астроном',
+    body: 'astrey', bodyHeight: 1.8, // the user's Mixamo character (model/characters/Astrey); the modular body below is the fallback
     model: M(['King_Head', 'King_Body', 'Casual2_Legs', 'Adventurer_Feet'], { Blue: 0x2a3a6a, Metal: 0x3a4a7a, Metal_Dark: 0x2a3456, Beige: 0xd8c890, LightBlue: 0x2a3a6a }, { hide: { King_Head: ['Gold'] }, scale: 0.93 }),
     look: { skin: 0xf6d0b0, hair: 0xe8e8e8, hairStyle: 'short', beard: true, top: 0x3a4a7a, dress: true, dressLong: true, dressColor: 0x2a3a6a, cape: 0x2a3a6a, height: 0.97 },
     schedule: [{ time: [20, 2], spot: 'olkhovka_green', anim: 'magic' }, { time: [8, 20], spot: 'scholar', anim: 'idle' }, { time: [2, 8], hidden: true }],

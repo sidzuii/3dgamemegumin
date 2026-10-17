@@ -32,7 +32,7 @@ for (const k of P.keys) for (const st of P.streets) { if (st.cls === 'stair') co
 for (const l of P.lots) for (const T of TERRACES) for (const [x, z] of rectCorners(l, 0)) if (Math.abs(z - T.edge(x)) < T.half + 3) { bad(`lot ${l.id} on terrace ${T.id}`); break; }
 // counts against the task
 const inRange = (n, a, b) => n >= a && n <= b;
-const want = [['quarters', S.quarters, 25, 35], ['streets and lanes (lines)', S.streetLines, 60, 90], ['squares', S.squares, 8, 10], ['courtyards', S.yards, 30, 40], ['buildings', S.lots + S.keys, 700, 1000]];
+const want = [['quarters', S.quarters, 25, 35], ['streets and lanes (lines)', S.streetLines, 60, 90], ['squares', S.squares, 8, 10], ['courtyards', S.yards, 30, 40], ['buildings', S.lots + S.keys, 3000, 6000]];
 for (const [n, v, a, b] of want) console.log(`${inRange(v, a, b) ? 'ok  ' : 'OUT '} ${n}: ${v} (task ${a}-${b})`);
 console.log(problems ? problems + ' problem(s)' : 'plan ok');
 

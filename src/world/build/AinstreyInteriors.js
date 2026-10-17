@@ -1,6 +1,6 @@
 import { mulberry32 } from '../../core/math.js';
 import * as THREE from 'three';
-import { prop, tableware, lamp } from './Kit.js';
+import { prop, tableware, lamp, heroKit } from './Kit.js';
 import { keyBuilding } from './AinstreyBuildings.js';
 import { QuestProp } from '../Interactables.js';
 
@@ -16,6 +16,11 @@ const NC = { collide: false, castShadow: false };
 const D = { collide: false, castShadow: false, detail: true };
 const has = (G, name) => G.w.kits.has(name);
 const P = (G, name, lx, ly, lz, o = {}) => { if (has(G, name)) prop(G, name, lx, ly, lz, o); };
+const TABLE_S = 2.6; // the scale of the tables of table()
+/** Height of the top of a kit table placed with scale s (the books lie on it). */
+const tableTop = (G, s, name = 'furniture/table') => (has(G, name) ? (G.w.kits.box(name).max.y - G.w.kits.box(name).min.y) * s : 0.85);
+/** A book model lying on a table (obj/book_*), a hair above its top. */
+const book = (G, kind, w, lx, top, lz, ry) => heroKit(G, 'obj/book_' + kind, { w }, lx, top + 0.005, lz, { ry, castShadow: false });
 
 function light(G, lx, ly, lz, color = 0xffc070, intensity = 6, distance = 13) {
   G.w.addLightSource(G.at(lx, ly, lz), { color, intensity, distance, always: true, flicker: true });
@@ -41,7 +46,7 @@ function board(G, lx, ly, lz, w, h, ry = 0, tint = 0xb89a6a) {
   for (let i = 0; i < Math.round(w * 2.2); i++) S.box(0.34, 0.44, 0.012, -w / 2 + 0.3 + (i / Math.round(w * 2.2)) * (w - 0.5), 0.2 + rng() * (h - 0.8), 0.05, 'plaster', { ...D, tint: 0xf2ead8, rz: (rng() - 0.5) * 0.25 });
 }
 function table(G, lx, lz, n = 2, ry = 0, name = 'furniture/table') {
-  P(G, name, lx, 0, lz, { s: 2.6, ry });
+  P(G, name, lx, 0, lz, { s: TABLE_S, ry });
   for (let i = 0; i < n; i++) {
     const side = i % 2 ? 1 : -1, off = (Math.floor(i / 2) - (n / 4 - 0.5)) * 1.3;
     P(G, 'furniture/chair', lx + (ry ? side * 1.2 : off), 0, lz + (ry ? off : side * 1.2), { s: 2.3, ry: ry ? (side > 0 ? -Math.PI / 2 : Math.PI / 2) : side > 0 ? Math.PI : 0, collide: false });
@@ -139,11 +144,17 @@ function archive(G, w, d, h) {
   P(G, 'furniture/chairCushion', 0, 0, -9.9, { s: 2.3, collide: false });
   P(G, 'furniture/books', -0.6, 0.85, -8.6, { s: 2.2, collide: false });
   P(G, 'furniture/lampRoundTable', 1.2, 0.85, -8.7, { s: 2.2, collide: false });
+  book(G, 'open', 0.62, 0.35, tableTop(G, 3.0), -8.45, 0.12); // the register Ilar works on
+  book(G, 'closed', 0.42, -1.25, tableTop(G, 3.0), -8.4, -0.4);
   light(G, 1.2, 1.8, -8.7, 0xffc880, 3.5, 8);
   // the cabinet with the city list (the left wall): a tall wooden case with drawers
   G.box(0.7, 2.6, 5.0, -bw + 0.4, 0, 0.5, 'wood', { tint: 0x5a3a22 });
   for (let i = 0; i < 6; i++) G.box(0.06, 0.34, 0.78, -bw + 0.78, 0.5 + (i % 3) * 0.7, -1.4 + Math.floor(i / 3) * 1.8 + 0.4, 'metal', { ...D, tint: 0xa89a7a });
-  for (const [x, z] of [[-10, 6], [-2, 6], [6, 6], [12, 4]]) { table(G, x, z, 4); P(G, 'furniture/books', x, 0.85, z, { s: 2.0, collide: false }); }
+  for (const [x, z] of [[-10, 6], [-2, 6], [6, 6], [12, 4]]) {
+    table(G, x, z, 4);
+    P(G, 'furniture/books', x, 0.85, z, { s: 2.0, collide: false });
+    if (x === -2 || x === 12) book(G, 'open', 0.6, x + 0.5, tableTop(G, TABLE_S), z + 0.15, x * 0.1);
+  }
   for (const x of [-4, 4]) column(G, x, -3, h, 0.42);
   for (const [x, z] of [[-10, -2], [10, -2], [0, 4], [0, -7]]) chandelier(G, x, z, h, 0xffd090);
   return { archive_ilar: [0, -9.6, 0], n01_shelf: [-bw + 1.6, 0.5], n03_book: [0.6, -7.4] };
@@ -166,6 +177,8 @@ function academy(G, w, d, h) {
   P(G, 'furniture/table', 13, 0, -8, { s: 3.2, ry: 0.08 });
   P(G, 'furniture/chairCushion', 13, 0, -9.3, { s: 2.3, collide: false });
   G.box(2.0, 0.015, 1.3, 13, 0.85, -8, 'plaster', { ...NC, tint: 0xe8e0c8 });
+  book(G, 'open', 0.62, 12.2, tableTop(G, 3.2) + 0.015, -7.9, 0.3);
+  book(G, 'closed', 0.42, 14.0, tableTop(G, 3.2), -8.3, 1.2);
   for (const [x, z] of [[-14, -6], [-14, 6], [14, 5]]) table(G, x, z, 2);
   for (const [x, z] of [[-16, 0], [16, -1], [-8, -8], [8, 8], [0, 9]]) column(G, x, z, h, 0.5);
   for (const [x, z] of [[-12, 0], [12, 0], [0, -8], [0, 8]]) chandelier(G, x, z, h, 0xd8e8ff);
@@ -183,6 +196,7 @@ function portOffice(G, w, d, h) {
   P(G, 'furniture/chairCushion', 0, 0, -7.4, { s: 2.3, collide: false });
   P(G, 'furniture/books', -0.8, 0.85, -6.2, { s: 2.2, collide: false });
   P(G, 'furniture/lampRoundTable', 1.1, 0.85, -6.3, { s: 2.2, collide: false });
+  book(G, 'closed', 0.42, 0.1, tableTop(G, 3.0), -6.0, 0.2); // the berth ledger
   light(G, 1.1, 1.8, -6.3, 0xffc880, 3.5, 8);
   G.box(4.4, 2.2, 0.06, bw - 2.8, 1.0, -bd + 0.1, 'plaster', { ...NC, tint: 0xe8d8b0 }); // the map of the piers
   for (let i = 0; i < 5; i++) G.box(2.0 - i * 0.2, 0.08, 0.02, bw - 2.8, 1.5 + i * 0.28, -bd + 0.15, 'cloth', { ...D, tint: 0x3a5a7a });
@@ -217,7 +231,7 @@ export function interiorBuilding(W, k) {
   // the open entrance reads at night: a lantern on each side of the doorway and a signpost with the name of the hall
   const fz = k.d / 2 + 1.0;
   for (const sx of [-1, 1]) { const p = F.at(sx * 3.4, 0, fz); lamp(W, new THREE.Vector3(p.x, W.heightAt(p.x, p.z), p.z), k.rot); }
-  { const p = F.at(5.6, 0, k.d / 2 + 3.0); W.addSign(new THREE.Vector3(p.x, 0, p.z), k.rot, [k.name, 'Открыто: вход через арку']); }
+  { const p = F.at(k.id === 'academy_hall' ? 11.6 : 5.6, 0, k.d / 2 + 3.0); W.addSign(new THREE.Vector3(p.x, 0, p.z), k.rot, [k.name, 'Открыто: вход через арку']); }
   // the board of the guild is the same prop as in Axel (RPG.onInteract: the list of contracts for members)
   if (k.id === 'guild_hall') W.addInteractable(new QuestProp({ id: 'guild_board', name: 'Доска заказов', prompt: 'Посмотреть заказы', position: G.at(-11, 1.9, -k.d / 2 + 1.3), shape: 'none' }));
   return r;

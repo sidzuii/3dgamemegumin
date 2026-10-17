@@ -201,6 +201,33 @@ export class AnimationLibrary {
       this.refP[role] = relPos(b, this.root, new THREE.Vector3());
     }
     this.legLength = this.refP.lThigh.distanceTo(this.refP.lShin) + this.refP.lShin.distanceTo(this.refP.lFoot);
+    this.sources = {}; // clip name -> extra source (addSource)
+    return this;
+  }
+
+  /**
+   * A second source skeleton (public/models/anim/mixamo.glb, tools/pack_mixamo_anims.mjs): its clips join the library as
+   * `prefix + name` ('mx:Standing Idle') and are baked against its own reference pose (its 'TPose' clip, the Mixamo T-pose,
+   * like the main library's A_TPose: both are T-poses, so a target prepared for the main reference takes them as well).
+   */
+  async addSource(url, mapName, prefix) {
+    const gltf = await new GLTFLoader().loadAsync(url);
+    const S = { root: gltf.scene, mixer: new THREE.AnimationMixer(gltf.scene), bones: findBones(gltf.scene, MAPS[mapName]), refQ: {}, refP: {} };
+    const clips = Object.fromEntries(gltf.animations.map((c) => [c.name, c]));
+    S.mixer.clipAction(clips.TPose).reset().play();
+    S.mixer.setTime(0);
+    S.root.updateMatrixWorld(true);
+    for (const [role, b] of Object.entries(S.bones)) {
+      S.refQ[role] = relQ(b, S.root, new THREE.Quaternion());
+      S.refP[role] = relPos(b, S.root, new THREE.Vector3());
+    }
+    S.legLength = S.refP.lThigh.distanceTo(S.refP.lShin) + S.refP.lShin.distanceTo(S.refP.lFoot);
+    S.mixer.stopAllAction();
+    for (const [n, c] of Object.entries(clips)) {
+      if (n === 'TPose') continue;
+      this.clips[prefix + n] = c;
+      this.sources[prefix + n] = S;
+    }
     return this;
   }
 
@@ -310,16 +337,19 @@ export class AnimationLibrary {
   bake(ctx, clipName, opts = {}) {
     const src = this.clips[clipName];
     if (!src) throw new Error('No clip ' + clipName);
+    // the source skeleton of the clip: the main library or an added one (its own reference and leg length)
+    const S = this.sources?.[clipName] || this;
+    const scale = ctx.scale * (this.legLength / S.legLength);
     const fps = opts.fps || 30;
     const n = Math.max(2, Math.round(src.duration * fps) + 1);
     const times = new Float32Array(n);
-    const roles = ORDER.filter((r) => ctx.bones[r] && this.bones[r]);
+    const roles = ORDER.filter((r) => ctx.bones[r] && S.bones[r]);
     const qv = Object.fromEntries(roles.map((r) => [r, new Float32Array(n * 4)]));
     const hipsV = new Float32Array(n * 3);
     const hips = ctx.bones.hips;
     const hipsParent = hips.parent;
     const W = {}; // current target world (root space) per role
-    const mix = this.mixer;
+    const mix = S.mixer;
     mix.stopAllAction();
     const action = mix.clipAction(src);
     action.reset().play();
@@ -332,10 +362,10 @@ export class AnimationLibrary {
       const t = Math.min(src.duration, i / fps);
       times[i] = t;
       mix.setTime(opts.reverse ? src.duration - t : t);
-      this.root.updateMatrixWorld(true);
+      S.root.updateMatrixWorld(true);
       for (const r of roles) {
-        const sQ = relQ(this.bones[r], this.root, tmp);
-        D.copy(sQ).multiply(_q.copy(this.refQ[r]).invert());
+        const sQ = relQ(S.bones[r], S.root, tmp);
+        D.copy(sQ).multiply(_q.copy(S.refQ[r]).invert());
         if (opts.damp?.[r] !== undefined) D.slerp(_I, 1 - opts.damp[r]);
         const w = (W[r] = W[r] || new THREE.Quaternion()).copy(D).multiply(ctx.refQ[r]);
         if (r === 'head' && opts.levelHead) levelHead(w, ctx, opts.levelHead);
@@ -356,8 +386,8 @@ export class AnimationLibrary {
         local.toArray(qv[r], i * 4);
       }
       // Hips translation (root space) -> hips parent's local space.
-      const sp = relPos(this.bones.hips, this.root, pos);
-      sp.sub(this.refP.hips).multiplyScalar(ctx.scale);
+      const sp = relPos(S.bones.hips, S.root, pos);
+      sp.sub(S.refP.hips).multiplyScalar(scale);
       if (opts.hipsY === 'down') sp.y = Math.min(sp.y, 0);
       if (opts.hipsY === 'none') sp.y = 0;
       if (opts.flight !== undefined) sp.y -= (1 - opts.flight) * this.footClearance() * ctx.scale;

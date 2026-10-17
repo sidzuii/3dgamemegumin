@@ -13,7 +13,12 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
  */
 export const KITS = ['town', 'castle', 'survival', 'food', 'nature', 'furniture', 'graveyard', 'dungeon', 'village', 'wilds', 'props', 'bits'];
 /** Kits with several PBR materials (Quaternius MegaKits): one material per source material. */
-const MULTI = new Set(['village', 'wilds', 'props']);
+const MULTI = new Set(['village', 'wilds', 'props', 'obj']);
+/**
+ * Single hero objects (tools/pack_objects.mjs -> public/models/objects/<id>.glb), pieces 'obj/<id>'. The Blender-made ones
+ * are painted in vertex colours, which are kept. Optional: a missing file only removes its piece.
+ */
+export const OBJECTS = ['founder_statue', 'academy_dome', 'grand_fountain', 'watchtower', 'harbor_crane', 'merchant_ship', 'noble_carriage', 'vendor_cart', 'book_open', 'book_closed'];
 
 /** Palette remaps for flat-coloured kits (the nature kit's teal foliage -> the valley's greens). */
 const RECOLOR = {
@@ -77,6 +82,19 @@ export class KitLibrary {
     const loader = new GLTFLoader();
     const prog = Object.fromEntries(KITS.map((k) => [k, 0]));
     const report = () => onProgress?.(KITS.reduce((s, k) => s + prog[k], 0) / KITS.length);
+    const objects = Promise.all(OBJECTS.map(async (id) => {
+      try {
+        const gltf = await loader.loadAsync(`/models/objects/${id}.glb`);
+        const holder = new THREE.Group();
+        holder.name = id;
+        holder.add(gltf.scene);
+        const wrap = new THREE.Group();
+        wrap.add(holder);
+        this._addKit('obj', wrap);
+      } catch (e) {
+        console.warn('[kit] object missing', id, e?.message);
+      }
+    }));
     await Promise.all(KITS.map(async (kit) => {
       const gltf = await loader.loadAsync(`/models/kits/${kit}.glb`, (e) => {
         if (e.lengthComputable) { prog[kit] = e.loaded / e.total; report(); }
@@ -87,6 +105,7 @@ export class KitLibrary {
       prog[kit] = 1;
       report();
     }));
+    await objects;
     return this;
   }
 
@@ -193,8 +212,9 @@ export class KitLibrary {
         const { key, color } = this._material(kit, o.material, holder.name);
         const g = o.geometry.clone();
         g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld));
+        const keepColor = kit === 'obj' && !!g.attributes.color; // painted objects keep their vertex colours
         for (const name of Object.keys(g.attributes)) {
-          if (!['position', 'normal', 'uv'].includes(name)) { g.deleteAttribute(name); continue; }
+          if (!['position', 'normal', 'uv', ...(keepColor ? ['color'] : [])].includes(name)) { g.deleteAttribute(name); continue; }
           // Plain float attributes (quantized / interleaved accessors would not merge).
           const a = g.attributes[name];
           const arr = new Float32Array(a.count * a.itemSize);
@@ -206,7 +226,10 @@ export class KitLibrary {
         if (!g.attributes.uv) g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(n * 2), 2));
         const col = new Float32Array(n * 3);
         const cc = color || _c.set(1, 1, 1);
-        for (let i = 0; i < n; i++) { col[i * 3] = cc.r; col[i * 3 + 1] = cc.g; col[i * 3 + 2] = cc.b; }
+        const vc = keepColor ? g.attributes.color : null;
+        for (let i = 0; i < n; i++) {
+          col[i * 3] = cc.r * (vc ? vc.getX(i) : 1); col[i * 3 + 1] = cc.g * (vc ? vc.getY(i) : 1); col[i * 3 + 2] = cc.b * (vc ? vc.getZ(i) : 1);
+        }
         g.setAttribute('color', new THREE.BufferAttribute(col, 3));
         if (!g.index) g.setIndex([...Array(n).keys()]);
         parts.push({ geometry: g, mat: key });

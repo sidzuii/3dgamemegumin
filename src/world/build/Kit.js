@@ -1049,6 +1049,22 @@ export function well(world, x, z) {
   world.addFootprint(x, z, 2.2, 2.2, 0, 'well');
 }
 
+/**
+ * A hero object ('obj/<id>', KitLibrary OBJECTS) at a local point, centred, standing on `ly`, scaled to a height (`size.h`)
+ * or a width (`size.w`, the larger horizontal side). Returns { s, w, d, h } (the placed size) or null when the model is absent
+ * (the caller then builds its own fallback). The collision is the caller's (a solid object would block a whole square).
+ */
+export function heroKit(F, name, size, lx, ly, lz, opts = {}) {
+  if (!F.w.kits.has(name)) return null;
+  const b = F.w.kits.box(name);
+  const bw = b.max.x - b.min.x, bd = b.max.z - b.min.z, bh = b.max.y - b.min.y;
+  const s = size.h ? size.h / bh : size.w / Math.max(bw, bd);
+  const ry = opts.ry ?? 0, c = Math.cos(ry), sn = Math.sin(ry);
+  const cx = ((b.min.x + b.max.x) / 2) * s, cz = ((b.min.z + b.max.z) / 2) * s;
+  F.kit(name, lx - (cx * c + cz * sn), ly - b.min.y * s, lz - (-cx * sn + cz * c), { s, ry, collide: false, castShadow: opts.castShadow ?? true, tint: opts.tint ?? null });
+  return { s, w: bw * s, d: bd * s, h: bh * s };
+}
+
 export function bench(world, F, lx, lz, ry = 0) {
   partAt(world, F, lx, lz, 'bench', () => F.kit('town/stall-bench', lx, 0, lz, { s: 2, ry: ry + Math.PI / 2, collide: false }), 'Скамья');
 }

@@ -435,6 +435,8 @@ export class World {
       cloth: M({ color: 0xffffff, roughness: 0.95, side: THREE.DoubleSide }),
       flower: M({ color: 0xffffff, roughness: 0.8 }),
       lawn: M({ color: 0x5f8a3e, roughness: 0.97, map: noise2 }),
+      // the far city: plaster with windows, shutters and floor beams (4 bays x 2 storeys a tile); the panes glow at night
+      facade: (() => { const t = makeFacadeTextures(); return M({ color: 0xffffff, roughness: 0.92, map: t.map, emissiveMap: t.glow, emissive: new THREE.Color(1.0, 0.62, 0.28), emissiveIntensity: 0 }); })(),
       hay: M({ color: 0xd8b860, roughness: 1, map: noise2 }),
       bark: M({ color: 0x5a4230, roughness: 0.95, map: noise }),
       birch: M({ color: 0xe8e2d4, roughness: 0.9, map: noise }),
@@ -516,9 +518,9 @@ export class World {
         if (gu > -310 && gu < 410 && gv < -690 && gv > -910) c.lerp(T.grassB, 0.8);
         else {
           const w = 1 - smoothstep(-40, -10, dt), g2 = fbm(x * 0.05 + 9, z * 0.05 - 4, 3) * 0.5 + 0.5;
-          c.lerp(T.gravel, (0.55 + 0.3 * n) * w);
-          c.lerp(T.earth, smoothstep(0.38, 0.62, g2) * 0.5 * w);
-          c.lerp(T.patch, smoothstep(0.62, 0.78, g2) * 0.65 * w); // grass in the yards
+          c.lerp(T.gravel, (0.75 + 0.2 * n) * w);
+          c.lerp(T.earth, smoothstep(0.38, 0.62, g2) * 0.45 * w);
+          c.lerp(T.patch, smoothstep(0.7, 0.85, g2) * 0.22 * w); // a little worn grass in the yards (a capital is trodden ground)
         }
       }
       const rd = riverDistance(x, z);
@@ -606,7 +608,7 @@ export class World {
    * Add a static solid: merged visual batch (by material + map chunk) + optional collider.
    * opts: { collide = true, castShadow = true, tint, collideOnly }
    */
-  addSolid(geometry, matrix, materialKey, { collide = true, castShadow = true, tint = null, collideOnly = false, detail = false } = {}) {
+  addSolid(geometry, matrix, materialKey, { collide = true, castShadow = true, tint = null, collideOnly = false, detail = false, keepUV = false } = {}) {
     const g = geometry.index ? geometry.toNonIndexed() : geometry.clone();
     if (this._mute) return g;
     g.applyMatrix4(this._D ? _dm.multiplyMatrices(this._D, matrix) : matrix);
@@ -616,7 +618,7 @@ export class World {
       this._staticCollision.push(cg);
       return g;
     }
-    planarUVs(g, 0.5);
+    if (!keepUV) planarUVs(g, 0.5);
     for (const name of Object.keys(g.attributes)) {
       if (!['position', 'normal', 'uv'].includes(name)) g.deleteAttribute(name);
     }
@@ -1141,6 +1143,42 @@ const EMPTY = [];
 const polyArea = (pts) => Math.abs(pts.reduce((s, p, i) => { const q = pts[(i + 1) % pts.length]; return s + p[0] * q[1] - q[0] * p[1]; }, 0)) / 2;
 
 /** World-space planar UV projection per face (cheap triplanar bake). */
+/**
+ * The tile of the far facades (World mats.facade): 4 window bays x 2 storeys of cream plaster (white-ish: the vertex tint gives
+ * the house its colour), a timber beam at each floor, framed windows with shutters (some shut), stone sills; the glow map lights
+ * about half of the panes at night.
+ */
+function makeFacadeTextures() {
+  const BW = 64, SH = 96, W = BW * 4, Hh = SH * 2;
+  const mk = () => { const c = document.createElement('canvas'); c.width = W; c.height = Hh; return c; };
+  const c = mk(), g = c.getContext('2d'), cg = mk(), gg = cg.getContext('2d');
+  let seed = 7;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  g.fillStyle = '#f2ece0'; g.fillRect(0, 0, W, Hh);
+  for (let i = 0; i < 900; i++) { const v = 225 + Math.floor(rnd() * 26); g.fillStyle = `rgb(${v},${v - 6},${v - 16})`; g.fillRect(rnd() * W, rnd() * Hh, 2 + rnd() * 5, 2 + rnd() * 4); }
+  gg.fillStyle = '#000'; gg.fillRect(0, 0, W, Hh);
+  for (let f = 0; f < 2; f++) {
+    const y0 = f * SH;
+    g.fillStyle = '#6a4a32'; g.fillRect(0, y0, W, 6); // the floor beam (the top of the tile row is the storey above)
+    // the timber frame: posts between the bays, a brace now and then (the near houses are half-timbered too)
+    for (let b = 0; b <= 4; b++) g.fillRect(b * BW - 3, y0, 6, SH);
+    g.strokeStyle = '#6a4a32'; g.lineWidth = 5;
+    for (let b = 0; b < 4; b++) if (rnd() < 0.5) { g.beginPath(); const l = rnd() < 0.5; g.moveTo(b * BW + (l ? 3 : BW - 3), y0 + SH * 0.86); g.lineTo(b * BW + (l ? BW * 0.26 : BW * 0.74), y0 + SH * 0.62); g.stroke(); }
+    for (let b = 0; b < 4; b++) {
+      const x = b * BW + BW * 0.3, wx = BW * 0.4, y = y0 + SH * 0.28, wy = SH * 0.46;
+      g.fillStyle = '#5a3c28'; g.fillRect(x - 3, y - 3, wx + 6, wy + 6); // frame
+      g.fillStyle = '#2a3440'; g.fillRect(x, y, wx, wy); // glass
+      g.fillStyle = '#5a3c28'; g.fillRect(x + wx / 2 - 1, y, 2, wy); g.fillRect(x, y + wy * 0.45, wx, 2); // the cross bars
+      g.fillStyle = '#c8bca4'; g.fillRect(x - 5, y + wy + 3, wx + 10, 4); // sill
+      const shut = rnd();
+      if (shut < 0.55) { g.fillStyle = ['#4a6a4a', '#7a4a34', '#3a5a7a'][Math.floor(rnd() * 3)]; g.fillRect(x - 3 - BW * 0.17, y - 3, BW * 0.15, wy + 6); g.fillRect(x + wx + 4, y - 3, BW * 0.15, wy + 6); }
+      if (rnd() < 0.55) { gg.fillStyle = '#fff'; gg.fillRect(x, y, wx, wy); }
+    }
+  }
+  const tex = (cv, srgb) => { const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; if (srgb) t.colorSpace = THREE.SRGBColorSpace; return t; };
+  return { map: tex(c, true), glow: tex(cg, true) };
+}
+
 /** mergeGeometries of a list that may mix indexed kit parts and non-indexed solids (a kit material used by a plain box). */
 export function mergeMixed(list) {
   if (list.some((g) => g.index) && list.some((g) => !g.index)) list = list.map((g) => (g.index ? g.toNonIndexed() : g));
