@@ -3,6 +3,8 @@
 Full description, file map and how-to guides: see `README.md` (Russian). The user writes in Russian.
 
 - Run: `npm run dev` (http://127.0.0.1:5173). Check: `npx vite build` and the browser console.
+  Portable build for a friend's Windows PC: `npm run portable` -> release/Megumin (Play.bat + tools/portable/serve.ps1 = a
+  PowerShell HttpListener on localhost:4173.., game/ = vite build; release/ is gitignored).
 - Debug handle: `window.__game` (`.rpg`, `.npcs`, `.world`, `.travel(spot)`). Game loop: `src/core/Game.js`.
 - RPG layer: `src/rpg/` (state, quests, dialogue, guild, economy, gathering, events, clock); content is data
   in `src/data/` (items, quests, dialogues, npcs, shops, resources). Map data: `src/world/MapData.js`;
