@@ -1,0 +1,37 @@
+{
+  "native_mesh_objects": 1,
+  "vertices": 51858,
+  "triangles": 102256,
+  "component_count": 413,
+  "boundary_edges": 0,
+  "nonmanifold_edges": 0,
+  "negative_volume_components": 0,
+  "zero_volume_components": 0,
+  "flat_contact_z_m": 0.0,
+  "dimensions_m": [
+    2.994999885559082,
+    2.9540752172470093,
+    2.856187105178833
+  ],
+  "vertex_groups": [
+    "01 Cart body and counter",
+    "02 Two wooden wheels",
+    "03 Canopy wooden frame",
+    "04 Red and ivory cloth canopy",
+    "05 Wicker baskets and red apples",
+    "06 Bread tray and golden loaves",
+    "07 Small clay jars",
+    "08 Hanging green herb bundles"
+  ],
+  "vertex_colours": "Paint",
+  "uv_layer": "UVMap",
+  "packed_images": [
+    "Vendor_Cart_wood_color"
+  ],
+  "glb_meshes": 1,
+  "glb_embedded_images": 1,
+  "glb_has_cameras": false,
+  "glb_unlit_materials": 22,
+  "background_transparent": true,
+  "style": "Painted cel tones, baked contact shadows, flat brush highlights"
+}

@@ -1,0 +1,18 @@
+{
+  "native_opened": true,
+  "single_mesh": true,
+  "finite_coordinates": true,
+  "flat_bottom_z": 0.0,
+  "dimensions_m": [
+    8.19,
+    7.02,
+    6.45
+  ],
+  "part_groups": 10,
+  "closed_component_count": 471,
+  "inward_components": 0,
+  "open_edges": 0,
+  "packed_images": true,
+  "vertex_colors": true,
+  "glb_reimported": true
+}

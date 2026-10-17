@@ -1,0 +1,25 @@
+{
+  "mesh_objects": 1,
+  "vertices": 70544,
+  "triangles": 139228,
+  "square_quay_m": 7,
+  "wheel_outer_diameter_m": 3.46,
+  "wheel_width_m": 1.57,
+  "cargo_crates": 3,
+  "barrels": 1,
+  "ground_plane": false,
+  "background": false,
+  "static_asset": true,
+  "part_groups": [
+    "Stone quay",
+    "Timber chassis",
+    "Main mast and boom",
+    "Treadwheel",
+    "Wheel bearing frame",
+    "Winding drum and rope",
+    "Hoist block and iron hook",
+    "Cargo crates",
+    "Cargo barrel",
+    "Spare rope coil"
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "mesh_objects": 1,
+  "vertices": 51858,
+  "triangles": 102256,
+  "dimensions_m": [
+    2.994999885559082,
+    2.9540752172470093,
+    2.856187105178833
+  ],
+  "bounds_min_m": [
+    -1.497499942779541,
+    -1.028902530670166,
+    0.0
+  ],
+  "bounds_max_m": [
+    1.497499942779541,
+    1.9251726865768433,
+    2.856187105178833
+  ],
+  "wooden_wheels": 2,
+  "red_apples": 16,
+  "apple_baskets": 2,
+  "bread_loaves": 4,
+  "clay_jars": 5,
+  "herb_bundles": 3,
+  "ground_plane": false,
+  "background": false,
+  "static_asset": true,
+  "style": "Hand-painted anime / soft cel tones",
+  "lighting": "Baked into vertex colours; unlit portable materials",
+  "part_groups": [
+    "01 Cart body and counter",
+    "02 Two wooden wheels",
+    "03 Canopy wooden frame",
+    "04 Red and ivory cloth canopy",
+    "05 Wicker baskets and red apples",
+    "06 Bread tray and golden loaves",
+    "07 Small clay jars",
+    "08 Hanging green herb bundles"
+  ]
+}

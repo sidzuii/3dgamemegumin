@@ -1,0 +1,119 @@
+{
+  "passed": true,
+  "asset": "Merchant_Ship",
+  "native": {
+    "mesh_count": 1,
+    "mesh_name": "Fantasy_Merchant_Ship",
+    "vertices": 81258,
+    "triangles": 160800,
+    "components": 447,
+    "minimum_component_volume": 1.2983433456285348e-05,
+    "total_component_volume": 25.979938972616896,
+    "nonmanifold_edges": 0,
+    "boundary_edges": 0,
+    "wire_edges": 0,
+    "inconsistent_edges": 0,
+    "loose_vertices": 0,
+    "origin": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "bounds_min": [
+      -3.949439525604248,
+      -2.4700000286102295,
+      0.0
+    ],
+    "bounds_max": [
+      4.383821964263916,
+      2.4700000286102295,
+      6.329999923706055
+    ],
+    "uv_layer": "UVMap",
+    "color_attribute": "Paint",
+    "part_groups": [
+      "01 Rounded plank hull",
+      "02 Deck and bulwarks",
+      "03 Raised stern cabin and deck",
+      "04 Single mast and furled white sail",
+      "05 Rigging and deck fittings",
+      "06 Golden bird figurehead",
+      "07 Deck cargo",
+      "08 Rope coils and mooring"
+    ],
+    "finite_coordinates_uvs_colors": true
+  },
+  "glb": {
+    "bytes": 9485788,
+    "chunks": 2,
+    "binary_bytes": 9462880,
+    "mesh_count": 1,
+    "mesh_nodes": 1,
+    "primitive_count": 18,
+    "material_count": 18,
+    "embedded_images": 1,
+    "all_materials_unlit": true,
+    "cameras": 0,
+    "lights": 0,
+    "vertex_colors_and_uvs": true
+  },
+  "renders": {
+    "Merchant_Ship_preview.png": {
+      "width": 1700,
+      "height": 1550,
+      "mode": "RGBA",
+      "alpha_bounds": [
+        282,
+        225,
+        1418,
+        1289
+      ],
+      "margins": [
+        282,
+        225,
+        282,
+        261
+      ],
+      "cropping_allowed": false,
+      "passed": true
+    },
+    "Merchant_Ship_rear.png": {
+      "width": 1700,
+      "height": 1550,
+      "mode": "RGBA",
+      "alpha_bounds": [
+        281,
+        223,
+        1403,
+        1307
+      ],
+      "margins": [
+        281,
+        223,
+        297,
+        243
+      ],
+      "cropping_allowed": false,
+      "passed": true
+    },
+    "Merchant_Ship_detail.png": {
+      "width": 1600,
+      "height": 1450,
+      "mode": "RGBA",
+      "alpha_bounds": [
+        112,
+        0,
+        1600,
+        1408
+      ],
+      "margins": [
+        112,
+        0,
+        0,
+        42
+      ],
+      "cropping_allowed": true,
+      "passed": true
+    }
+  }
+}

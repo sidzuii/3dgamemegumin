@@ -1,0 +1,207 @@
+{
+  "schemaVersion": 1,
+  "coordinateSpace": "gltf",
+  "upAxis": "+Y",
+  "unitsPerMeter": null,
+  "modelHeightUnits": 0.99853515625,
+  "root": "CharacterRoot",
+  "rig": "Armature",
+  "anchor": "HipsAnchor",
+  "skinnedMeshes": [
+    "Sash_Long",
+    "Sash_Short"
+  ],
+  "chains": [
+    {
+      "name": "Sash_Long",
+      "mesh": "Sash_Long",
+      "bones": [
+        "Cloth_Long_01",
+        "Cloth_Long_02",
+        "Cloth_Long_03",
+        "Cloth_Long_04",
+        "Cloth_Long_05",
+        "Cloth_Long_06",
+        "Cloth_Long_07"
+      ],
+      "restJoints": [
+        [
+          0.0751952975988388,
+          0.591796875,
+          0.016194600611925125
+        ],
+        [
+          0.08881840109825134,
+          0.5528739094734192,
+          0.023364199325442314
+        ],
+        [
+          0.09651689976453781,
+          0.5139508843421936,
+          0.03759760037064552
+        ],
+        [
+          0.10270179808139801,
+          0.4750278890132904,
+          0.03344719856977463
+        ],
+        [
+          0.1132436990737915,
+          0.4361048936843872,
+          0.035212498158216476
+        ],
+        [
+          0.12294919788837433,
+          0.397181898355484,
+          0.025463800877332687
+        ],
+        [
+          0.13818359375,
+          0.3582589030265808,
+          -0.0023600999265909195
+        ],
+        [
+          0.1347655951976776,
+          0.3193359076976776,
+          -0.018554700538516045
+        ]
+      ],
+      "pinnedRoot": true,
+      "collisionEnabled": true,
+      "collisionStartJoint": 2,
+      "swingLimitDegrees": 25,
+      "twistLimitDegrees": 12,
+      "suggestedDamping": 0.8,
+      "suggestedStiffness": 0.24
+    },
+    {
+      "name": "Sash_Short",
+      "mesh": "Sash_Short",
+      "bones": [
+        "Cloth_Short_01",
+        "Cloth_Short_02",
+        "Cloth_Short_03",
+        "Cloth_Short_04"
+      ],
+      "restJoints": [
+        [
+          0.07810570299625397,
+          0.591796875,
+          0.010061100125312805
+        ],
+        [
+          0.08444669842720032,
+          0.5731201171875,
+          -0.0025402000173926353
+        ],
+        [
+          0.09088809788227081,
+          0.5544434189796448,
+          -0.010443899780511856
+        ],
+        [
+          0.09423830360174179,
+          0.5357666015625,
+          -0.015225600451231003
+        ],
+        [
+          0.09692379832267761,
+          0.5170897841453552,
+          -0.015136799775063992
+        ]
+      ],
+      "pinnedRoot": true,
+      "collisionEnabled": false,
+      "collisionStartJoint": 5,
+      "swingLimitDegrees": 16,
+      "twistLimitDegrees": 12,
+      "suggestedDamping": 0.86,
+      "suggestedStiffness": 0.42
+    }
+  ],
+  "colliders": [
+    {
+      "name": "Collider_Thigh_L",
+      "spaceNode": "Collider_Thigh_L",
+      "shape": "capsule",
+      "start": [
+        -0.008499998599290848,
+        0.0964999794960022,
+        0.0024999999441206455
+      ],
+      "end": [
+        0.008500002324581146,
+        -0.09650000929832458,
+        -0.0024999999441206455
+      ],
+      "radius": 0.046,
+      "futureBoneHint": "LeftUpperLeg",
+      "attachedBone": "mixamorig:LeftUpLeg"
+    },
+    {
+      "name": "Collider_Shin_L",
+      "spaceNode": "Collider_Shin_L",
+      "shape": "capsule",
+      "start": [
+        -0.008000001311302185,
+        0.08799999952316284,
+        -0.0029999995604157448
+      ],
+      "end": [
+        0.008000001311302185,
+        -0.08799999952316284,
+        0.003000000026077032
+      ],
+      "radius": 0.034,
+      "futureBoneHint": "LeftLowerLeg",
+      "attachedBone": "mixamorig:LeftLeg"
+    },
+    {
+      "name": "Collider_Thigh_R",
+      "spaceNode": "Collider_Thigh_R",
+      "shape": "capsule",
+      "start": [
+        0.008499998599290848,
+        0.0964999794960022,
+        0.0024999999441206455
+      ],
+      "end": [
+        -0.008500002324581146,
+        -0.09650000929832458,
+        -0.0024999999441206455
+      ],
+      "radius": 0.046,
+      "futureBoneHint": "RightUpperLeg",
+      "attachedBone": "mixamorig:RightUpLeg"
+    },
+    {
+      "name": "Collider_Shin_R",
+      "spaceNode": "Collider_Shin_R",
+      "shape": "capsule",
+      "start": [
+        0.008000001311302185,
+        0.08799999952316284,
+        -0.0029999995604157448
+      ],
+      "end": [
+        -0.008000001311302185,
+        -0.08799999952316284,
+        0.003000000026077032
+      ],
+      "radius": 0.034,
+      "futureBoneHint": "RightLowerLeg",
+      "attachedBone": "mixamorig:RightLeg"
+    }
+  ],
+  "previewClip": "Cloth_Preview",
+  "previewDurationSeconds": 4,
+  "notes": [
+    "Stop Cloth_Preview when driving bones with physics.",
+    "Long chain: skip collision on first two joints to preserve the folded rest shape.",
+    "Short panel collision disabled by default because the simplified leg capsule intersects its rest centroid.",
+    "Colliders are preparation metadata and wire helpers, not an active Three.js physics system.",
+    "Mixamo humanoid skeleton added; HipsAnchor is parented to mixamorig:Hips and colliders to the leg bones.",
+    "Every Mixamo clip has baked cloth bone keys; a runtime bone solver can override them."
+  ],
+  "anchorParentBone": "mixamorig:Hips"
+}

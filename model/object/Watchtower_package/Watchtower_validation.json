@@ -1,0 +1,21 @@
+{
+  "native_opened": true,
+  "mesh_objects": 5,
+  "upper_windows_open": 8,
+  "lower_windows_removed": 8,
+  "uniform_stair_width_m": 0.9,
+  "headroom_tests": 201,
+  "minimum_tested_headroom_m": 2.13,
+  "constant_radius_exit": true,
+  "exit_inner_radius_m": 1.65,
+  "exit_outer_radius_m": 2.765,
+  "flat_center_rectangle_m": [
+    2,
+    1.4
+  ],
+  "estimated_usable_roof_area_m2": 18.4,
+  "railings": false,
+  "packed_textures": true,
+  "maximum_radial_transition_per_step_m": 0.235,
+  "glb_reimported": true
+}

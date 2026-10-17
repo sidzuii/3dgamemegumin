@@ -1,0 +1,104 @@
+{
+  "asset": "ClosedBook",
+  "units": "meters",
+  "meshes": [
+    {
+      "name": "ClosedBook_Leather_Binding_End_Head",
+      "vertices": 72,
+      "triangles": 140,
+      "materials": [
+        "ClosedBook_BindingLeather"
+      ]
+    },
+    {
+      "name": "ClosedBook_Leather_Binding_End_Tail",
+      "vertices": 72,
+      "triangles": 140,
+      "materials": [
+        "ClosedBook_BindingLeather"
+      ]
+    },
+    {
+      "name": "ClosedBook_Surfaces",
+      "vertices": 5846,
+      "triangles": 11412,
+      "materials": [
+        "ClosedBook_PBR"
+      ]
+    }
+  ],
+  "triangles": 11692,
+  "bounds": [
+    [
+      -0.1632000058889389,
+      0.1607999950647354
+    ],
+    [
+      -0.2207999974489212,
+      0.2207999974489212
+    ],
+    [
+      0.0,
+      0.08500000089406967
+    ]
+  ],
+  "dimensions": [
+    0.3240000009536743,
+    0.4415999948978424,
+    0.08500000089406967
+  ],
+  "textures": [
+    {
+      "name": "ClosedBook_BaseColor_4K",
+      "path": "Textures/",
+      "size": [
+        4096,
+        4096
+      ],
+      "colorspace": "sRGB",
+      "packed": true
+    },
+    {
+      "name": "ClosedBook_Roughness_2K",
+      "path": "Textures/",
+      "size": [
+        2048,
+        2048
+      ],
+      "colorspace": "Non-Color",
+      "packed": true
+    },
+    {
+      "name": "ClosedBook_Metallic_2K",
+      "path": "Textures/",
+      "size": [
+        2048,
+        2048
+      ],
+      "colorspace": "Non-Color",
+      "packed": true
+    },
+    {
+      "name": "ClosedBook_Normal_2K",
+      "path": "Textures/",
+      "size": [
+        2048,
+        2048
+      ],
+      "colorspace": "Non-Color",
+      "packed": true
+    },
+    {
+      "name": "ClosedBook_AO_2K",
+      "path": "Textures/",
+      "size": [
+        2048,
+        2048
+      ],
+      "colorspace": "Non-Color",
+      "packed": true
+    }
+  ],
+  "ink_note": "Writing and page borders are geometry with a constant material, not raster text.",
+  "root": "ClosedBook"
+}

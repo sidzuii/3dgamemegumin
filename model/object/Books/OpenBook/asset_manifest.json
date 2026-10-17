@@ -1,0 +1,96 @@
+{
+  "asset": "OpenBook",
+  "units": "meters",
+  "meshes": [
+    {
+      "name": "OpenBook_Surfaces",
+      "vertices": 8618,
+      "triangles": 17136,
+      "materials": [
+        "OpenBook_PBR"
+      ]
+    },
+    {
+      "name": "OpenBook_Writing",
+      "vertices": 3300,
+      "triangles": 6248,
+      "materials": [
+        "Book_inkdark"
+      ]
+    }
+  ],
+  "triangles": 23384,
+  "bounds": [
+    [
+      -0.3442138731479645,
+      0.3442138731479645
+    ],
+    [
+      -0.23242487013339996,
+      0.23199999332427979
+    ],
+    [
+      0.0,
+      0.10486249625682831
+    ]
+  ],
+  "dimensions": [
+    0.688427746295929,
+    0.46442486345767975,
+    0.10486249625682831
+  ],
+  "textures": [
+    {
+      "name": "OpenBook_BaseColor_4K",
+      "path": "Textures/OpenBook_BaseColor_4K.png",
+      "size": [
+        4096,
+        4096
+      ],
+      "colorspace": "sRGB",
+      "packed": true
+    },
+    {
+      "name": "OpenBook_Roughness_2K",
+      "path": "Textures/OpenBook_Roughness_2K.png",
+      "size": [
+        2048,
+        2048
+      ],
+      "colorspace": "Non-Color",
+      "packed": true
+    },
+    {
+      "name": "OpenBook_Metallic_2K",
+      "path": "Textures/OpenBook_Metallic_2K.png",
+      "size": [
+        2048,
+        2048
+      ],
+      "colorspace": "Non-Color",
+      "packed": true
+    },
+    {
+      "name": "OpenBook_Normal_2K",
+      "path": "Textures/OpenBook_Normal_2K.png",
+      "size": [
+        2048,
+        2048
+      ],
+      "colorspace": "Non-Color",
+      "packed": true
+    },
+    {
+      "name": "OpenBook_AO_2K",
+      "path": "Textures/OpenBook_AO_2K.png",
+      "size": [
+        2048,
+        2048
+      ],
+      "colorspace": "Non-Color",
+      "packed": true
+    }
+  ],
+  "ink_note": "Writing and page borders are geometry with a constant material, not raster text.",
+  "root": "OpenBook"
+}

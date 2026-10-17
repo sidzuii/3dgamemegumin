@@ -1,0 +1,103 @@
+{
+  "mesh_objects": 1,
+  "vertices": 58400,
+  "triangles": 115652,
+  "dimensions_m": [
+    5.044999837875366,
+    2.559999942779541,
+    3.4030001163482666
+  ],
+  "bounds_min_m": [
+    -2.129999876022339,
+    -1.2799999713897705,
+    0.0
+  ],
+  "bounds_max_m": [
+    2.9149999618530273,
+    1.2799999713897705,
+    3.4030001163482666
+  ],
+  "wheels": 4,
+  "spokes_per_wheel": 8,
+  "windows_with_curtains": 8,
+  "side_lanterns": 1,
+  "horses": 0,
+  "ground_plane": false,
+  "background": false,
+  "static_asset": true,
+  "style": "Hand-painted anime / soft cel tones",
+  "lighting": "Baked vertex colours and painted lacquer highlights; unlit materials",
+  "part_groups": [
+    "01 Chassis and suspension",
+    "02 Four spoked wheels",
+    "03 Navy carriage body",
+    "04 Windows and pink curtains",
+    "05 Gilded doors and scroll carvings",
+    "06 Domed roof and golden crest",
+    "07 Raised coachman seat and shafts",
+    "08 Brass side lantern"
+  ],
+  "running_gear": {
+    "wheels": [
+      {
+        "name": "Rear left wheel",
+        "centre": [
+          -1.43,
+          -1.12,
+          0.7
+        ],
+        "radius": 0.7,
+        "spokes": 8
+      },
+      {
+        "name": "Rear right wheel",
+        "centre": [
+          -1.43,
+          1.12,
+          0.7
+        ],
+        "radius": 0.7,
+        "spokes": 8
+      },
+      {
+        "name": "Front left wheel",
+        "centre": [
+          1.38,
+          -1.12,
+          0.59
+        ],
+        "radius": 0.59,
+        "spokes": 8
+      },
+      {
+        "name": "Front right wheel",
+        "centre": [
+          1.38,
+          1.12,
+          0.59
+        ],
+        "radius": 0.59,
+        "spokes": 8
+      }
+    ],
+    "axle_positions": [
+      [
+        -1.43,
+        0,
+        0.7
+      ],
+      [
+        1.38,
+        0,
+        0.59
+      ]
+    ],
+    "radii": [
+      0.7,
+      0.7,
+      0.59,
+      0.59
+    ],
+    "ground_z": 0.0
+  }
+}
