@@ -147,7 +147,7 @@ export class RPG {
     this._applyStateToWorld();
     this._migrateCapital();
     this.gathering.syncFromState();
-    this.npcs?.refresh();
+    this.npcs?.refresh(true);
     this._resumeEscort();
     this._resumeRitual();
     this._resumeWaves();
@@ -541,10 +541,15 @@ export class RPG {
   /** New game: the cutscene-like first conversation with Marta (A00); the player moves after it. */
   autoIntro() {
     if (this.state.quests.prologue_arrival?.stage !== 0) return;
-    setTimeout(() => {
+    // After ~1 s AND some real game frames: the first frames place the heroine and Marta (a slow first frame - shaders
+    // compiling - must not open the scene with nobody on screen yet)
+    const g = this.game, t0 = performance.now(), f0 = g.frames;
+    const tick = () => {
+      if (g.frames - f0 < 15 || performance.now() - t0 < 900) { setTimeout(tick, 100); return; }
       const marta = this.npcs?.get('marta');
       if (marta && !this.dialogue.active) this.talkTo(marta);
-    }, 900);
+    };
+    setTimeout(tick, 100);
   }
 
   _bark(npc, lines) {
@@ -1117,6 +1122,7 @@ export class RPG {
     S.exploredAin = btoa(bin2);
     const e = this.escort;
     S.escort = e ? { def: e.def, ambushed: e.ambushed, x: e.npc.position.x, z: e.npc.position.z } : null;
+    S.savedAt = Date.now(); // the save card of the main menu
     if (!writeSave(S)) {
       // Storage full / blocked: keep the progress dirty and retry soon; tell the player once.
       this.saveTimer = 10;

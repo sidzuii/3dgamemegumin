@@ -119,9 +119,10 @@ export class NPCManager {
     for (const n of this.list) n.update(dt, pp);
   }
 
-  /** Re-evaluate visibility conditions and schedules (after story changes / loading). */
-  refresh() {
-    for (const n of this.list) n.refresh();
+  /** Re-evaluate visibility conditions and schedules (after story changes / loading). `teleport` (start / load): everyone stands
+   * at the spot of the hour at once instead of walking there from wherever the world build left them (escorts keep their place). */
+  refresh(teleport = false) {
+    for (const n of this.list) n.refresh(teleport && !(n.escorting || n.follow));
   }
 }
 

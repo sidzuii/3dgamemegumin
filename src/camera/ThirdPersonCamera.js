@@ -42,6 +42,7 @@ export class ThirdPersonCamera {
     this.collisionDist = this.distance;
     this.pivot = new THREE.Vector3();
     this.sensitivity = 0.0024;
+    this.invertY = false; // settings: «Инвертировать мышь по вертикали»
     this.baseFov = 60;
     this.fovKick = this.baseFov; // current (smoothed) FOV
     this.trauma = 0;
@@ -79,7 +80,7 @@ export class ThirdPersonCamera {
     // ---- Input ----
     if (input) {
       this.yaw -= input.mouseDX * this.sensitivity;
-      this.pitch += input.mouseDY * this.sensitivity;
+      this.pitch += input.mouseDY * this.sensitivity * (this.invertY ? -1 : 1);
       this.pitch = clamp(this.pitch, MIN_PITCH, MAX_PITCH);
       if (input.wheel) {
         this.distance = clamp(this.distance * Math.pow(1.0013, input.wheel), 1.4, 10);

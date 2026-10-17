@@ -7,6 +7,11 @@ Full description, file map and how-to guides: see `README.md` (Russian). The use
   PowerShell HttpListener on localhost:4173 on a runspace thread + Edge/Chrome `--app` window with its own profile, exits when the
   window closes; app/megumin.ico; app/game = vite build; release/ is gitignored). Keep serve.ps1 Windows PowerShell 5.1 compatible.
 - Debug handle: `window.__game` (`.rpg`, `.npcs`, `.world`, `.travel(spot)`). Game loop: `src/core/Game.js`.
+- Main menu = `src/ui/MainMenu.js` + `menu.css` (`game.mainMenu`): loading screen, title (live flight over Axel = `Game.attract()`), pause on
+  Esc / pointer release (`pauseOpen` is part of `uiBlocking`; `_blockedAt` tells a window's own release from Esc), settings
+  (`megumin-settings`: fov, mouse sens, invertY, dynamic res, fps; quality/sound/combat keep their keys), controls, credits, `ask()` modal.
+  `tools/debug_helpers.js` `__init` clicks the primary menu button. New game: A00 at the caravan camp OUTSIDE the south gate
+  (spots `caravan_arrival`, `marta_road`, sacks there); `RPG.autoIntro` waits for 15 game frames; `npcs.refresh(true)` on load.
 - RPG layer: `src/rpg/` (state, quests, dialogue, guild, economy, gathering, events, clock); content is data
   in `src/data/` (items, quests, dialogues, npcs, shops, resources). Map data: `src/world/MapData.js`;
   builders: `src/world/build/` (Kit, Town, Countryside, Dungeon). NPCs: `src/npc/`.

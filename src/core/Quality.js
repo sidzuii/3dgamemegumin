@@ -23,6 +23,7 @@ export class Quality {
     let saved = null;
     try { saved = localStorage.getItem(KEY); } catch { /* storage blocked */ }
     this.name = PRESETS[saved] ? saved : this._guess();
+    this.dynamic = true; // dynamic resolution (settings menu)
   }
 
   /** Integrated / mobile GPUs start on medium. */
@@ -83,16 +84,28 @@ export class Quality {
   }
 
   cycle() {
-    this.name = ORDER[(ORDER.indexOf(this.name) + 1) % ORDER.length];
+    return this.set(ORDER[(ORDER.indexOf(this.name) + 1) % ORDER.length]);
+  }
+
+  /** Switch to a preset by name (the settings menu); returns its label. */
+  set(name) {
+    if (!PRESETS[name]) return this.preset.label;
+    this.name = name;
     try { localStorage.setItem(KEY, this.name); } catch { /* storage blocked */ }
     this.scale = 1;
     this.apply();
     return this.preset.label;
   }
 
+  /** Dynamic resolution on/off (off: the preset's full resolution all the time). */
+  setDynamic(on) {
+    this.dynamic = !!on;
+    if (!this.dynamic && this.scale !== 1) { this.scale = 1; this._pixelRatio(); }
+  }
+
   /** Dynamic resolution: call every frame with the real frame time. */
   update(dt) {
-    if (document.hidden || dt <= 0) return;
+    if (document.hidden || dt <= 0 || !this.dynamic) return;
     this.acc += dt;
     this.frames++;
     this.timer += dt;

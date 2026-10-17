@@ -87,6 +87,7 @@ export class Game {
     this.hud = new HUD();
     this.paused = true;
     this.time = 0;
+    this.frames = 0; // game frames that ran (not paused): RPG.autoIntro waits for a few
     this.inDungeon = false;
     this.discovered = new Set();
     // Map editor (dev): ?editor builds every editable group as its own movable object.
@@ -124,7 +125,7 @@ export class Game {
 
   /** Any window that pauses the game (dialogue, shop, menu, book). */
   get uiBlocking() {
-    return !!(this.dialogueUI?.open || this.shopUI?.open || this.menu?.open || this.invUI?.bookOpen);
+    return !!(this.dialogueUI?.open || this.shopUI?.open || this.menu?.open || this.invUI?.bookOpen || this.mainMenu?.pauseOpen);
   }
 
   async init(onProgress) {
@@ -230,7 +231,14 @@ export class Game {
 
   /** Apply the save (or start a new story) and run the loop. */
   start(newGame = false) {
+    for (const r of this._attractRoots || []) r.visible = true;
+    this._attractRoots = null;
     const info = this.rpg.begin({ newGame });
+    // The camera goes behind the heroine at once (it was flying over the town for the title screen; a scene may open
+    // before the first game frame)
+    this.cameraRig.initialized = false;
+    this.player.getFocus(this._focus);
+    this.cameraRig.update(1 / 60, null, this._focus, {});
     this.hud.setCompanion(!!this.rpg.state.flags.roxy_companion);
     this._checkLocation(true);
     this.paused = false;
@@ -243,13 +251,37 @@ export class Game {
     return info;
   }
 
-  /** On-screen frame counter (F8). */
-  _toggleFps() {
+  /** On-screen frame counter (F8; `on` forces a state: the settings menu). */
+  _toggleFps(on = !this.fpsEl) {
+    if (!!this.fpsEl === on) return;
     if (this.fpsEl) { this.fpsEl.remove(); this.fpsEl = null; return; }
     const el = document.createElement('div');
     el.style.cssText = 'position:fixed;left:50%;top:44px;transform:translateX(-50%);font:12px system-ui;color:#fff;background:rgba(0,0,0,.45);padding:2px 8px;border-radius:6px;z-index:40;pointer-events:none';
     document.body.appendChild(el);
     this.fpsEl = el;
+  }
+
+  /**
+   * The title screen behind the main menu: the camera circles slowly over the Fountain square of Axel in the morning light
+   * (the heroine is hidden, nothing simulates). `start()` replaces this loop with the game's own.
+   */
+  attract() {
+    const c = this.world.npcSpots.square?.pos?.clone() || new THREE.Vector3(-330, 0, 20);
+    c.y = this.world.heightAt(c.x, c.z);
+    const roots = Object.values(this.player.models || {}).map((m) => m?.root).filter(Boolean);
+    for (const r of roots) r.visible = false;
+    this._attractRoots = roots;
+    let t = 0.6;
+    this.clock.start();
+    this.renderer.setAnimationLoop(() => {
+      const dt = Math.min(this.clock.getDelta(), 1 / 20);
+      t += dt * 0.022;
+      this.camera.position.set(c.x + Math.cos(t) * 62, c.y + 24 + Math.sin(t * 1.7) * 3, c.z + Math.sin(t) * 62);
+      this.camera.lookAt(c.x, c.y + 5, c.z);
+      this.dayNight.update(dt, 9.5, 0);
+      this.world.update(dt, { playerPos: c, playerSpeed: 0, vfx: this.vfx, night: 0, camera: this.camera });
+      this.composer.render();
+    });
   }
 
   /** Map editor instead of the game (`?editor`). */
@@ -369,7 +401,8 @@ export class Game {
     const raw = this._lastFrame ? (now - this._lastFrame) / 1000 : 0;
     this._lastFrame = now;
     let dt = Math.min(this.clock.getDelta(), 1 / 20);
-    if (!this.uiBlocking) this.quality.update(raw);
+    if (this.uiBlocking) this._blockedAt = now; // the main menu tells a window's own pointer release from Esc by this
+    else this.quality.update(raw);
     if (this.fpsEl) this.fpsEl.textContent = this.quality.fps(raw) + ' FPS · ' + this.quality.preset.label + (this.quality.scale < 1 ? ' · ' + Math.round(this.quality.scale * 100) + '%' : '');
     if (this._uiInput(dt)) {
       // Paused (window open): keep the HUD alive, freeze the world.
@@ -398,6 +431,7 @@ export class Game {
       dt *= this.slowMoScale;
     }
     this.time += dt;
+    this.frames++;
     this.update(dt);
     this._audioFrame(raw, false);
     this.composer.render();

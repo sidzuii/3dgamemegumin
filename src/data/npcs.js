@@ -47,6 +47,8 @@ export const NPCS = [
     model: F(['Soldier_Head', 'Adventurer_Body', 'Medieval_Legs', 'Adventurer_Feet'], { Hair_Brown: 0x6a3a1a, 'Adventurer_Body:Green': 0x8a6a4a, 'Adventurer_Body:LightGreen': 0x5a4030, Black: 0x4a3a2a }),
     look: { skin: 0xe8b890, hair: 0x6a3a1a, hairStyle: 'bun', top: 0x8a6a4a, vest: 0x5a4030, bottom: 0x4a3a2a, hat: 'wide', hatColor: 0x7a5a3a, build: 1.05, chestShape: true },
     schedule: [
+      // A00: at her cart in the caravan camp before the south gate until Megumin is through the gate (and the sacks are carried)
+      { time: [0, 24], spot: 'marta_road', anim: 'idle', if: { any: [{ quest: 'prologue_arrival', stage: 'marta' }, { quest: 'prologue_arrival', stage: 'gate' }, { quest: 'a00_bags', status: 'active' }] } },
       { time: [0, 24], spot: 'bridge_marta', anim: 'idle', if: { any: ['bridge', 'p_clip', 'p_edge'].map((stage) => ({ quest: 's_marta_bridge', stage })) } },
       { time: [0, 24], spot: 'ledge_marta', anim: 'idle', if: { any: ['ledge', 'p12_cargo', 'p12_roxy', 'p12_rope', 'ledge_out'].map((stage) => ({ quest: 'ch7_gorge', stage })) } },
       { time: [6, 12], spot: 'caravan_master', anim: 'idle' }, { time: [12, 17], spot: 'caravan_office_desk', anim: 'sit', seat: 0.5 }, { time: [17, 21], spot: 'caravan_master', anim: 'idle' }, { time: [21, 24], spot: 'tavern_table4', anim: 'sit' }, NIGHT_HOME],

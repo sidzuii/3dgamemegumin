@@ -817,11 +817,6 @@ function caravanYard(rng) {
   for (let i = 0; i < 3; i++) haystack(W, ...P(58 + (i % 2) * 2.2, 60 + i * 2.4), 0.7);
   for (let i = 0; i < 4; i++) crate(W, F0(30 + i * 1.0, 58, 0.2 * i), 0, 0, 0.8, i * 0.3);
   for (let i = 0; i < 3; i++) barrel(W, F0(56 + i * 0.9, 76, 0), 0, 0);
-  // A00: two sacks by the rear wheel of the first cart (Marta asks for them in option 1).
-  [[33.2, 62.4, 0.5], [34.2, 66.0, -0.4]].forEach(([u, v, rot], i) => {
-    W.addInteractable(new QuestProp({ id: 'caravan_bag_' + 'ab'[i], name: 'Мешок', prompt: 'Взять мешок', position: G(u, v, 0), shape: 'sack', rotY: rot }));
-  });
-  W.spot('caravan_arrival', G(44, 66), Math.PI + 0.4);
   W.spot('caravan_master', G(48, 58), Math.PI);
   W.addLightSource(G(46, 66, 2.2), { color: 0xffa050, intensity: 5, distance: 12, night: true });
 }
@@ -932,6 +927,19 @@ function caravanCamp(rng) {
   // At the south gate: waiting wagons, a stable roof, hay.
   const H = (x, z) => W.heightAt(x, z);
   wagon(W, -312, 156, 1.2, 0xe8dcc0);
+  // A00 (the new game): the caravan has stopped here, before the south gate. Marta checks the harness of her cart; two sacks lie
+  // by its rear wheel (option 1 of the scene); Megumin stands on the road side, the gate to the north (A01: Bernard).
+  const M = new Frame(W, -312, H(-312, 156), 156, 1.2);
+  [[1.7, -1.5, 0.5], [1.5, -2.5, -0.4]].forEach(([lx, lz, rot], i) => {
+    const p = M.at(lx, 0, lz);
+    p.y = H(p.x, p.z);
+    W.addInteractable(new QuestProp({ id: 'caravan_bag_' + 'ab'[i], name: 'Мешок', prompt: 'Взять мешок', position: p, shape: 'sack', rotY: 1.2 + rot }));
+  });
+  const mp = M.at(1.5, 0, 3.4), cp = M.at(4.6, 0, 5.0);
+  mp.y = H(mp.x, mp.z);
+  cp.y = H(cp.x, cp.z);
+  W.spot('marta_road', mp, Math.atan2(cp.x - mp.x, cp.z - mp.z));
+  W.spot('caravan_arrival', cp, Math.atan2(mp.x - cp.x, mp.z - cp.z));
   wagon(W, -328, 166, -0.3, 0xd8c8a0);
   const S = new Frame(W, -336, H(-336, 150), 150, 0.2);
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) S.box(0.25, 3.2, 0.25, sx * 4, -0.2, sz * 2.5, 'log');

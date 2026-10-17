@@ -5,12 +5,11 @@ window.__init = async () => {
   await new Promise((r) => {
     const t0 = performance.now();
     const i = setInterval(() => {
-      const b = document.getElementById('play-btn');
-      if ((b && !b.disabled && window.__game?.npcs && window.__game?.dayNight) || performance.now() - t0 > 90000) { clearInterval(i); r(); }
+      if ((window.__game?.mainMenu?.view === 'title' && window.__game?.npcs && window.__game?.dayNight) || performance.now() - t0 > 90000) { clearInterval(i); r(); }
     }, 300);
   });
   const g = window.__game;
-  if (!g.started) document.getElementById('play-btn').click();
+  if (!g.started) document.querySelector('#overlay .mm-btn.primary').click(); // «Продолжить» / «Начать путь» of the main menu
   const V = g.camera.position.constructor;
   window.V = V;
   window.__step = async (sec) => { const n = Math.round(sec * 30); for (let i = 0; i < n; i++) { await new Promise((r) => setTimeout(r, 33)); g._frame(); } };
