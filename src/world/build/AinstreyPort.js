@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mulberry32 } from '../../core/math.js';
-import { Frame, paveRibbon, lamp, barrel, crate } from './Kit.js';
+import { Frame, paveRibbon, lamp, barrel, crate, heroKit } from './Kit.js';
 import { toW } from './AinstreyBuildings.js';
 import { cityPlan, PIERS, BRIDGES, eastWallU } from '../AinstreyCityPlan.js';
 import * as AIN from '../AinstreyPlan.js';
@@ -111,6 +111,9 @@ function cranes(W) {
     W.group('ain_crane_' + v, { x, z, rot }, () => {
       const y = Math.max(H(W, x, z), 1.0) + 0.1;
       const F = new Frame(W, x, y, z, rot);
+      // the treadwheel crane model (obj/harbor_crane) on its stone base; only the base collides
+      const m = heroKit(F, 'obj/harbor_crane', { h: h * 0.62 }, 0, 0, 0, { ry: Math.PI / 2 });
+      if (m) { F.box(m.d * 0.82, 1.4, m.d * 0.82, 0, 0, 0, 'stone', { collideOnly: true }); return; }
       F.box(4, 1, 4, 0, 0, 0, 'stoneDark', { tint: 0x6a645c });
       for (const sx of [-1, 1]) for (const sz of [-1, 1]) F.box(0.5, h, 0.5, sx * 1.4, 0.5, sz * 1.4, 'log', { collide: sx > 0 && sz > 0, tint: 0x4e3824 });
       for (let k = 0; k < 3; k++) F.box(3.4, 0.3, 0.3, 0, 4 + k * 5.5, 1.4, 'log', { collide: false, tint: 0x4e3824 });
@@ -136,6 +139,8 @@ function boats(W) {
     const [x, z] = toW(u, v);
     W.group('ain_boat_' + i, { x, z, rot: Math.PI / 2 + r }, () => {
       const len = 9 + rng() * 6, wid = 2.6 + rng();
+      // every other berth holds the merchant ship model (obj/merchant_ship), bow along the hull
+      if (i % 2 === 0 && heroKit(new Frame(W, x, WATER - 1.25, z, Math.PI / 2 + r), 'obj/merchant_ship', { w: 12 + (i % 3) }, 0, 0, 0, { ry: Math.PI / 2 })) return;
       const F = new Frame(W, x, WATER - 0.2, z, Math.PI / 2 + r);
       hull(F, len, wid, [0x6a4630, 0x5a4636, 0x7a5a3a][i % 3]);
       F.cyl(0.14, 8.5, 0, 0.5, len * 0.1, 'log', { seg: 6, collide: false, tint: 0x4e3824 });

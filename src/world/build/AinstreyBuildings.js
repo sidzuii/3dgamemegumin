@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mulberry32 } from '../../core/math.js';
-import { Frame, GEOMETRY as G } from './Kit.js';
+import { Frame, GEOMETRY as G, heroKit } from './Kit.js';
 import { ORIGIN } from '../AinstreyPlan.js';
 import { kitHouse, keySkin } from './AinstreyFacade.js';
 
@@ -235,7 +235,7 @@ export function keyBuilding(W, k, seedBase = 7, extra = {}) {
   const F = r.frame, [w, d] = r.size;
   const H = r.top;
   if (k.tower) tower(F, w / 2 - 3.2, d / 2 - 3.5, 5.2, H + 7, { clock: k.kind === 'guild', roof: k.kind === 'archive' ? 0x5d7189 : 0x6a7c92 });
-  if (k.dome) {
+  if (k.dome && !heroKit(F, 'obj/academy_dome', { w: 13 }, 0, H - 0.2, 0)) {
     F.cyl(5.4, 3.5, 0, H, 0, 'stone', { seg: 16, tint: 0xcfc4a8, collide: false });
     F.sphere(5.6, 0, H + 3.4, 0, 'roof', { tint: 0x5c8b80, collide: false, sy: 0.85 });
     F.cyl(0.3, 3.2, 0, H + 8.0, 0, 'metal', { seg: 8, collide: false });
