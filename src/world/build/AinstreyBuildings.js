@@ -18,6 +18,7 @@ const GABLE = (() => {
   return g;
 })();
 const PYRAMID = (() => { const g = new THREE.ConeGeometry(Math.SQRT1_2, 1, 4); g.rotateY(Math.PI / 4); g.translate(0, 0.5, 0); return g; })();
+const CONE = (() => { const g = new THREE.ConeGeometry(1, 1, 12); g.translate(0, 0.5, 0); return g; })();
 const AWNING = [0xb8453a, 0x3a6a8a, 0x4a7a4a, 0xc89a3a, 0xd8cfb8, 0x7a4a6a];
 const SHUTTER = [0x4a6a4a, 0x7a4a34, 0x3a5a7a, 0x5a4a3a];
 
@@ -81,7 +82,7 @@ export function lightHouse(W, lot, opt = {}) {
   const H = lowPart + (I ? gfH + (lot.floors - 1) * floorH : lot.floors * floorH) + (lot.shop ? 0.5 : 0);
   const F = new Frame(W, x, yBase, z, rot);
   // the village kit's plaster (planar UVs) when it is loaded: the far proxy matches the near kit model; tint half way to white
-  const PL = W.mats.kit_village_MI_Plaster ? 'kit_village_MI_Plaster' : 'plaster';
+  const PL = opt.palace ? 'stone' : W.mats.kit_village_MI_Plaster ? 'kit_village_MI_Plaster' : 'plaster'; // a palace is dressed stone
   const wallT = PL === 'plaster' ? lot.wall : new THREE.Color(lot.wall ?? 0xe8dcc4).lerp(new THREE.Color(0xffffff), 0.45).getHex();
   const storeyY = (f) => lowPart + (f === 0 ? 0 : gfH + (f - 1) * floorH);
   // A plain house of the big city: the near model is the village kit, built on demand round the camera (CityStream, AinstreyFacade
@@ -211,15 +212,38 @@ export function lightHouse(W, lot, opt = {}) {
     const rec = { x, z, yBase, rot, w, d, floors: lot.floors, floorH, gfH, lowPart, H, wall: lot.wall, seed: lot.seed || 1, door: I ? { x: I.doorX ?? 0, w: I.doorW ?? 3.4 } : { x: 0, w: 2.4 }, colonnade: opt.colonnade };
     W.stream.add(c.x, c.z, (w2) => keySkin(w2, rec), W._D ? W._D.clone() : null);
   }
-  // windows (detail): front and back, every storey
-  const win = (wx, wy, wz, ry = 0) => {
+  // windows (detail): front and back, every storey. A palace (opt.palace: the academy hall) has tall windows with a lintel and a
+  // keystone on every side, no shutters, string courses between the storeys; they are its silhouette, so they are not culled.
+  const pal = !!opt.palace;
+  const win = (wx, wy, wz, ry = 0, wh = 2.3) => {
+    if (pal) {
+      const o = { collide: false, castShadow: false, ry };
+      F.box(1.15, wh, 0.16, wx, wy, wz, 'window', o);
+      F.box(1.55, 0.24, 0.28, wx, wy + wh, wz, 'stone', { ...o, tint: 0xd2c6aa });
+      F.box(0.34, 0.44, 0.32, wx, wy + wh - 0.02, wz, 'stone', { ...o, tint: 0xe6dfcf });
+      F.box(1.45, 0.14, 0.34, wx, wy - 0.12, wz, 'stone', { ...o, tint: 0xd2c6aa });
+      return;
+    }
     F.box(0.95, 1.4, 0.16, wx, wy, wz, 'window', { collide: false, castShadow: false, detail: true, ry });
     F.box(1.3, 0.16, 0.24, wx, wy + 1.4, wz, 'stone', { collide: false, castShadow: false, detail: true, ry, tint: 0xcfc4a8 });
     F.box(1.2, 0.12, 0.3, wx, wy - 0.1, wz, 'stone', { collide: false, castShadow: false, detail: true, ry, tint: 0xb4aa94 });
   };
   const cols = Math.max(1, Math.floor((w - 1.6) / 3.4));
   const shut = SHUTTER[Math.floor(rng() * SHUTTER.length)];
-  for (let f = 0; f < lot.floors; f++) {
+  if (pal) {
+    for (let f = 0; f < lot.floors; f++) {
+      const wh = f === 0 ? 3.3 : 2.3, wy = storeyY(f) + (f === 0 ? 2.0 : 0.5);
+      if (f > 0) F.box(w + 0.24, 0.3, d + 0.24, 0, storeyY(f) - 0.15, 0, ST, { collide: false, castShadow: false, tint: 0xd2c6aa });
+      for (let k = 0; k < cols; k++) {
+        const wx = -w / 2 + (k + 0.5) * (w / cols);
+        if (!(f === 0 && Math.abs(wx - (I?.doorX ?? 0)) < (I?.doorW ?? 3.4) / 2 + 0.9)) win(wx, wy, frontZ + 0.02, 0, wh);
+        win(wx, wy, -frontZ - 0.02, Math.PI, wh);
+      }
+      const sc = Math.max(1, Math.floor((d - 1.6) / 3.4));
+      for (let k = 0; k < sc; k++) for (const sx of [-1, 1]) win(sx * (w / 2 + 0.02), wy, -d / 2 + (k + 0.5) * (d / sc), sx * Math.PI / 2, wh);
+    }
+  }
+  for (let f = 0; f < lot.floors && !pal; f++) {
     const wy = storeyY(f) + (f === 0 && warehouse ? 2.6 : f === 0 && I ? (I.winY ?? 1.5) : 1.1);
     for (let k = 0; k < cols; k++) {
       const wx = -w / 2 + (k + 0.5) * (w / cols);
@@ -262,12 +286,14 @@ function tower(F, lx, lz, s, h, o = {}) {
  * k: { u, v, w, d, rot, floors, kind, tower, dome }; returns { frame, door, top }.
  */
 export function keyBuilding(W, k, seedBase = 7, extra = {}) {
-  const lot = { ...k, wall: PAL[k.kind]?.wall ?? 0xd8ccb0, roofColor: PAL[k.kind]?.roof ?? 0x6a7c92, roof: k.kind === 'academy' || k.kind === 'theatre' ? 'gable' : k.kind === 'arcade' ? 'flat' : 'gable', shop: false, district: k.district, seed: seedBase + k.id.length * 31 };
-  const r = lightHouse(W, lot, { plinth: 0xb4aa94, cornice: 0xd8ccb0, noStream: true, skin: true, ...extra });
+  const hall = k.kind === 'academy' && k.dome; // the main hall of the academy: a palace of its own (academyHall)
+  const lot = { ...k, wall: PAL[k.kind]?.wall ?? 0xd8ccb0, roofColor: PAL[k.kind]?.roof ?? 0x6a7c92, roof: hall || k.kind === 'arcade' ? 'flat' : 'gable', shop: false, district: k.district, seed: seedBase + k.id.length * 31 };
+  const r = lightHouse(W, lot, { plinth: 0xb4aa94, cornice: 0xd8ccb0, noStream: true, skin: !hall, palace: hall, ...extra });
   const F = r.frame, [w, d] = r.size;
   const H = r.top;
   if (k.tower) tower(F, w / 2 - 3.2, d / 2 - 3.5, 5.2, H + 7, { clock: k.kind === 'guild', roof: k.kind === 'archive' ? 0x5d7189 : 0x6a7c92 });
-  if (k.dome && !heroKit(F, 'obj/academy_dome', { w: 13 }, 0, H - 0.2, 0)) {
+  if (hall) academyHall(F, r, k);
+  else if (k.dome && !heroKit(F, 'obj/academy_dome', { w: 13 }, 0, H - 0.2, 0)) {
     F.cyl(5.4, 3.5, 0, H, 0, 'stone', { seg: 16, tint: 0xcfc4a8, collide: false });
     F.sphere(5.6, 0, H + 3.4, 0, 'roof', { tint: 0x5c8b80, collide: false, sy: 0.85 });
     F.cyl(0.3, 3.2, 0, H + 8.0, 0, 'metal', { seg: 8, collide: false });
@@ -289,8 +315,86 @@ export function keyBuilding(W, k, seedBase = 7, extra = {}) {
   }
   return r;
 }
+/**
+ * The main hall of the academy: a flat roof with a balustrade, the dome on a stepped base in the middle of it, two end pavilions
+ * with an attic and a hipped slate roof, two observatory spires flanking the dome, a giant-order portico with a pediment over the
+ * door and stone pilasters. Everything sits on or against the collision body (only the body collides), so the walkable ground
+ * and the spots round the hall stay as they were.
+ */
+function academyHall(F, r, k) {
+  const W = F.w, [w, d] = r.size, top = r.top, s0 = r.localSill;
+  const gfH = r.top - 0.7 - s0; // the body up to the cornice (flat roof slab 0.7 above it)
+  const STONE = 0xe6dfcf, TRIM = 0xd2c6aa, SLATE = 0x3d5578, GOLD = 0xc8a04a;
+  const NC = { collide: false }, DT = { collide: false, detail: true, castShadow: false };
+  const pw = 3 * (w / Math.max(1, Math.floor((w - 1.6) / 3.4))); // the end pavilions: three window bays (pilasters fall between windows)
+  // pilasters: the corners of the body and the inner edges of the pavilions, front and back
+  for (const sz of [-1, 1]) for (const px of [-w / 2 + 0.35, -w / 2 + pw, w / 2 - pw, w / 2 - 0.35]) F.box(0.8, gfH - 0.3, 0.3, px, s0, sz * (d / 2 + 0.25), 'stone', { ...NC, tint: TRIM, castShadow: false });
+  // balustrade along the roof between the pavilions (front and back) and along nothing else (the pavilions rise there)
+  const bal = (x0, x1, z) => {
+    const len = x1 - x0, cx = (x0 + x1) / 2;
+    F.box(len, 0.22, 0.45, cx, top, z, 'stone', { ...NC, tint: TRIM });
+    F.box(len, 0.16, 0.5, cx, top + 0.92, z, 'stone', { ...NC, tint: TRIM });
+    const n = Math.round(len / 0.9);
+    for (let i = 0; i <= n; i++) F.box(i % 7 === 0 ? 0.5 : 0.2, 0.7, i % 7 === 0 ? 0.5 : 0.2, x0 + (i * len) / n, top + 0.22, z, 'stone', { ...DT, tint: STONE });
+  };
+  for (const sz of [-1, 1]) {
+    const z = sz * (d / 2 - 0.15);
+    if (sz > 0) { bal(-w / 2 + pw, -10.6, z); bal(10.6, w / 2 - pw, z); } else bal(-w / 2 + pw, w / 2 - pw, z);
+  }
+  // the end pavilions: an attic storey with round windows, a cornice and a hipped slate roof with a gilt finial
+  for (const sx of [-1, 1]) {
+    const cx = sx * (w / 2 - pw / 2), ah = 3.2;
+    F.box(pw, ah, d, cx, top - 0.1, 0, 'stone', { ...NC, tint: STONE });
+    F.box(pw + 0.6, 0.4, d + 0.6, cx, top + ah - 0.1, 0, 'stone', { ...NC, tint: TRIM });
+    for (const sz of [-1, 1]) for (const dx of [-2.2, 2.2]) F.cyl(0.75, 0.12, cx + dx, top + ah / 2 - 0.1, sz * (d / 2 + 0.02), 'window', { ...DT, rx: Math.PI / 2, seg: 16 });
+    const rise = 5.2;
+    F.put(PYRAMID, pw + 0.9, rise, d + 0.9, cx, top + ah + 0.3, 0, 'roof', { ...NC, tint: SLATE });
+    F.cyl(0.12, 2.2, cx, top + ah + 0.3 + rise - 0.2, 0, 'metal', { ...NC, seg: 8, tint: GOLD });
+    F.sphere(0.35, cx, top + ah + 0.3 + rise + 1.6, 0, 'metal', { ...NC, tint: GOLD });
+  }
+  // the dome on a stepped base in the middle of the roof
+  F.box(17, 1.3, 17, 0, top - 0.1, 0, 'stone', { ...NC, tint: STONE });
+  F.box(17.6, 0.35, 17.6, 0, top + 1.2, 0, 'stone', { ...NC, tint: TRIM });
+  F.box(15.4, 0.7, 15.4, 0, top + 1.55, 0, 'stone', { ...NC, tint: STONE });
+  if (!heroKit(F, 'obj/academy_dome', { w: 14.5 }, 0, top + 2.2, 0)) {
+    F.cyl(6.2, 4.5, 0, top + 2.2, 0, 'stone', { ...NC, seg: 16, tint: TRIM });
+    F.sphere(6.4, 0, top + 6.7, 0, 'roof', { ...NC, tint: 0x5c8b80, sy: 0.85 });
+    F.cyl(0.3, 3.2, 0, top + 12, 0, 'metal', { ...NC, seg: 8, tint: GOLD });
+  }
+  // two observatory spires flanking the dome at the back: a round shaft with a ring of windows, a slate cone and a gilt finial
+  for (const sx of [-1, 1]) {
+    const cx = sx * 11.6, cz = -(d / 2 - 4), sh = 9.5, rr = 2.4;
+    F.cyl(rr + 0.4, 0.6, cx, top - 0.1, cz, 'stone', { ...NC, seg: 16, tint: TRIM });
+    F.cyl(rr, sh, cx, top, cz, 'stone', { ...NC, seg: 16, tint: STONE });
+    F.cyl(rr + 0.35, 0.35, cx, top + sh, cz, 'stone', { ...NC, seg: 16, tint: TRIM });
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      F.box(0.7, 1.6, 0.12, cx + Math.sin(a) * (rr + 0.02), top + sh - 3.2, cz + Math.cos(a) * (rr + 0.02), 'window', { ...DT, ry: a });
+    }
+    F.put(CONE, rr + 0.6, 6.5, rr + 0.6, cx, top + sh + 0.35, cz, 'roof', { ...NC, tint: SLATE });
+    F.cyl(0.1, 2.0, cx, top + sh + 6.6, cz, 'metal', { ...NC, seg: 8, tint: GOLD });
+    F.sphere(0.3, cx, top + sh + 8.6, cz, 'metal', { ...NC, tint: GOLD });
+  }
+  // the portico over the door: six giant columns on pedestals, an entablature and a pediment with the gilt seal of the academy
+  const fp = F.at(0, 0, d / 2 + 4.2), fg = Math.min(s0, W.heightAt(fp.x, fp.z) - r.base);
+  const colTop = s0 + 9.7, zc = d / 2 + 4.2, pd = 5.6, pz = d / 2 + pd / 2;
+  F.box(20.4, 0.12, pd + 0.6, 0, fg - 0.06, pz + 0.3, 'stone', { ...DT, tint: TRIM });
+  for (const cx of [-8.6, -5.6, -2.6, 2.6, 5.6, 8.6]) {
+    F.box(1.4, s0 - fg + 1.0, 1.4, cx, fg, zc, 'stone', { ...NC, tint: TRIM });
+    F.cyl(0.55, colTop - s0 - 1.6, cx, s0 + 1.0, zc, 'stone', { ...NC, seg: 16, tint: STONE });
+    F.box(1.3, 0.6, 1.3, cx, colTop - 0.6, zc, 'stone', { ...NC, tint: TRIM });
+  }
+  F.box(19.6, 1.1, pd, 0, colTop, pz, 'stone', { ...NC, tint: STONE });
+  F.box(20.2, 0.3, pd + 0.4, 0, colTop + 1.1, pz + 0.2, 'stone', { ...NC, tint: TRIM });
+  F.put(GABLE, 21.4, 4.0, pd + 0.4, 0, colTop + 1.4, pz + 0.1, 'roof', { ...NC, tint: SLATE });
+  F.put(GABLE, 20.4, 3.55, pd + 0.6, 0, colTop + 1.4, pz + 0.2, 'stone', { ...NC, tint: STONE });
+  F.cyl(1.3, 0.16, 0, colTop + 2.6, d / 2 + pd + 0.5, 'metal', { ...NC, rx: Math.PI / 2, seg: 16, tint: GOLD });
+  F.cyl(0.8, 0.2, 0, colTop + 2.6, d / 2 + pd + 0.52, 'lampGlass', { ...DT, rx: Math.PI / 2, seg: 16, tint: 0x6a9ad8 });
+  F.box(0.4, 0.6, 0.4, 0, colTop + 1.4 + 3.55, pz + 0.2 + pd / 2 - 0.2, 'stone', { ...NC, tint: TRIM });
+  F.sphere(0.35, 0, colTop + 1.4 + 3.55 + 0.9, pz + 0.2 + pd / 2 - 0.2, 'metal', { ...NC, tint: GOLD });
+}
 const PAL = {
-  guild: { wall: 0xc9bda4, roof: 0x5d7189 }, public: { wall: 0xc9bda4, roof: 0x6a7c92 }, archive: { wall: 0xd0c4aa, roof: 0x5d7189 }, academy: { wall: 0xe3d6bb, roof: 0x4f6888 },
+  guild: { wall: 0xc9bda4, roof: 0x5d7189 }, public: { wall: 0xc9bda4, roof: 0x6a7c92 }, archive: { wall: 0xd0c4aa, roof: 0x5d7189 }, academy: { wall: 0xeae2d0, roof: 0x3d5578 },
   theatre: { wall: 0xe3d6bb, roof: 0xa9664c }, inn: { wall: 0xe3d6bb, roof: 0xa9664c }, port: { wall: 0xc9bda4, roof: 0x6a7c92 }, pump: { wall: 0xb09a78, roof: 0x5c8b80 },
   council: { wall: 0xe3d6bb, roof: 0x5c8b80 }, market: { wall: 0xe3d6bb, roof: 0xa9664c }, cathedral: { wall: 0xcfc4a8, roof: 0x6a7c92 }, arcade: { wall: 0xd8ccb0, roof: 0x6a7c92 },
 };

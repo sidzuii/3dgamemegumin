@@ -231,7 +231,7 @@ export function interiorBuilding(W, k) {
   // the open entrance reads at night: a lantern on each side of the doorway and a signpost with the name of the hall
   const fz = k.d / 2 + 1.0;
   for (const sx of [-1, 1]) { const p = F.at(sx * 3.4, 0, fz); lamp(W, new THREE.Vector3(p.x, W.heightAt(p.x, p.z), p.z), k.rot); }
-  { const p = F.at(5.6, 0, k.d / 2 + 3.0); W.addSign(new THREE.Vector3(p.x, 0, p.z), k.rot, [k.name, 'Открыто: вход через арку']); }
+  { const p = F.at(k.id === 'academy_hall' ? 11.6 : 5.6, 0, k.d / 2 + 3.0); W.addSign(new THREE.Vector3(p.x, 0, p.z), k.rot, [k.name, 'Открыто: вход через арку']); }
   // the board of the guild is the same prop as in Axel (RPG.onInteract: the list of contracts for members)
   if (k.id === 'guild_hall') W.addInteractable(new QuestProp({ id: 'guild_board', name: 'Доска заказов', prompt: 'Посмотреть заказы', position: G.at(-11, 1.9, -k.d / 2 + 1.3), shape: 'none' }));
   return r;
