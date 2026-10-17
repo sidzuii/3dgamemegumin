@@ -571,6 +571,7 @@ export const NPCS = [
   },
   {
     id: 'edmund', name: 'Эдмунд', title: 'Учёный-астроном',
+    body: 'astrey', bodyHeight: 1.8, // the user's Mixamo character (model/characters/Astrey); the modular body below is the fallback
     model: M(['King_Head', 'King_Body', 'Casual2_Legs', 'Adventurer_Feet'], { Blue: 0x2a3a6a, Metal: 0x3a4a7a, Metal_Dark: 0x2a3456, Beige: 0xd8c890, LightBlue: 0x2a3a6a }, { hide: { King_Head: ['Gold'] }, scale: 0.93 }),
     look: { skin: 0xf6d0b0, hair: 0xe8e8e8, hairStyle: 'short', beard: true, top: 0x3a4a7a, dress: true, dressLong: true, dressColor: 0x2a3a6a, cape: 0x2a3a6a, height: 0.97 },
     schedule: [{ time: [20, 2], spot: 'olkhovka_green', anim: 'magic' }, { time: [8, 20], spot: 'scholar', anim: 'idle' }, { time: [2, 8], hidden: true }],

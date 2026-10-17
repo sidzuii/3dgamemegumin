@@ -91,6 +91,14 @@ export class NPCManager {
       for (const [k, src0] of Object.entries(CLIPS)) set[k] = lib.bake(ctx, lib.clips[src0] ? src0 : FALLBACK[k], { name: `npc_${pack}_${k}`, hipsY: 'keep', levelHead: LEVEL_HEAD[k] ?? 0.8 });
       lib.restore(ctx);
     }
+    // whole-character bodies (Mixamo skeletons): one clip set per body
+    for (const id of Object.keys(this.people.bodies)) {
+      const tpl = this.people.createBody(id);
+      const ctx = lib.prepareTarget(tpl.root, 'mixamo');
+      const set = (this.clips['body:' + id] = {});
+      for (const [k, src0] of Object.entries(CLIPS)) set[k] = lib.bake(ctx, lib.clips[src0] ? src0 : FALLBACK[k], { name: `npc_${id}_${k}`, hipsY: 'keep', levelHead: LEVEL_HEAD[k] ?? 0.8 });
+      lib.restore(ctx);
+    }
   }
 
   _create(def) {
@@ -125,14 +133,17 @@ class NPC {
     this.def = def;
     this.id = def.id;
     // Roxy (before she joins) is drawn with her real model; she only needs the hit volume.
-    const { root, mesh } = def.model ? mgr.people.create(def.model) : { root: new THREE.Group(), mesh: null };
+    // a whole-character body (`body`, People BODIES) when it loaded, else the modular people body
+    this.bodyId = def.body && mgr.people.bodies[def.body] ? def.body : null;
+    const H0 = def.bodyHeight ?? 1.78;
+    const { root, mesh } = this.bodyId ? mgr.people.createBody(this.bodyId, H0) : def.model ? mgr.people.create(def.model) : { root: new THREE.Group(), mesh: null };
     this.root = root;
     this.mesh = mesh;
-    this.height = def.model ? 1.86 * root.scale.y : 1.6;
+    this.height = this.bodyId ? H0 : def.model ? 1.86 * root.scale.y : 1.6;
     root.name = 'NPC:' + def.id;
     this.mixer = new THREE.AnimationMixer(root);
     this.actions = {};
-    for (const [k, clip] of Object.entries(def.model ? mgr.clips[def.model.pack] : {})) {
+    for (const [k, clip] of Object.entries(this.bodyId ? mgr.clips['body:' + this.bodyId] : def.model ? mgr.clips[def.model.pack] : {})) {
       const a = this.mixer.clipAction(clip);
       a.setEffectiveWeight(0);
       this.actions[k] = a;
@@ -375,6 +386,7 @@ class NPC {
    * or stretched out (on the ground); the pelvis drops to the seat.
    */
   _sitPose() {
+    if (this.bodyId) { this.sitDrop = 0; return; } // the Mixamo sitting idle already sits at chair height
     const r = this.root;
     if (!this._legs) {
       const g = (n) => r.getObjectByName(n);

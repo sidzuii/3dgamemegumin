@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { applyBindPose } from '../character/Retarget.js';
 
 /**
@@ -17,6 +18,11 @@ import { applyBindPose } from '../character/Retarget.js';
  */
 export const PACKS = { m: '/models/people/men.glb', w: '/models/people/women.glb' };
 const DEFAULT_SCALE = { m: 0.94, w: 0.93 };
+/**
+ * Whole rigged characters (Mixamo skeleton, tools/pack_body.mjs) worn by single named NPCs (`body` in data/npcs.js) instead
+ * of the modular people. Optional: a missing file leaves the NPC on its modular body.
+ */
+export const BODIES = { astrey: '/models/bodies/astrey.glb' };
 
 const _v = new THREE.Vector3();
 const _n = new THREE.Vector3();
@@ -28,6 +34,7 @@ const _c = new THREE.Color();
 export class PeopleLibrary {
   constructor() {
     this.packs = {};
+    this.bodies = {}; // id -> { scene, height }
     this.material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0 });
     this._geoCache = new Map();
   }
@@ -42,7 +49,44 @@ export class PeopleLibrary {
       });
       this.packs[k] = this._prepare(gltf.scene);
     }));
+    await Promise.all(Object.entries(BODIES).map(async ([id, url]) => {
+      try {
+        const gltf = await loader.loadAsync(url);
+        const scene = gltf.scene;
+        applyBindPose(scene);
+        scene.updateMatrixWorld(true);
+        const box = new THREE.Box3();
+        scene.traverse((o) => {
+          if (!o.isMesh) return;
+          if (o.isSkinnedMesh) box.expandByObject(o);
+          o.castShadow = true;
+          o.receiveShadow = true;
+          o.frustumCulled = false;
+          const m = o.material;
+          // the faint ambient fill of the source (tools/pack_body.mjs moved it to extras)
+          if (m.userData?.emissiveFromBase && m.map) { m.emissiveMap = m.map; m.emissive.setScalar(m.userData.emissiveFromBase); }
+        });
+        this.bodies[id] = { scene, height: box.max.y - box.min.y, minY: box.min.y };
+      } catch (e) {
+        console.warn('[people] body missing', id, e?.message);
+      }
+    }));
     return this;
+  }
+
+  /** A clone of a whole-character body standing on the origin, `height` metres tall. */
+  createBody(id, height = 1.78) {
+    const B = this.bodies[id];
+    const root = new THREE.Group();
+    const inner = cloneSkinned(B.scene);
+    const s = height / B.height;
+    inner.scale.setScalar(s);
+    inner.position.y = -B.minY * s;
+    root.add(inner);
+    let mesh = null;
+    inner.traverse((o) => { if (o.isSkinnedMesh && !mesh) mesh = o; });
+    root.updateMatrixWorld(true);
+    return { root, mesh };
   }
 
   _prepare(scene) {

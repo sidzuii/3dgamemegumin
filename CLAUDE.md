@@ -108,3 +108,9 @@ Full description, file map and how-to guides: see `README.md` (Russian). The use
   (`AinstreyFacade.kitHouse`, keys: `keySkin`) is built on demand by `world/CityStream.js` (64 m cells, ~105 m, `W._streamSink`, never
   collides; disabled in the editor). Dressing: `build/AinstreyDecor.js` (parterres, boulevards, statues, goods) runs last and keeps clear
   of spots, streets, keys. City statics use `W._bigChunk = 256`. Staff series: 2/2/3 stamina, a press during a swing chains at `cancel_at`.
+- User assets (2026-10): Mixamo clips -> `tools/pack_mixamo_anims.mjs` -> public/models/anim/mixamo.glb, loaded as a second retarget
+  source (`AnimationLibrary.addSource`, clip names 'mx:<name>'; idle/talk/wave/sit of heroines and townsfolk). Rigged Mixamo
+  characters -> `tools/pack_body.mjs` -> public/models/bodies/<id>.glb, worn by a named NPC via `body` in data/npcs.js
+  (People BODIES; Edmund = Astrey). Single objects -> `tools/pack_objects.mjs` -> public/models/objects/<id>.glb, kit pieces
+  'obj/<id>' (KitLibrary OBJECTS, vertex colours kept), placed with `Kit.heroKit()` (Ainstrey statue, fountains, dome, towers,
+  cranes, ships, carriages, carts, books). Raw sources stay in model/ (FBX2glTF unpacks .fbm folders there: delete them).
