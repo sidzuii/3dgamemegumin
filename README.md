@@ -16,10 +16,12 @@ npm run build      # production-сборка в dist/
 npm run preview    # просмотр сборки: http://127.0.0.1:4173
 ```
 
-**Игра для друга (без установки и без сервисов):** `npm run portable` собирает `release/Megumin` (на Windows ещё и
-`release/Megumin.zip`): `Play.bat` + `serve.ps1` (маленький веб-сервер на встроенном Windows PowerShell) + `game/`.
-Друг распаковывает архив целиком и запускает `Play.bat` — игра открывается в браузере на `http://localhost:4173/`.
-Сохранения хранятся в его браузере. Закрыть окно сервера = выключить игру.
+**Игра как программа для Windows (без установки и без сервисов):** `npm run portable` собирает `release/Megumin`
+(на Windows ещё и `release/Megumin.zip`): `Play.bat`, `README.txt` и `app/` (`serve.ps1` — маленький веб-сервер на встроенном
+Windows PowerShell, `megumin.ico`, `game/` — сборка). Первый запуск `Play.bat` создаёт ярлык «Мегумин» с иконкой на рабочем
+столе и в «Пуске»; ярлык открывает игру в своём окне Edge/Chrome (режим приложения, без адресной строки, свой профиль
+`%LOCALAPPDATA%\Megumin\browser` = свои сохранения), консоль скрыта, закрыл окно — сервер выключился.
+`serve.ps1 -Server` — только сервер в видимой консоли (для другого браузера).
 
 Node.js 18+, браузер с WebGL2. Для пересборки ассетов — Blender 4.x (раздел 9).
 Отладка: `window.__game` (`__game.rpg.state`, `__game.rpg.quests.active()`, `__game.npcs.list`,
