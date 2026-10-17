@@ -289,7 +289,7 @@ function frontage(W, P, B) {
       let lnx = -tz, lnz = tx;
       if (lnx * nx + lnz * nz < 0) { lnx = -lnx; lnz = -lnz; }
       const u = x + lnx * off, v = z + lnz * off;
-      const blocked = B.lots.some((l) => pointNear(l, u, v, 1.2)) || P.keys.some((k) => pointNear(k, u, v, 2.5)) || P.squares.some((q) => pointNear(q, u, v, 2)) || P.lanes.some((L) => polyDist(L.pts, u, v) < L.width / 2 + 3.2) || !insideCityPt(u, v, 18);
+      const blocked = B.lots.some((l) => pointNear(l, u, v, 1.2)) || P.keys.some((k) => pointNear(k, u, v, 2.5)) || P.squares.some((q) => pointNear(q, u, v, 14)) || P.lanes.some((L) => polyDist(L.pts, u, v) < L.width / 2 + 3.2) || !insideCityPt(u, v, 18);
       free.push(blocked ? null : [u, v]);
     }
     // runs of free samples -> walls (a gate gap every 5th-9th piece)

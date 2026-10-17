@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mulberry32 } from '../../core/math.js';
-import { Frame, villageRoof, roofVariant } from './Kit.js';
+import { Frame, villageRoof, roofVariant, gableGeometry } from './Kit.js';
 
 /**
  * The near model of a plain Ainstrey house: the Quaternius village kit (the same modules as the houses of Axel) fitted to the lot
@@ -34,8 +34,10 @@ export function kitHouse(W, h) {
   // the plaster takes the colour of the lot (half way to white: the texture is already cream)
   const tint = _c.setHex(h.wall ?? 0xe8dcc4).lerp(_w.setHex(0xffffff), 0.45).getHex();
   const winA = pickWin(rng), winB = pickWin(rng);
-  const shutterP = shed ? 0 : 0.35 + rng() * 0.4;
-  const flowers = !warehouse && !shed && rng() < 0.45 ? 0.35 : 0;
+  // the courtyard rows (h.simple): no shutters, flowers, balconies, vines or chimneys, a light roof of two tiled slabs
+  const simple = !!h.simple;
+  const shutterP = shed || simple ? 0 : 0.35 + rng() * 0.4;
+  const flowers = !warehouse && !shed && !simple && rng() < 0.45 ? 0.35 : 0;
 
   // plinth up to the sill, a step at the door
   F.box(w + 0.3, y0 + 0.05, d + 0.3, 0, 0, 0, 'stone', { tint: 0xb4aa94, collide: false });
@@ -57,12 +59,12 @@ export function kitHouse(W, h) {
     }
   }
   // balcony / vines
-  if (!warehouse && !shed && h.floors > 1 && rng() < 0.22) {
+  if (!warehouse && !shed && !simple && h.floors > 1 && rng() < 0.22) {
     const bx = (rng() - 0.5) * Math.max(0, w - 6);
     F.kit(V('Balcony_Cross_Straight'), bx, y0 + heights[0], d / 2 - 0.88, { s: 1, collide: false });
     F.box(2.0, 0.12, 1.1, bx, y0 + heights[0] - 0.12, d / 2 + 0.47, 'plank', { collide: false, tint: 0x7a5c40 });
   }
-  if (!warehouse && rng() < 0.18) {
+  if (!warehouse && !simple && rng() < 0.18) {
     const vs = rng() < 0.5 ? -1 : 1;
     F.kit(V(['Prop_Vine1', 'Prop_Vine2', 'Prop_Vine5', 'Prop_Vine6'][Math.floor(rng() * 4)]), vs * (w / 2 + 0.12), y0 + 2.2, (rng() - 0.5) * (d - 2), { ry: vs * Math.PI / 2, s: 1.3, ...deco });
   }
@@ -77,12 +79,27 @@ export function kitHouse(W, h) {
   const variant = roofVariant(h.roofColor) ?? 'red';
   const spec = { pitch: span > 9 ? 0.72 : span > 6.5 ? 0.82 : undefined };
   const R = along ? F : F.sub(0, 0, 0, Math.PI / 2);
+  if (simple) { lightRoof(W, R, len, span, top, h); return; }
   const ridge = villageRoof(R, len, span, top, variant, spec);
   if (!warehouse && !shed && rng() < 0.7) {
     const cx = (rng() < 0.5 ? -1 : 1) * (len / 2 - 1.2), cz = -span * 0.16;
     const hgt = (ridge - top) * 0.8 + 1.0;
     R.kit(V('Prop_Chimney'), cx, top - 0.6, cz, { sy: (hgt + 0.6) / 3.18, sx: 1.15, sz: 1.15, collide: false });
   }
+}
+
+/**
+ * A cheap gable roof for the courtyard rows: two slabs of the village tiles (planar UVs) over the ridge (local x) and two
+ * plaster gable triangles — a few dozen triangles instead of the kit roof's thousands.
+ */
+function lightRoof(W, R, len, span, top, h) {
+  const TILE = W.mats.kit_village_MI_RoundTiles ? 'kit_village_MI_RoundTiles' : 'roof';
+  const rise = span * 0.42, half = span / 2 + 0.45, ang = Math.atan2(rise, span / 2), slope = Math.hypot(half, rise * (half / (span / 2)));
+  const tint = TILE === 'roof' ? h.roofColor : _c.setHex(h.roofColor ?? 0xa9664c).lerp(_w.setHex(0xffffff), 0.35).getHex();
+  for (const s of [-1, 1]) R.box(len + 0.9, 0.16, slope, 0, top + rise / 2 - 0.12, s * (half / 2 - 0.1), TILE, { rx: s * ang, tint, collide: false });
+  const PL = W.mats.kit_village_MI_Plaster ? 'kit_village_MI_Plaster' : 'plaster';
+  const wall = _c.setHex(h.wall ?? 0xe8dcc4).lerp(_w.setHex(0xffffff), 0.45).getHex();
+  for (const s of [-1, 1]) R.put(gableGeometry(span - 0.1, rise - 0.05, 0.2), 1, 1, 1, s * (len / 2 - 0.12), top, 0, PL, { ry: Math.PI / 2, tint: wall, collide: false, castShadow: false });
 }
 
 /** One storey of wall modules round the w × d box (front = +z, the door tile in the middle of the front). */

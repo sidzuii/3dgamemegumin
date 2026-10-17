@@ -105,9 +105,11 @@ Full description, file map and how-to guides: see `README.md` (Russian). The use
   townsfolk `data/citizens.js`, fast travel `data/travel.js` (spots `stop_*`, `RPG.fastTravel`), pit lures `STORY_LURES`. Old saves past ch5
   get the road via `RPG._migrateCapital`. Citadel and north intake are closed future parts (gate props only).
   Ainstrey houses: `lightHouse()` = collision + an always-drawn far proxy set inside the kit shell; the village-kit near model
-  (`AinstreyFacade.kitHouse`, keys: `keySkin`) is built on demand by `world/CityStream.js` (64 m cells, ~105 m, `W._streamSink`, never
+  (`AinstreyFacade.kitHouse`, keys: `keySkin`) is built on demand by `world/CityStream.js` (64 m cells, NEAR_MAX 90 m, `W._streamSink`, never
   collides; disabled in the editor). Dressing: `build/AinstreyDecor.js` (parterres, boulevards, statues, goods) runs last and keeps clear
-  of spots, streets, keys. City statics use `W._bigChunk = 256`. Staff series: 2/2/3 stamina, a press during a swing chains at `cancel_at`.
+  of spots, streets, keys. City statics use `W._bigChunk = 256`. Dense lots (~4860: frontage + lane + back rows round courtyards,
+  sheds; STYLE fw/fd/fgap/pass/vac, segment hash `onStreet`); `lot.simple` (back/inner) = kit house without shutters/balconies/chimneys
+  + `lightRoof`; far body = `facadeBox` with the canvas facade tile (`W.mats.facade`, night glow from DayNight). Staff series: 2/2/3 stamina, a press during a swing chains at `cancel_at`.
 - User assets (2026-10): Mixamo clips -> `tools/pack_mixamo_anims.mjs` -> public/models/anim/mixamo.glb, loaded as a second retarget
   source (`AnimationLibrary.addSource`, clip names 'mx:<name>'; idle/talk/wave/sit of heroines and townsfolk). Rigged Mixamo
   characters -> `tools/pack_body.mjs` -> public/models/bodies/<id>.glb, worn by a named NPC via `body` in data/npcs.js

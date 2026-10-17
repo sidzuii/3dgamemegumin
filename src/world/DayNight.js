@@ -81,6 +81,7 @@ export class DayNight {
     // Windows + lamps glow at night (and stay warm underground).
     const glow = clamp(this.night * 1.2 + dusk * 0.4, 0, 1);
     W.mats.window.emissiveIntensity = glow * 1.3;
+    if (W.mats.facade) W.mats.facade.emissiveIntensity = glow * 1.1;
     W.mats.lampGlass.emissiveIntensity = 0.15 + glow * 1.6 + inside * 1.2;
     W.nightFactor = Math.max(glow, inside);
     return { night: this.night, dusk };

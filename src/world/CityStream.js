@@ -11,7 +11,7 @@ import { mergeMixed } from './World.js';
  */
 export const STREAM_CELL = 64; // the far proxies use the same cells (one mesh per material and cell)
 const BUDGET_MS = 5;
-const NEAR_MAX = 105; // the kit models only this near (the far proxies wear the same plaster beyond)
+const NEAR_MAX = 90; // the kit models only this near (the far proxies wear the facade tile beyond)
 const NO_SHADOW = /Glass|window|flower|lawn|Vine|Metal|lampGlass/;
 
 export class CityStream {

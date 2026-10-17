@@ -243,9 +243,10 @@ function parterres(W, F, sq, O, rng) {
 /** Rows of stalls / carts on the market and the wagon square (the existing ones and the well stay). */
 function stallRows(W, F, sq, O, rng) {
   const cols = [0xb8453a, 0x3a6a8a, 0x4a7a4a, 0xc89a3a, 0x8a4a7a, 0xd8cfb8];
-  for (let lx = -sq.w / 2 + 14; lx <= sq.w / 2 - 14; lx += 11) for (let lz = -sq.d / 2 + 14; lz <= sq.d / 2 - 14; lz += 13) {
+  // rows of stalls with aisles of ~5 m between them
+  for (let lx = -sq.w / 2 + 12; lx <= sq.w / 2 - 12; lx += 8.5) for (let lz = -sq.d / 2 + 12; lz <= sq.d / 2 - 12; lz += 9.5) {
     const p = F.at(lx, 0, lz);
-    if (rng() < 0.3 || !O.free(p, 3.6)) continue;
+    if (rng() < 0.12 || !O.free(p, 3.2)) continue;
     if (sq.kind === 'market') stall(W, p.x, p.z, sq.rot + (rng() < 0.5 ? 0 : Math.PI), cols[Math.floor(rng() * cols.length)], ['fruit', 'mixed', 'bread'][Math.floor(rng() * 3)], rng);
     else wagon(W, p.x, p.z, sq.rot + (rng() < 0.5 ? 0 : Math.PI) + (rng() - 0.5) * 0.3, [0xe8dcc0, 0xd8c8a0, 0xc8d0d8][Math.floor(rng() * 3)]);
     O.add(p, 3.4);

@@ -21,6 +21,36 @@ const PYRAMID = (() => { const g = new THREE.ConeGeometry(Math.SQRT1_2, 1, 4); g
 const AWNING = [0xb8453a, 0x3a6a8a, 0x4a7a4a, 0xc89a3a, 0xd8cfb8, 0x7a4a6a];
 const SHUTTER = [0x4a6a4a, 0x7a4a34, 0x3a5a7a, 0x5a4a3a];
 
+/**
+ * A box (w x h x d, base at y 0) whose sides carry facade UVs: u counts window bays (a tile = 4 bays), v counts storeys from
+ * the sill (a tile = 2 storeys); the top is mapped to a plain plaster corner of the tile.
+ */
+const _fbCache = new Map();
+function facadeBox(w, h, d, sill, floorH) {
+  const key = [w, h, d, sill, floorH].map((v) => v.toFixed(2)).join('|');
+  if (_fbCache.has(key)) return _fbCache.get(key);
+  const pos = [], nor = [], uv = [];
+  const quad = (a, b, c, e, n, uvs) => { for (const [p, t] of [[a, uvs[0]], [b, uvs[1]], [c, uvs[2]], [a, uvs[0]], [c, uvs[2]], [e, uvs[3]]]) { pos.push(...p); nor.push(...n); uv.push(...t); } };
+  const V = (y) => (y - sill) / (2 * floorH);
+  const side = (len, at, n) => { // at(s, y) -> point; s from -len/2 to len/2 left to right seen from outside
+    const nb = Math.max(1, Math.round(len / 2.4)), u1 = nb / 4;
+    quad(at(-len / 2, 0), at(len / 2, 0), at(len / 2, h), at(-len / 2, h), n, [[0, V(0)], [u1, V(0)], [u1, V(h)], [0, V(h)]]);
+  };
+  const hw = w / 2, hd = d / 2;
+  side(w, (s, y) => [s, y, hd], [0, 0, 1]);
+  side(w, (s, y) => [-s, y, -hd], [0, 0, -1]);
+  side(d, (s, y) => [hw, y, -s], [1, 0, 0]);
+  side(d, (s, y) => [-hw, y, s], [-1, 0, 0]);
+  const t = [0.01, 0.01];
+  quad([-hw, h, hd], [hw, h, hd], [hw, h, -hd], [-hw, h, -hd], [0, 1, 0], [t, t, t, t]);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  _fbCache.set(key, g);
+  return g;
+}
+
 export const toW = (u, v) => [ORIGIN.x + u, ORIGIN.z + v];
 
 /** Heights of the ground under a rectangle: [min, max, centre, front-centre]. */
@@ -62,11 +92,14 @@ export function lightHouse(W, lot, opt = {}) {
     F.box(w, H, d, 0, 0, 0, 'plaster', { collideOnly: true });
     const c = new THREE.Vector3(x, 0, z);
     if (W._D) c.applyMatrix4(W._D);
-    const rec = { x, z, yBase, rot, w, d, floors: lot.floors, floorH, gfH, lowPart, H, roof: lot.roof, roofColor: lot.roofColor, wall: lot.wall, shop: !!lot.shop, kind: lot.kind, district: lot.district, seed: lot.seed || 1 };
+    const rec = { x, z, yBase, rot, w, d, floors: lot.floors, floorH, gfH, lowPart, H, roof: lot.roof, roofColor: lot.roofColor, wall: lot.wall, shop: !!lot.shop, kind: lot.kind, district: lot.district, seed: lot.seed || 1, simple: !!lot.simple };
     W.stream.add(c.x, c.z, (w2) => kitHouse(w2, rec), W._D ? W._D.clone() : null);
     const o = { collide: false, castShadow: false };
     const iw = w - 0.4, id = d - 0.4;
-    F.box(iw, H, id, 0, 0, 0, PL, { ...o, tint: wallT });
+    // the body wears the facade tile (windows in bays of ~2.4 m, two storeys a tile): see World makeFacadeTextures
+    const FT = W.mats.facade ? 'facade' : PL;
+    if (FT === 'facade') F.put(facadeBox(iw, H, id, lowPart, floorH), 1, 1, 1, 0, 0, 0, FT, { ...o, keepUV: true, tint: new THREE.Color(lot.wall ?? 0xe8dcc4).lerp(new THREE.Color(0xffffff), 0.1).getHex() });
+    else F.box(iw, H, id, 0, 0, 0, PL, { ...o, tint: wallT });
     F.box(w + 0.1, lowPart, d + 0.1, 0, 0, 0, PL, { ...o, tint: 0xb4aa94 });
     let top = H;
     if (lot.roof === 'flat') F.box(iw, 0.6, id, 0, H, 0, PL, { ...o, tint: 0xc4b89c });
@@ -76,7 +109,6 @@ export function lightHouse(W, lot, opt = {}) {
       F.put(GABLE, span, rise, len, 0, H, 0, 'roof', { ...o, tint: lot.roofColor, ry: along ? Math.PI / 2 : 0 });
       top = H + rise;
     }
-    for (let f = 0; f < lot.floors; f++) for (const sd of [-1, 1]) if (!(warehouse && f === 0)) F.box(iw * 0.7, 1.0, 0.04, 0, storeyY(f) + 1.1, sd * (id / 2 + 0.03), 'window', o);
     if (lot.shop) {
       const cl = AWNING[Math.floor(rng() * AWNING.length)];
       F.box(Math.min(w - 1, 6), 0.07, 1.7, 0, lowPart + 3.0, d / 2 + 0.95, 'cloth', { tint: cl, rx: 0.3, collide: false, detail: true });
