@@ -20,7 +20,9 @@ import { solveTwoBone } from './rigUtils.js';
 const SOFT = { chest: 0.55, neck: 0.55, lShoulder: 0.5, rShoulder: 0.5 };
 
 export const CLIPSET = {
-  Idle: { src: 'Idle_Loop', loop: true, damp: SOFT },
+  // A relaxed Mixamo standing idle (mixamo.glb, Retarget addSource): the library's Idle_Loop is a staggered fighting
+  // stance that read as frozen mid-step. 'Idle_Loop' still works if the Mixamo pack is absent.
+  Idle: { src: 'mx:Standing Idle', fallback: 'Idle_Loop', loop: true },
   Walk: { src: 'Walk_Loop', loop: true, damp: { chest: 0.7, neck: 0.7, lShoulder: 0.6, rShoulder: 0.6 } },
   Jog: { src: 'Jog_Fwd_Loop', loop: true, damp: SOFT, flight: 0.5 },
   Sprint: { src: 'Sprint_Loop', loop: true, damp: SOFT, flight: 0.7 },
@@ -88,7 +90,8 @@ export class CharacterAnimator {
     this.upper = {};
     this.info = {};
     for (const [name, def] of Object.entries(CLIPSET)) {
-      const clip = lib.bake(ctx, def.src, {
+      const src = lib.clips[def.src] ? def.src : def.fallback;
+      const clip = lib.bake(ctx, src, {
         name, hipsY: def.hipsY, reverse: def.reverse,
         damp: rest ? def.damp : undefined, flight: rest ? def.flight : undefined,
       });
@@ -124,6 +127,8 @@ export class CharacterAnimator {
       }));
     this.hips = b.hips;
     this.stance = 0;
+    // the stance fix (feet under the hips) is for the library's fighting-stance idle only
+    this.stanceFix = !lib.clips[CLIPSET.Idle.src];
     // Standing reference (rig space): straight-leg hip height, ankle height and the bind leg
     // line (ankle behind the hip joint). 'rest' rigs stand up straight in idle.
     this.stand = rest && b.lFoot && b.rFoot ? {
@@ -348,7 +353,7 @@ export class CharacterAnimator {
     const cw = this.w.lower;
     const idleShare = (cw.Idle || 0) / Math.max(1e-4, Object.values(cw).reduce((a, b) => a + b, 0));
     this.stance = damp(this.stance, this.base === 'Loco' && !fullAct ? idleShare : 0, 8, dt);
-    this._fixStance(this.stance);
+    if (this.stanceFix) this._fixStance(this.stance);
 
     // Staff-holding arm pose (IK) over the clips; released for attacks and spells.
     if (this.model.holdStaff) {

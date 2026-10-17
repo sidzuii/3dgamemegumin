@@ -20,10 +20,14 @@ import { dampAngle, clamp } from '../core/math.js';
  * beyond, hidden beyond 140 m. Walking NPCs raycast the ground only while moving.
  */
 const CLIPS = {
-  idle: 'Idle_Loop', walk: 'Walk_Loop', talk: 'Idle_Talking_Loop', work: 'Interact', shop: 'PickUp_Table',
-  // The library has no sitting clip: 'sit' = the idle upper body + legs posed in NPC._sitPose.
-  guard: 'Sword_Idle', sit: 'Idle_Loop', dance: 'Dance_Loop', magic: 'Spell_Simple_Idle_Loop', wave: 'Interact',
+  idle: 'mx:Standing Idle', walk: 'Walk_Loop', talk: 'mx:Talking', work: 'Interact', shop: 'PickUp_Table',
+  // 'sit' = the Mixamo sitting idle (hands in the lap), its legs re-posed to the seat in NPC._sitPose.
+  guard: 'Sword_Idle', sit: 'mx:Sitting Idle', dance: 'Dance_Loop', magic: 'Spell_Simple_Idle_Loop', wave: 'mx:Waving',
+  // second variants: every other NPC (by id) idles / talks with these, so a crowd does not move in step
+  idle2: 'mx:Happy Idle', talk2: 'mx:Talking2',
 };
+/** The main library's clips when the Mixamo pack did not load. */
+const FALLBACK = { idle: 'Idle_Loop', talk: 'Idle_Talking_Loop', sit: 'Idle_Loop', wave: 'Interact', idle2: 'Idle_Loop', talk2: 'Idle_Talking_Loop' };
 /** How much of the clips' downward gaze is lifted (hands-on work keeps looking down). */
 const LEVEL_HEAD = { work: 0.3, shop: 0.4, magic: 0.5, dance: 0.6 };
 const WALK_SPEED = 1.35;
@@ -84,7 +88,7 @@ export class NPCManager {
       const tpl = this.people.create({ pack, parts: BASE[pack], scale: 1 });
       const ctx = lib.prepareTarget(tpl.root, 'qp');
       const set = (this.clips[pack] = {});
-      for (const [k, src] of Object.entries(CLIPS)) set[k] = lib.bake(ctx, src, { name: `npc_${pack}_${k}`, hipsY: 'keep', levelHead: LEVEL_HEAD[k] ?? 0.8 });
+      for (const [k, src0] of Object.entries(CLIPS)) set[k] = lib.bake(ctx, lib.clips[src0] ? src0 : FALLBACK[k], { name: `npc_${pack}_${k}`, hipsY: 'keep', levelHead: LEVEL_HEAD[k] ?? 0.8 });
       lib.restore(ctx);
     }
   }
@@ -286,6 +290,8 @@ class NPC {
   }
 
   _play(name, fade = 0.3) {
+    if (this.variant === undefined) this.variant = [...(this.def?.id || '')].reduce((h, c) => h + c.charCodeAt(0), 0) % 2;
+    if (this.variant && (name === 'idle' || name === 'talk') && this.actions[name + '2']) name += '2';
     if (this.anim === name) return;
     const next = this.actions[name] || this.actions.idle;
     if (!next) return;

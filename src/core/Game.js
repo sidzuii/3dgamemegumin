@@ -135,7 +135,10 @@ export class Game {
       return new Promise((r) => setTimeout(r, 0)); // let the loading screen repaint
     };
     this.animLib = new AnimationLibrary();
-    const animP = this.animLib.load().then(() => { parts.anim = 1; report(); });
+    // the mocap library + the Mixamo idles / talk / wave / sit (tools/pack_mixamo_anims.mjs); the game runs without the latter
+    const animP = this.animLib.load()
+      .then(() => this.animLib.addSource('/models/anim/mixamo.glb', 'mixamo', 'mx:').catch((e) => console.warn('[anim] no Mixamo clips', e)))
+      .then(() => { parts.anim = 1; report(); });
     this.player = new Player(this);
     this.enemyAssets = new EnemyAssets();
     const chestP = new GLTFLoader().loadAsync('/models/chest/chest.glb', (e) => {
