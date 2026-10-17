@@ -25,6 +25,8 @@ export class DialogueUI {
 
   show(view) {
     this.view = view;
+    // the recording of this line (once per line: a node may be shown again)
+    if (view.clip !== this._voiced) { this._voiced = view.clip; this.game.voice?.play(view.clip); }
     if (!this.open) {
       this.open = true;
       this.el.root.classList.add('show');
@@ -79,6 +81,8 @@ export class DialogueUI {
 
   hide() {
     this.open = false;
+    this._voiced = null;
+    this.game.voice?.stop();
     this.el.root.classList.remove('show');
     // The conversation may have opened a shop or a menu: only re-capture the mouse if not.
     setTimeout(() => { if (!this.game.uiBlocking) this.game.input.requestLock(); }, 0);

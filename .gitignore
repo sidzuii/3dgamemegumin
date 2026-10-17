@@ -1,1 +1,3 @@
 release/
+# raw voice-over takes (the levelled copies go to public/audio/voice)
+voices/

@@ -77,8 +77,10 @@ Full description, file map and how-to guides: see `README.md` (Russian). The use
   (`A00`, entry points `A00:join`); NPC `talk` entries in `data/npcs.js` route to them by quest stage. Story variables:
   `state.vars` (`{ setVar }` / `{ addVar }` / `{ var: [name, op, value] }`, names declared in `story/vars.js`).
   `node tools/story/check.mjs [A|B|C]` = static check + coverage (run it after every change). The WHOLE package is ported (A00-A29, B01-B23,
-  C00-C33; the voice-over is still not touched: `Озвучка/` of the package and core/Audio.js stay as they are). Voice-over files (when hooked up):
-  `public/audio/voice/<line ID>.mp3|.ogg` (mixed formats, one file per ID), levelled by `tools/audio/normalize_voice.ps1` (-18 LUFS, mono).
+  C00-C33; the voice-over is still not touched: `Озвучка/` of the package and core/Audio.js stay as they are). Voice-over = `src/core/Voice.js` (own <audio>, not core/Audio.js):
+  `public/audio/voice/<line ID>.mp3|.ogg` (mixed formats, one file per ID; list = `virtual:voice-manifest` from vite.config.js at build/page
+  load), played by DialogueUI.show (view.clip) and RPG.say (barks, combat calls); volume «Голоса» in megumin-settings; files levelled by
+  `tools/audio/normalize_voice.ps1` (-18 LUFS, mono).
   MEGUMIN IS NEVER VOICED (the user's decision): her lines stay text only. Story props / Water Volley
   targets / enemy waves / directed blasts are DATA in `story/props.js` (`STORY_PROPS`, `STORY_VOLLEY`, `STORY_WAVES` with optional shields,
   `STORY_BLASTS`; effects `{ wave }`, `{ scene }`, `{ save }`, `{ credits }`); side-story places/props/camps are DATA in `story/sideprops.js`

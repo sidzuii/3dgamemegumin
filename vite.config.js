@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
-import { writeFileSync, copyFileSync, existsSync, mkdirSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { writeFileSync, copyFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs';
+import { resolve, normalize } from 'node:path';
 
 const LAYOUT = resolve('public/data/placements.json');
 
@@ -35,8 +35,42 @@ function mapEditorSave() {
   };
 }
 
+const VOICE_DIR = resolve('public/audio/voice');
+const VOICE_MOD = 'virtual:voice-manifest';
+
+/**
+ * The recorded lines that exist: `import VOICES from 'virtual:voice-manifest'` = { lineId: 'mp3' | 'ogg' } from the files in
+ * public/audio/voice (src/core/Voice.js). Read at build time (the portable build carries exactly the files it was built with)
+ * and on each page load of the dev server (a file added while it runs is picked up by the next reload).
+ */
+function voiceManifest() {
+  const scan = () => {
+    const m = {};
+    if (existsSync(VOICE_DIR)) for (const f of readdirSync(VOICE_DIR).sort()) {
+      const r = /^([A-Z][A-Za-z0-9_]*_\d{3})\.(mp3|ogg)$/i.exec(f);
+      if (r && !(r[1] in m)) m[r[1]] = r[2].toLowerCase();
+    }
+    return m;
+  };
+  return {
+    name: 'voice-manifest',
+    resolveId: (id) => (id === VOICE_MOD ? '\0' + VOICE_MOD : null),
+    load: (id) => (id === '\0' + VOICE_MOD ? `export default ${JSON.stringify(scan())};` : null),
+    configureServer(server) {
+      const stale = (f) => {
+        if (!normalize(f).startsWith(VOICE_DIR)) return;
+        const mod = server.moduleGraph.getModuleById('\0' + VOICE_MOD);
+        if (mod) server.moduleGraph.invalidateModule(mod);
+      };
+      server.watcher.add(VOICE_DIR);
+      server.watcher.on('add', stale);
+      server.watcher.on('unlink', stale);
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [mapEditorSave()],
+  plugins: [mapEditorSave(), voiceManifest()],
   server: {
     host: '127.0.0.1',
     port: 5173,

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Audio } from './Audio.js';
+import { Voice } from './Voice.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
@@ -172,6 +173,7 @@ export class Game {
 
     await step('Будим жителей…', 0.88);
     this.audio = new Audio();
+    this.voice = new Voice(this); // recorded lines (public/audio/voice)
     this.projectiles = new Projectiles(this);
     this.enemies = new EnemyManager(this);
     this.combat = new Combat(this); // after the enemies: the core's targets are the enemy list
