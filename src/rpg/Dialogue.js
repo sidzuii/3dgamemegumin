@@ -74,6 +74,7 @@ export class DialogueRunner {
       name: who === 'megumin' ? 'Мегумин' : who === 'narrator' ? '' : speaker?.name || '',
       title: who === 'megumin' ? 'Архимаг' : who === 'narrator' ? '' : speaker?.title || '',
       portrait: who === 'megumin' ? 'megumin' : who === 'narrator' ? null : speaker?.portrait || speaker?.look,
+      clip: node.clip, // the recording id (Voice)
       text,
       choices,
     };

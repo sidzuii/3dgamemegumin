@@ -530,6 +530,7 @@ export class RPG {
     const who = VOICE[c[0]];
     const name = who === 'megumin' ? 'Мегумин' : this.npcs?.def(who)?.name || c[0];
     this.game.hud.toast(`${name}: «${c[1]}»`, 4);
+    if (!this.dialogue.current) this.game.voice?.play(clipId); // a bark never cuts a conversation
     this.events.emit('say', { id: clipId });
   }
 

@@ -8,7 +8,7 @@ import { PRESETS } from '../core/Quality.js';
  * Settings of its own are kept in localStorage `megumin-settings`; quality, sound and combat keep their own keys.
  */
 const KEY = 'megumin-settings';
-const DEFAULTS = { fov: 60, sens: 1, invertY: false, dynamicRes: true, fps: false };
+const DEFAULTS = { fov: 60, sens: 1, invertY: false, dynamicRes: true, fps: false, voice: 1 };
 const TIPS = [
   'Explosion забирает всю ману: после него Мегумин нужна передышка — или помощь Рокси.',
   'E — поговорить, открыть, взять. Компас вверху показывает направление к цели задания.',
@@ -274,6 +274,7 @@ export class MainMenu {
         this._range('Общая громкость', 0, 100, 1, Math.round(AS.master * 100), (v) => A.set('master', v / 100), (v) => v + '%'),
         this._range('Эффекты', 0, 100, 1, Math.round(AS.sfx * 100), (v) => A.set('sfx', v / 100), (v) => v + '%'),
         this._range('Музыка', 0, 100, 1, Math.round(AS.music * 100), (v) => A.set('music', v / 100), (v) => v + '%'),
+        this._range('Голоса', 0, 100, 1, Math.round((S.voice ?? 1) * 100), (v) => this._set('voice', v / 100), (v) => v + '%'),
         this._check('Выключить звук', AS.muted, (v) => A.set('muted', v), 'N'),
         this._check('Подписи звуков', AS.captions, (v) => A.set('captions', v), 'важные сигналы показываются текстом'),
       );
@@ -309,6 +310,7 @@ export class MainMenu {
       g.cameraRig.baseFov = S.fov;
     }
     g.quality?.setDynamic(S.dynamicRes);
+    if (g.voice) g.voice.volume = S.voice ?? 1;
     if (this.started) g._toggleFps(!!S.fps);
   }
 
