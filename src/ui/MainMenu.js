@@ -201,6 +201,7 @@ export class MainMenu {
       this._btn('Журнал заданий', () => this._gameMenu('journal')),
       this._btn('Карта', () => this._gameMenu('map')),
       this._btn('Настройки', () => this.settingsView('pause')),
+      ...(this.game.admin?.enabled ? [this._btn('Админ-меню (F10)', () => this.game.admin.show())] : []),
       this._btn('Управление', () => this.controls('pause')),
       this._btn('Главное меню', () => this._toTitle(), 'ghost'),
       this._btn('Выйти из игры', () => this._quit(), 'ghost'),
@@ -249,7 +250,7 @@ export class MainMenu {
     const box = el('div', 'mm-box');
     box.appendChild(el('div', 'mm-h', 'Настройки'));
     const tabs = el('div', 'mm-tabs');
-    const TABS = [['gfx', 'Графика'], ['mouse', 'Мышь и камера'], ['sound', 'Звук'], ['combat', 'Бой']];
+    const TABS = [['gfx', 'Графика'], ['mouse', 'Мышь и камера'], ['sound', 'Звук'], ['combat', 'Бой'], ['admin', 'Админ']];
     for (const [id, label] of TABS) {
       const b = el('button', 'mm-tab' + (id === tab ? ' active' : ''), label);
       b.addEventListener('click', () => this.settingsView(from, id));
@@ -290,6 +291,11 @@ export class MainMenu {
         this._check('Переключаться на напарницу после Explosion', CS.autoSwitch, (v) => set('autoSwitch', v), 'Мегумин обессилена на 12 с'),
         this._check('Напарница сама применяет средние навыки', CS.skillsInTactics, (v) => set('skillsInTactics', v)),
       );
+    } else if (tab === 'admin') {
+      body.append(
+        this._check('Админский режим', !!S.admin, (v) => this._set('admin', v), 'F10 — админ-меню: главы сюжета, столица, телепорт, скорость, бессмертие'),
+      );
+      body.appendChild(el('p', '', 'Для себя: быстро пройти сюжет, открыть столицу, проверить места. Прыжок к главе отмечает всё до неё пройденным — лучше делать это на отдельном сохранении.'));
     }
     box.appendChild(body);
     const foot = el('div', 'mm-row-end');

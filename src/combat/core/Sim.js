@@ -415,6 +415,7 @@ export class CombatSim {
 
   /** i-frames of the dodge: 0.10 – 0.28 s from its start. */
   isInvulnerable(hero) {
+    if (this.god) return true; // the admin mode's immortality (ui/AdminPanel): every hit misses
     return hero.state === 'dodge' && hero.dodge.t >= NUM.dodge.invulnerability[0] && hero.dodge.t <= NUM.dodge.invulnerability[1];
   }
 

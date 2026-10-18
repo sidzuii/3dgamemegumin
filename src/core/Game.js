@@ -58,6 +58,7 @@ import { InventoryUI } from '../ui/InventoryUI.js';
 import { RPG } from '../rpg/RPG.js';
 import { NPCManager } from '../npc/NPCManager.js';
 import { Crowd } from '../npc/Crowd.js';
+import { AdminPanel } from '../ui/AdminPanel.js';
 import { DialogueUI } from '../ui/DialogueUI.js';
 import { ShopUI } from '../ui/ShopUI.js';
 import { GameMenu } from '../ui/GameMenu.js';
@@ -128,7 +129,7 @@ export class Game {
 
   /** Any window that pauses the game (dialogue, shop, menu, book). */
   get uiBlocking() {
-    return !!(this.dialogueUI?.open || this.shopUI?.open || this.menu?.open || this.invUI?.bookOpen || this.mainMenu?.pauseOpen);
+    return !!(this.dialogueUI?.open || this.shopUI?.open || this.menu?.open || this.invUI?.bookOpen || this.mainMenu?.pauseOpen || this.admin?.open);
   }
 
   async init(onProgress) {
@@ -198,6 +199,7 @@ export class Game {
     this.shopUI = new ShopUI(this);
     this.menu = new GameMenu(this);
     this.rpgHud = new RPGHud(this);
+    this.admin = new AdminPanel(this); // F10 when the admin mode is on (settings «Админ» or ?admin)
     this.rpg.ui = { dialogue: this.dialogueUI, shop: this.shopUI, menu: this.menu, notify: (k, t) => this.rpgHud.notify(k, t) };
     this.hud.setupCompass(this.world.regions, this.discovered);
     this.currentLocation = null;
@@ -383,6 +385,7 @@ export class Game {
   /** Window hotkeys; returns true while a window pauses the game. */
   _uiInput(dt) {
     const input = this.input;
+    if (this.admin?.open) return true;
     if (this.dialogueUI.open) {
       this.dialogueUI.update(dt, input);
       return true;
@@ -497,6 +500,7 @@ export class Game {
     this.combat.input(input);
     this._surfaceEffects(dt);
     this.player.update(dt, input, this.cameraRig);
+    this.admin.update();
     this.combat.update(dt);
     this.inventory.update(dt);
     const pp = this.player.position;

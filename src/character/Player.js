@@ -365,7 +365,7 @@ export class Player {
     const jumpPressed = input.wasPressed('Space') && canMove && state === 'free';
     const canJump = f.stamina >= 3 || c.grounded;
 
-    let speedMul = moveMul * this.envSpeedMul;
+    let speedMul = moveMul * this.envSpeedMul * (this.game.admin?.speed ?? 1); // admin speed (ui/AdminPanel)
     if (out && out.speedCap < Infinity) speedMul *= clamp(out.speedCap / MOVE.walkSpeed, 0, 1);
     const cmd = {
       moveDir: _move, run, stroll: this.strolling, jumpPressed, jumpHeld: input.isDown('Space') && state === 'free',

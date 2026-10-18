@@ -12,6 +12,11 @@ Full description, file map and how-to guides: see `README.md` (Russian). The use
   (`megumin-settings`: fov, mouse sens, invertY, dynamic res, fps; quality/sound/combat keep their keys), controls, credits, `ask()` modal.
   `tools/debug_helpers.js` `__init` clicks the primary menu button. New game: A00 at the caravan camp OUTSIDE the south gate
   (spots `caravan_arrival`, `marta_road`, sacks there); `RPG.autoIntro` waits for 15 game frames; `npcs.refresh(true)` on load.
+- Admin mode: `src/ui/AdminPanel.js` (`game.admin`), on via Settings → «Админ» (`megumin-settings.admin`) or `?admin`; F10 / pause
+  menu. Story: next stage / finish the tracked quest, jump to a chapter of the main chain (`CHAIN`; earlier quests forced done with
+  rewards + `requires` flags + `AFTER` per quest = what their scenes set), «Открыть столицу»; teleports (regions with `spawn`, carriage
+  stops); speed ×1…5 (Player speedMul), immortality (`combat.sim.god` → `isInvulnerable`), endless stamina/mana (`admin.update()`),
+  heal, levels, eris, skills, Roxy; time of day, clear enemies. Cheat switches: localStorage `megumin-admin`.
 - RPG layer: `src/rpg/` (state, quests, dialogue, guild, economy, gathering, events, clock); content is data
   in `src/data/` (items, quests, dialogues, npcs, shops, resources). Map data: `src/world/MapData.js`;
   builders: `src/world/build/` (Kit, Town, Countryside, Dungeon). NPCs: `src/npc/`.
