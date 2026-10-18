@@ -1,0 +1,1 @@
+powershell -ExecutionPolicy Bypass -File tools\audio\normalize_voice.ps1 -In "voices" -Out "public\audio\voice"
