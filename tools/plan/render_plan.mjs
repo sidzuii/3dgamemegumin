@@ -15,7 +15,7 @@
  * overhang, jetty, plinth, what stands at the door; key buildings' `annex` towers / steps), so
  * no two roofs, walls or plinths meet. The frontage generator fills the blocks with plots.
  */
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, readFileSync, existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import zlib from 'node:zlib';
 import * as P from '../../src/world/MapData.js';
@@ -227,9 +227,27 @@ for (const c of corridors) {
 }
 report.city.streetCrossSlope = { max: +worstCross.d.toFixed(3), at: worstCross.at, street: worstCross.id };
 if (worstCross.d > 0.1) issue('street ' + worstCross.id, `cross slope ${worstCross.d.toFixed(2)} m at (${worstCross.at})`);
-const obstacles = [...C.SQUARES, ...C.AREAS];
+// The map editor's layout (public/data/placements.json) may have moved key buildings and yards: the generated houses keep clear of
+// them where they stand in the game, not where the plan first put them (the overrides of generated lots are not applied: a new
+// generation makes new lots).
+const LAYOUT = existsSync(join(ROOT, 'public/data/placements.json')) ? JSON.parse(readFileSync(join(ROOT, 'public/data/placements.json'), 'utf8')) : {};
+const OV = LAYOUT.overrides || {};
+const KEYS = C.BUILDINGS.map((b) => {
+  const o = OV[b.id];
+  return o ? { ...b, u: o.x - P.AXEL.x, v: o.z - P.AXEL.z, rot: o.rot } : b;
+});
+const AREAS = C.AREAS.map((A) => {
+  const o = OV[A.id];
+  if (!o) return A;
+  // the group pivot is the centre of the area's box (Town.js); the override moves and turns it about that pivot
+  const us = A.pts.map((p) => p[0]), vs = A.pts.map((p) => p[1]);
+  const cu = (Math.min(...us) + Math.max(...us)) / 2, cv = (Math.min(...vs) + Math.max(...vs)) / 2;
+  const tu = o.x - P.AXEL.x, tv = o.z - P.AXEL.z, c = Math.cos(o.rot || 0), sn = Math.sin(o.rot || 0);
+  return { ...A, pts: A.pts.map(([u, v]) => { const du = u - cu, dv = v - cv; return [tu + du * c + dv * sn, tv - du * sn + dv * c]; }) };
+});
+const obstacles = [...C.SQUARES, ...AREAS];
 // Open areas (cemetery, yards, gardens) must not reach into the streets or the pomerium.
-for (const A of C.AREAS) {
+for (const A of AREAS) {
   for (const c of corridorsOf()) {
     const d = Math.min(...sampleLine([...A.pts, A.pts[0]], 0.5).map(([u, v]) => lineDist(c.pts, u, v)));
     if (d < c.half + 0.3 && !(A.id.endsWith('forecourt') || A.id.endsWith('terrace') || A.id.endsWith('steps') || A.id.endsWith('_front') || (A.id === 'secret_garden' && c.id === 'garden_lane'))) issue('area ' + A.id, 'touches ' + c.id);
@@ -254,7 +272,7 @@ function check(b, R, strict) {
   if (groundRange(R) > (strict ? 0.6 : 0.8)) why.push(`slope ${groundRange(R).toFixed(1)} m`);
   return why;
 }
-for (const b0 of C.BUILDINGS) {
+for (const b0 of KEYS) {
   const b = { ...b0, key: true };
   const R = rect(b);
   const why = check(b, R, true);
@@ -273,37 +291,54 @@ const fronts = [
   { pts: [...ring, ring[0]], half: C.RING.width / 2, sides: [1, -1] },
 ];
 let tries = 0;
+/** Point at arc length s along a polyline. */
+function walker(pts) {
+  const acc = [0];
+  for (let k = 1; k < pts.length; k++) acc.push(acc[k - 1] + Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]));
+  const total = acc[acc.length - 1];
+  const at = (q) => {
+    q = Math.max(0, Math.min(total, q));
+    let k = 1;
+    while (k < acc.length - 1 && acc[k] < q) k++;
+    const f = (q - acc[k - 1]) / (acc[k] - acc[k - 1] || 1);
+    return [pts[k - 1][0] + (pts[k][0] - pts[k - 1][0]) * f, pts[k - 1][1] + (pts[k][1] - pts[k - 1][1]) * f];
+  };
+  return { total, at };
+}
+// Rows along the whole length of every front (not segment by segment: the rounded bends are short segments): a plot of width w at
+// arc length t stands square to the chord under it, its front on the line `half + 0.8` from the centre, the next plot after the
+// envelope gap — so the houses of a street form an even row that follows its bends.
 for (const f of fronts) {
+  const { total, at } = walker(f.pts);
   for (const side of f.sides) {
-    for (let i = 0; i < f.pts.length - 1; i++) {
-      const [ax, az] = f.pts[i], [bx, bz] = f.pts[i + 1];
-      const L = Math.hypot(bx - ax, bz - az);
-      const tx = (bx - ax) / L, tz = (bz - az) / L;
-      const nx = -tz * side, nz = tx * side;
-      let t = 1.5;
-      while (t < L - 3) {
-        if (placed.length >= C.TARGET.max) break;
-        const dist = districtAt(ax + tx * t + nx * 6, az + tz * t + nz * 6);
+    let t = 1.5;
+    while (t < total - 3) {
+      if (placed.length >= C.TARGET.max) break;
+      let ok = null;
+      for (let k = 0; k < 4 && !ok; k++) {
+        const probe = at(t + 3);
+        const dist = districtAt(probe[0], probe[1]);
         const F = C.FILL[dist];
-        // Try a few sizes here (big first, last the smallest plot), then step on.
-        let ok = null;
-        for (let k = 0; k < 4 && !ok; k++) {
-          let w = F.w[1] - (k + rng()) * (F.w[1] - F.w[0]) / 3, d = F.d[0] + rng() * (F.d[1] - F.d[0]);
-          if (k === 3) { w = F.w[0]; d = F.d[0]; }
-          if (t + w > L - 1) continue;
-          const back = f.half + 0.8 + d / 2;
-          const cu = ax + tx * (t + w / 2) + nx * back, cv = az + tz * (t + w / 2) + nz * back;
-          // Front faces the street: front direction = -n.
-          const b = { id: 'p' + placed.length, u: cu, v: cv, w, d, rot: Math.atan2(-nx, -nz), kind: F.kinds[Math.floor(rng() * F.kinds.length)], district: dist };
-          const R = rect(b);
-          tries++;
-          if (!check(b, R, false).length) ok = { ...b, R, E: envelope(b) };
-        }
-        if (ok) {
-          placed.push(ok);
-          t += ok.w + EN.side * 2 + EN.gap + (rng() < 0.15 ? 3.5 : 0); // detached houses; now and then a passage to the yards
-        } else t += 1;
+        let w = F.w[1] - (k + rng()) * (F.w[1] - F.w[0]) / 3, d = F.d[0] + rng() * (F.d[1] - F.d[0]);
+        if (k === 3) { w = F.w[0]; d = F.d[0]; }
+        if (t + w > total - 1) continue;
+        const [ax, az] = at(t), [bx, bz] = at(t + w);
+        const L = Math.hypot(bx - ax, bz - az);
+        if (L < w * 0.9) continue; // too sharp a bend under the plot
+        const tx = (bx - ax) / L, tz = (bz - az) / L;
+        const nx = -tz * side, nz = tx * side;
+        const back = f.half + 0.8 + d / 2;
+        const cu = (ax + bx) / 2 + nx * back, cv = (az + bz) / 2 + nz * back;
+        // Front faces the street: front direction = -n.
+        const b = { id: 'p' + placed.length, u: cu, v: cv, w, d, rot: Math.atan2(-nx, -nz), kind: F.kinds[Math.floor(rng() * F.kinds.length)], district: dist };
+        const R = rect(b);
+        tries++;
+        if (!check(b, R, false).length) ok = { ...b, R, E: envelope(b) };
       }
+      if (ok) {
+        placed.push(ok);
+        t += ok.w + EN.side * 2 + EN.gap + (rng() < 0.08 ? 3.5 : 0); // an even row; now and then a passage to the yards
+      } else t += 1;
     }
   }
 }

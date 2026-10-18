@@ -162,7 +162,7 @@ export const DISTRICTS = [
 ];
 
 /** Wanted number of buildings (key + generated). */
-export const TARGET = { min: 80, max: 118 };
+export const TARGET = { min: 80, max: 170 };
 
 /**
  * Space a building takes beyond its w × d walls (m), as built by Kit.house(): `side` = each side

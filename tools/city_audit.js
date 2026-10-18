@@ -68,7 +68,10 @@ const corners = (b, m) => {
   for (const x of [b.min.x, b.max.x]) for (const y of [b.min.y, b.max.y]) for (const z of [b.min.z, b.max.z]) res.push([e[0] * x + e[4] * y + e[8] * z + e[12], e[1] * x + e[5] * y + e[9] * z + e[13], e[2] * x + e[6] * y + e[10] * z + e[14]]);
   return res;
 };
+// the map editor's moves of the groups (layout overrides): World applies the group delta `_D` in every sink
+const moved = (self, m) => (self._D ? new m.constructor().multiplyMatrices(self._D, m) : m);
 const push = (self, name, box, m, opts) => {
+  m = moved(self, m);
   const c = corners(box, m);
   let y0 = Infinity, y1 = -Infinity;
   for (const p of c) { y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); }
@@ -83,6 +86,7 @@ rec.addSolid = function (geo, m, mat, opts = {}) {
   if (((mat === 'cobble' || mat === 'plaza') || (mat === 'stoneDark' && gid === 'axel_streets')) && !geo.index && geo.attributes.position.count > 6) {
     const p = geo.attributes.position.array.slice();
     const tmp = new THREE_V();
+    m = moved(this, m);
     for (let i = 0; i < p.length; i += 3) { tmp.set(p[i], p[i + 1], p[i + 2]).applyMatrix4(m); p[i] = tmp.x; p[i + 1] = tmp.y; p[i + 2] = tmp.z; }
     paving.push({ gid, mat, pos: p });
     return geo;
@@ -93,12 +97,12 @@ rec.addSolid = function (geo, m, mat, opts = {}) {
 };
 rec.addKit = function (name, m, opts = {}) { push(this, name, this.kits.box(name), m, opts); };
 rec.footprints = [];
-rec.addFootprint = function (x, z, w, d, rot, kind) { this.footprints.push({ x, z, w, d, rot, kind, gid: root(this._group) }); };
-rec.spot = function (name, pos, yaw = 0) { spots[name] = { x: pos.x, y: pos.y, z: pos.z, yaw, gid: root(this._group) }; this.npcSpots[name] = { pos: pos.clone(), yaw }; };
+rec.addFootprint = function (x, z, w, d, rot, kind) { const q = this.xf(new THREE_V(x, 0, z)); this.footprints.push({ x: q.x, z: q.z, w, d, rot: rot + (this._D ? this._group.dyaw : 0), kind, gid: root(this._group) }); };
+rec.spot = function (name, pos, yaw = 0) { pos = this.xf(pos.clone()); yaw += this._D ? this._group.dyaw : 0; spots[name] = { x: pos.x, y: pos.y, z: pos.z, yaw, gid: root(this._group) }; this.npcSpots[name] = { pos: pos.clone(), yaw }; };
 for (const k of ['addInteractable', 'addLightSource', 'addChimney', 'addChest', 'addObject']) rec[k] = () => null;
 rec.npcSpots = {};
 rec.trees = { add() {} };
-rec.dummies = []; rec.dynamicColliders = []; rec.updatables = [];
+rec.dummies = []; rec.dynamicColliders = []; rec.updatables = []; rec.cameraBlockers = []; rec.entrances = []; rec._staticCollision = [];
 rec.scene = { add() {} };
 rec.groups = new Map();
 // Parts ("tavern/step", "axel_wall/side_3") count as their top-level group.

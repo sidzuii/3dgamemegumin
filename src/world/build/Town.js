@@ -1,12 +1,13 @@
 import * as THREE from 'three';
 import { mulberry32 } from '../../core/math.js';
-import { Frame, house, houseTower, cityWall, paveRibbon, pavePoly, lamp, lantern, barrel, crate, stall, well, bench, wagon, haystack, fence, tree, bush, food, prop, tableware } from './Kit.js';
+import { Frame, house, houseTower, cityWall, pavePoly, lamp, lantern, barrel, crate, stall, well, bench, wagon, haystack, fence, tree, bush, food, prop, tableware } from './Kit.js';
 import { HealingCrystal, Brazier, QuestProp, Door } from '../Interactables.js';
 import { TrainingDummy } from '../TrainingDummy.js';
 import { ROOF_COLORS } from '../KitLibrary.js';
 import { REGION, offsetPolygon } from '../MapData.js';
 import { AXEL, WALL, RING, SQUARES, AREAS, STREETS, BUILDINGS, ENVELOPE, toWorld, FACE_ROT, streetLine, ringLine } from '../AxelPlan.js';
 import { LOTS } from './AxelLots.js';
+import { roadSurface } from './RoadSurface.js';
 import { FY, weaponShop, alchemyShop, generalStore, bakeryShop, forgeShop, caravanOffice, guildExtras, tavernExtras, templeExtras } from './Interiors.js';
 
 /**
@@ -48,6 +49,7 @@ function at(id) {
 export function buildTown(world) {
   W = world;
   DOORS.length = 0;
+  ROADS.length = 0;
   const rng = mulberry32(2024);
 
   walls();
@@ -80,6 +82,8 @@ export function buildTown(world) {
   lamps();
   W.group('caravan_camp', { x: -320, z: 158 }, (r) => caravanCamp(r), 'Караванная стоянка');
   trainingField();
+  // the streets, the pomerium, the gate passages and the footpaths: one surface, no stacked ribbons at the junctions
+  roadSurface(W, ROADS, SQW, { lift: 0.09, tint: 0xece3d0, name: 'Улицы Акселя' });
   W.cityGround = groundMask();
 }
 
@@ -100,17 +104,12 @@ function walls() {
     p.y = W.heightAt(p.x, p.z);
     W.spot('gate_' + node.gate, p, frame.rot);
     const a = frame.at(0, 0, -9), b = frame.at(0, 0, 9);
-    paveRibbon(W, [[a.x, a.z], [b.x, b.z]], WALL.gateWidth - 0.6, { tint: 0xd6ccb8, lift: PAVE_LIFT.gate, covered: underSquare });
+    ROADS.push({ pts: [[a.x, a.z], [b.x, b.z]], width: WALL.gateWidth - 0.6 });
   }
 }
 
-/**
- * Paving lifts over the ground (m): squares over main streets over secondary streets over lanes
- * over the pomerium and the gate passages — where they overlap, the higher one shows (no
- * coplanar faces). Streets of one kind that meet alternate by a few millimetres.
- */
-const PAVE_LIFT = { square: 0.125, main: 0.105, secondary: 0.093, lane: 0.083, ring: 0.07, gate: 0.075 };
-const TINT = { main: 0xf0e8d8, secondary: 0xe4dccb, lane: 0xd6ccb8 }; // the cobble texture carries the colour
+/** Paving lift of the squares (m): over the one paved surface of the streets (RoadSurface, 0.09). */
+const PAVE_LIFT = { square: 0.125 };
 const SQW = SQUARES.map((q) => q.pts.map(([u, v]) => P(u, v)));
 const inPolygon = (pts, x, z) => {
   let c = false;
@@ -130,62 +129,38 @@ const underSquare = (x, z) => SQW.some((q) => inPolygon(q, x, z));
 /** Built centre lines (world) of the streets and the pomerium (AxelPlan, rounded bends). */
 const STREET_W = Object.fromEntries(STREETS.map((s) => [s.id, streetLine(s).map(([u, v]) => P(u, v))]));
 const RING_W = () => { const r = ringLine().map(([u, v]) => P(u, v)); return [...r, r[0]]; };
-/** Streets of the same kind whose paving overlaps get different lifts (greedy colouring). */
-const LIFT_STEP = Object.fromEntries((() => {
-  const along = (pts) => pts.slice(1).flatMap((q, i) => { const p = pts[i], n = Math.ceil(Math.hypot(q[0] - p[0], q[1] - p[1]) / 2); return [...Array(n + 1).keys()].map((k) => [p[0] + ((q[0] - p[0]) * k) / n, p[1] + ((q[1] - p[1]) * k) / n]); });
-  const near = (a, b) => along(STREET_W[a.id]).some(([x, z]) => lineDist(STREET_W[b.id], x, z) < (a.width + b.width) / 2 + 0.5);
-  const col = {};
-  for (const s of STREETS) {
-    const used = new Set(STREETS.filter((o) => o.kind === s.kind && col[o.id] !== undefined && (near(s, o) || near(o, s))).map((o) => col[o.id]));
-    let c = 0;
-    while (used.has(c)) c++;
-    col[s.id] = c;
-  }
-  return Object.entries(col);
-})());
-
 const mid = (pts) => pts[Math.floor(pts.length / 2)];
+/** The pieces of the one paved surface (RoadSurface): streets, the pomerium, gate passages, footpaths to doors (world [x, z]). */
+const ROADS = [];
 function streets() {
-  // One editable part; inside it every street / square has its own builder (by id).
+  // The streets and the pomerium are pieces of the one paved surface (built at the end of buildTown, with the footpaths of the
+  // houses); the squares keep their own flagstones on top, each an editable part.
+  for (const s of STREETS) ROADS.push({ pts: STREET_W[s.id], width: s.width });
+  ROADS.push({ pts: RING_W(), width: RING.width, closed: true });
   W.group('axel_streets', { x: AXEL.x, z: AXEL.z }, () => {
-    // Every street / square is a part of its own (Alt+click in the editor).
-    for (const s of STREETS) { const [x, z] = mid(STREET_W[s.id]); W.group(s.id, { x, z }, () => paveStreet(s), s.name || s.id); }
-    { const [x, z] = RING_W()[0]; W.group('pomerium', { x, z }, () => paveRing(), 'Пристенная улица'); }
     for (const q of SQUARES) { const [x, z] = P(...q.pts[0]); W.group('pave_' + q.id, { x, z }, () => paveSquare(q), 'Мостовая: ' + (q.name || q.id)); }
-  }, 'Улицы и площади');
-}
-
-/** A street: draped paving (kerbs on the main streets, cut at squares and crossing streets). */
-function paveStreet(s) {
-  const pts = STREET_W[s.id];
-  const others = STREETS.filter((o) => o.id !== s.id).map((o) => ({ pts: STREET_W[o.id], half: o.width / 2 + 0.4 }));
-  const ring = RING_W();
-  const kerbSkip = (x, z) => SQW.some((q) => inPolygon(q, x, z) || lineDist([...q, q[0]], x, z) < 0.6) || others.some((o) => lineDist(o.pts, x, z) < o.half) || lineDist(ring, x, z) < RING.width / 2 + 0.4;
-  paveRibbon(W, pts, s.width, { tint: TINT[s.kind], lift: PAVE_LIFT[s.kind] + Math.min(2, LIFT_STEP[s.id]) * 0.004, kerb: s.kind === 'main', covered: underSquare, kerbSkip });
+  }, 'Площади');
 }
 
 /**
  * A paved footpath from a door straight out along the house's front to the nearest street, ring
- * road or square (stops at its edge, reaching a little under it so the two paving layers meet
- * without a gap). Nothing is built if the street is already at the door or farther than 9 m.
+ * road or square (stops at its edge, reaching a little under it: the paving runs on without a seam).
+ * Nothing is built if the street is already at the door or farther than 9 m.
  */
-function doorPath(door, rot) {
+function doorPath(door, rot, reach = 9) {
   const dx = Math.sin(rot), dz = Math.cos(rot);
   const lines = [...Object.values(STREET_W).map((pts, i) => [pts, STREETS[i].width / 2]), [RING_W(), RING.width / 2]];
   const hit = (x, z) => underSquare(x, z) || lines.some(([pts, half]) => lineDist(pts, x, z) < half - 0.05);
   const x0 = door.x - dx * 1.2, z0 = door.z - dz * 1.2; // from the house front
   if (hit(door.x, door.z)) return;
   let t = 0;
-  while (t < 9 && !hit(door.x + dx * t, door.z + dz * t)) t += 0.25;
-  if (t >= 9) return;
+  while (t < reach && !hit(door.x + dx * t, door.z + dz * t)) t += 0.25;
+  if (t >= reach) return;
   const x1 = door.x + dx * (t + 0.4), z1 = door.z + dz * (t + 0.4);
   if (Math.hypot(x1 - x0, z1 - z0) < 1.2) return;
-  W.part('path', door.x, door.z, rot, () => paveRibbon(W, [[x0, z0], [x1, z1]], 1.7, { tint: TINT.lane, lift: PAVE_LIFT.lane + 0.006, covered: underSquare }), 'Дорожка к двери');
-}
-
-/** Pomerium: a darker, rougher ring inside the wall. */
-function paveRing() {
-  paveRibbon(W, RING_W().slice(0, -1), RING.width, { tint: 0xcfc6b4, lift: PAVE_LIFT.ring, closed: true, covered: underSquare });
+  // a piece of the town's one paved surface; where the house stands after the editor's moves (World.xf of its group)
+  const A = W.xf(new THREE.Vector3(x0, 0, z0)), Bp = W.xf(new THREE.Vector3(x1, 0, z1));
+  if (!W._mute) ROADS.push({ pts: [[A.x, A.z], [Bp.x, Bp.z]], width: 1.7 });
 }
 
 function paveSquare(q) {
@@ -452,7 +427,8 @@ function inside(fn) {
 function walkIn(id, rng, spec, furnish, prefix = id) {
   const b = B[id];
   const { x, z, rot } = at(id);
-  const h = house(W, { x, z, rot, w: b.w, d: b.d, floors: b.floors || 2, interior: true, entrance: 'arch', door: -b.w / 2 + 1.0, lantern: false, ...spec }, rng);
+  const closed = { id, name: (b.label ?? id).replace(/ \(.*\)$/, '') }; // in and out with E (Entrance.js)
+  const h = house(W, { x, z, rot, w: b.w, d: b.d, floors: b.floors || 2, interior: true, entrance: 'arch', closed, door: -b.w / 2 + 1.0, lantern: false, ...spec }, rng);
   const F = h.frame;
   const pts = inside(() => furnish(F, b.w, b.d, rng));
   if (pts.counter) W.spot(prefix + '_counter', F.at(pts.counter[0], FY, pts.counter[1]), rot);
@@ -461,6 +437,7 @@ function walkIn(id, rng, spec, furnish, prefix = id) {
   F.box(0.08, 0.08, 1.2, -b.w / 2 + 1.0, 3.2, b.d / 2 + 0.6, 'metal', { collide: false });
   F.box(1.0, 0.7, 0.06, -b.w / 2 + 1.0, 2.5, b.d / 2 + 1.15, 'wood', { collide: false, tint: spec.sign ?? 0x6a4428 });
   W.spot(id + '_entrance', F.at(-b.w / 2 + 1.0, 0, b.d / 2 + 1.8), rot);
+  if (h.door) doorPath(h.door, rot, 16); // a paved path from the door to the street
   return { h, F, pts };
 }
 

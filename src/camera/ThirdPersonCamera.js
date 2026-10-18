@@ -185,6 +185,12 @@ export class ThirdPersonCamera {
       _ray.far = maxDist;
       const hits = _ray.intersectObject(collider, false);
       if (hits.length && hits[0].distance < best) best = hits[0].distance;
+      // live blockers outside the static collider (the shut leaves of the closed entrances)
+      const extra = this.world.cameraBlockers;
+      if (extra?.length) {
+        const h2 = _ray.intersectObjects(extra, false);
+        if (h2.length && h2[0].distance < best) best = h2[0].distance;
+      }
     }
     return best;
   }
