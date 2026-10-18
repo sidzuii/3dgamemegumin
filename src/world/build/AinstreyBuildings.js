@@ -27,15 +27,17 @@ const SHUTTER = [0x4a6a4a, 0x7a4a34, 0x3a5a7a, 0x5a4a3a];
  * the sill (a tile = 2 storeys); the top is mapped to a plain plaster corner of the tile.
  */
 const _fbCache = new Map();
-function facadeBox(w, h, d, sill, floorH) {
-  const key = [w, h, d, sill, floorH].map((v) => v.toFixed(2)).join('|');
+function facadeBox(w, h, d, sill, floorH, uo = 0, vo = 0) {
+  const key = [w, h, d, sill, floorH, uo, vo].map((v) => v.toFixed(2)).join('|');
   if (_fbCache.has(key)) return _fbCache.get(key);
   const pos = [], nor = [], uv = [];
   const quad = (a, b, c, e, n, uvs) => { for (const [p, t] of [[a, uvs[0]], [b, uvs[1]], [c, uvs[2]], [a, uvs[0]], [c, uvs[2]], [e, uvs[3]]]) { pos.push(...p); nor.push(...n); uv.push(...t); } };
-  const V = (y) => (y - sill) / (2 * floorH);
+  // the tile (World makeFacadeTextures) is 8 bays x 4 storeys: (uo, vo) = the bay and the storey row this house starts at
+  const V = (y) => vo + (y - sill) / (4 * floorH);
+  let k = 0;
   const side = (len, at, n) => { // at(s, y) -> point; s from -len/2 to len/2 left to right seen from outside
-    const nb = Math.max(1, Math.round(len / 2.4)), u1 = nb / 4;
-    quad(at(-len / 2, 0), at(len / 2, 0), at(len / 2, h), at(-len / 2, h), n, [[0, V(0)], [u1, V(0)], [u1, V(h)], [0, V(h)]]);
+    const nb = Math.max(1, Math.round(len / 2.4)), u0 = uo + (k++ * 3) / 8, u1 = u0 + nb / 8;
+    quad(at(-len / 2, 0), at(len / 2, 0), at(len / 2, h), at(-len / 2, h), n, [[u0, V(0)], [u1, V(0)], [u1, V(h)], [u0, V(h)]]);
   };
   const hw = w / 2, hd = d / 2;
   side(w, (s, y) => [s, y, hd], [0, 0, 1]);
@@ -99,7 +101,7 @@ export function lightHouse(W, lot, opt = {}) {
     const iw = w - 0.4, id = d - 0.4;
     // the body wears the facade tile (windows in bays of ~2.4 m, two storeys a tile): see World makeFacadeTextures
     const FT = W.mats.facade ? 'facade' : PL;
-    if (FT === 'facade') F.put(facadeBox(iw, H, id, lowPart, floorH), 1, 1, 1, 0, 0, 0, FT, { ...o, keepUV: true, tint: new THREE.Color(lot.wall ?? 0xe8dcc4).lerp(new THREE.Color(0xffffff), 0.1).getHex() });
+    if (FT === 'facade') F.put(facadeBox(iw, H, id, lowPart, floorH, ((lot.seed || 1) % 8) / 8, ((Math.floor((lot.seed || 1) / 8) % 4) / 4)), 1, 1, 1, 0, 0, 0, FT, { ...o, keepUV: true, tint: new THREE.Color(lot.wall ?? 0xe8dcc4).lerp(new THREE.Color(0xffffff), 0.1).getHex() });
     else F.box(iw, H, id, 0, 0, 0, PL, { ...o, tint: wallT });
     F.box(w + 0.1, lowPart, d + 0.1, 0, 0, 0, PL, { ...o, tint: 0xb4aa94 });
     let top = H;

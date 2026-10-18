@@ -777,7 +777,7 @@ function sideVectors(p, closed) {
 
 /**
  * Street paving along a centre line (world [x, z]): a ribbon `width` wide, `lift` above the
- * ground, mitred at the bends. opts: { tint, lift, closed, kerb, covered(x, z), kerbSkip(x, z) } —
+ * ground, mitred at the bends. opts: { tint, lift, closed, kerb, covered(x, z), kerbSkip(x, z), mat ('cobble') } —
  * `covered`: points under higher paving (a square): runs inside it are left out; `kerbSkip`:
  * no kerb there (squares, crossing streets). Returns the resampled centre line.
  */
@@ -816,7 +816,7 @@ export function paveRibbon(world, pts, width, opts = {}) {
       _tri(pos, b, a2, b2, out);
     }
   }
-  if (pos.length) pavingSolid(world, pos, 'cobble', { castShadow: false, tint: opts.tint ?? 0xb0a898 });
+  if (pos.length) pavingSolid(world, pos, opts.mat ?? 'cobble', { castShadow: false, tint: opts.tint ?? 0xb0a898 });
   if (opts.kerb) {
     // Kerb stones along both edges (mitred like the street), cut where squares / streets meet.
     const kp = [];

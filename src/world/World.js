@@ -1078,35 +1078,56 @@ const polyArea = (pts) => Math.abs(pts.reduce((s, p, i) => { const q = pts[(i + 
 
 /** World-space planar UV projection per face (cheap triplanar bake). */
 /**
- * The tile of the far facades (World mats.facade): 4 window bays x 2 storeys of cream plaster (white-ish: the vertex tint gives
- * the house its colour), a timber beam at each floor, framed windows with shutters (some shut), stone sills; the glow map lights
- * about half of the panes at night.
+ * The tile of the far facades (World mats.facade): 8 window bays x 4 storeys of cream plaster (white-ish: the vertex tint gives
+ * the house its colour). Every storey row has its own manner (half-timbered, plain with stone sills, arched windows, pairs of
+ * narrow windows), the bays differ (shutters open or shut, flower boxes, a blind bay now and then) and the plaster has patches,
+ * so neighbouring houses that start at other bays and rows (AinstreyBuildings facadeBox) do not repeat one another. The glow
+ * map lights about half of the panes at night.
  */
 function makeFacadeTextures() {
-  const BW = 64, SH = 96, W = BW * 4, Hh = SH * 2;
+  const BW = 64, SH = 96, NB = 8, NS = 4, W = BW * NB, Hh = SH * NS;
   const mk = () => { const c = document.createElement('canvas'); c.width = W; c.height = Hh; return c; };
   const c = mk(), g = c.getContext('2d'), cg = mk(), gg = cg.getContext('2d');
   let seed = 7;
   const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
   g.fillStyle = '#f2ece0'; g.fillRect(0, 0, W, Hh);
-  for (let i = 0; i < 900; i++) { const v = 225 + Math.floor(rnd() * 26); g.fillStyle = `rgb(${v},${v - 6},${v - 16})`; g.fillRect(rnd() * W, rnd() * Hh, 2 + rnd() * 5, 2 + rnd() * 4); }
+  for (let i = 0; i < 60; i++) { const v = 228 + Math.floor(rnd() * 22); g.fillStyle = `rgba(${v},${v - 8},${v - 20},0.55)`; g.fillRect(rnd() * W, rnd() * Hh, 20 + rnd() * 70, 14 + rnd() * 50); }
+  for (let i = 0; i < 1600; i++) { const v = 222 + Math.floor(rnd() * 28); g.fillStyle = `rgb(${v},${v - 6},${v - 16})`; g.fillRect(rnd() * W, rnd() * Hh, 2 + rnd() * 5, 2 + rnd() * 4); }
   gg.fillStyle = '#000'; gg.fillRect(0, 0, W, Hh);
-  for (let f = 0; f < 2; f++) {
-    const y0 = f * SH;
-    g.fillStyle = '#6a4a32'; g.fillRect(0, y0, W, 6); // the floor beam (the top of the tile row is the storey above)
-    // the timber frame: posts between the bays, a brace now and then (the near houses are half-timbered too)
-    for (let b = 0; b <= 4; b++) g.fillRect(b * BW - 3, y0, 6, SH);
-    g.strokeStyle = '#6a4a32'; g.lineWidth = 5;
-    for (let b = 0; b < 4; b++) if (rnd() < 0.5) { g.beginPath(); const l = rnd() < 0.5; g.moveTo(b * BW + (l ? 3 : BW - 3), y0 + SH * 0.86); g.lineTo(b * BW + (l ? BW * 0.26 : BW * 0.74), y0 + SH * 0.62); g.stroke(); }
-    for (let b = 0; b < 4; b++) {
-      const x = b * BW + BW * 0.3, wx = BW * 0.4, y = y0 + SH * 0.28, wy = SH * 0.46;
-      g.fillStyle = '#5a3c28'; g.fillRect(x - 3, y - 3, wx + 6, wy + 6); // frame
-      g.fillStyle = '#2a3440'; g.fillRect(x, y, wx, wy); // glass
-      g.fillStyle = '#5a3c28'; g.fillRect(x + wx / 2 - 1, y, 2, wy); g.fillRect(x, y + wy * 0.45, wx, 2); // the cross bars
-      g.fillStyle = '#c8bca4'; g.fillRect(x - 5, y + wy + 3, wx + 10, 4); // sill
-      const shut = rnd();
-      if (shut < 0.55) { g.fillStyle = ['#4a6a4a', '#7a4a34', '#3a5a7a'][Math.floor(rnd() * 3)]; g.fillRect(x - 3 - BW * 0.17, y - 3, BW * 0.15, wy + 6); g.fillRect(x + wx + 4, y - 3, BW * 0.15, wy + 6); }
-      if (rnd() < 0.55) { gg.fillStyle = '#fff'; gg.fillRect(x, y, wx, wy); }
+  const TIMBER = '#6a4a32', SHUT = ['#4a6a4a', '#7a4a34', '#3a5a7a', '#6a5a3a', '#5a3a4a'];
+  for (let f = 0; f < NS; f++) {
+    const y0 = f * SH, manner = f; // 0 half-timbered, 1 plain + stone sills, 2 arched, 3 pairs of narrow windows
+    if (manner === 0) {
+      g.fillStyle = TIMBER; g.fillRect(0, y0, W, 6);
+      for (let b = 0; b <= NB; b++) g.fillRect(b * BW - 3, y0, 6, SH);
+      g.strokeStyle = TIMBER; g.lineWidth = 5;
+      for (let b = 0; b < NB; b++) if (rnd() < 0.5) { g.beginPath(); const l = rnd() < 0.5; g.moveTo(b * BW + (l ? 3 : BW - 3), y0 + SH * 0.86); g.lineTo(b * BW + (l ? BW * 0.26 : BW * 0.74), y0 + SH * 0.62); g.stroke(); }
+    } else {
+      g.fillStyle = manner === 2 ? '#d8ccb4' : '#e2d8c4'; g.fillRect(0, y0, W, 5); // a string course
+    }
+    for (let b = 0; b < NB; b++) {
+      if (rnd() < 0.09) continue; // a blind bay
+      const pane = (x, y, wx, wy, arch) => {
+        g.fillStyle = '#5a3c28'; g.fillRect(x - 3, y - 3, wx + 6, wy + 6);
+        if (arch) { g.beginPath(); g.arc(x + wx / 2, y, wx / 2 + 3, Math.PI, 0); g.fill(); }
+        g.fillStyle = '#2a3440'; g.fillRect(x, y, wx, wy);
+        if (arch) { g.beginPath(); g.arc(x + wx / 2, y, wx / 2, Math.PI, 0); g.fill(); }
+        g.fillStyle = '#5a3c28'; g.fillRect(x + wx / 2 - 1, y, 2, wy); g.fillRect(x, y + wy * 0.45, wx, 2);
+        if (rnd() < 0.55) { gg.fillStyle = '#fff'; gg.fillRect(x, y - (arch ? wx / 2 : 0), wx, wy + (arch ? wx / 2 : 0)); }
+      };
+      const shutters = (x, y, wx, wy) => { if (rnd() < 0.5) { g.fillStyle = SHUT[Math.floor(rnd() * SHUT.length)]; const sw = BW * 0.14; if (rnd() < 0.3) g.fillRect(x, y - 3, wx, wy + 6); else { g.fillRect(x - 3 - sw, y - 3, sw, wy + 6); g.fillRect(x + wx + 3, y - 3, sw, wy + 6); } } };
+      const sill = (x, y, wx) => { g.fillStyle = '#c8bca4'; g.fillRect(x - 5, y, wx + 10, 4); };
+      const flowers = (x, y, wx) => { if (rnd() < 0.3) { g.fillStyle = '#5a3c28'; g.fillRect(x - 2, y, wx + 4, 6); for (let k = 0; k < 6; k++) { g.fillStyle = ['#c84a4a', '#e8c84a', '#d86aa8', '#4a8a3a'][Math.floor(rnd() * 4)]; g.beginPath(); g.arc(x + 2 + k * (wx / 5.5), y - 1, 3, 0, 7); g.fill(); } } };
+      if (manner === 3) {
+        for (const k of [0, 1]) { const x = b * BW + BW * (0.2 + k * 0.36), wx = BW * 0.24, y = y0 + SH * 0.26, wy = SH * 0.5; pane(x, y, wx, wy, false); sill(x, y + wy + 3, wx); }
+        flowers(b * BW + BW * 0.2, y0 + SH * 0.26 + SH * 0.5 + 3, BW * 0.6);
+      } else {
+        const arch = manner === 2, x = b * BW + BW * 0.3, wx = BW * 0.4, y = y0 + SH * (arch ? 0.36 : 0.28), wy = SH * (arch ? 0.4 : 0.46);
+        shutters(x, y, wx, wy);
+        pane(x, y, wx, wy, arch);
+        sill(x, y + wy + 3, wx);
+        flowers(x, y + wy + 3, wx);
+      }
     }
   }
   const tex = (cv, srgb) => { const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; if (srgb) t.colorSpace = THREE.SRGBColorSpace; return t; };

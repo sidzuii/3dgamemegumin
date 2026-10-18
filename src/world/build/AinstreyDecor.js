@@ -15,11 +15,13 @@ const nearStreetW = (x, z, pad) => nearStreet(x - AIN.ORIGIN.x, z - AIN.ORIGIN.z
 const FLOWERS = ['flower_redA', 'flower_redB', 'flower_yellowA', 'flower_yellowB', 'flower_purpleA', 'flower_purpleB'];
 
 /** A kit piece scaled to a height, standing on the ground at a local point of F. */
-function kitH(W, F, name, h, lx, lz, opts = {}) {
+export function kitH(W, F, name, h, lx, lz, opts = {}) {
   if (!W.kits.has(name)) return;
   const b = W.kits.box(name);
   const s = h / Math.max(0.05, b.max.y - b.min.y);
-  F.kit(name, lx - ((b.min.x + b.max.x) / 2) * s, (opts.y ?? 0) - b.min.y * s, lz - ((b.min.z + b.max.z) / 2) * s, { s, collide: opts.collide ?? false, castShadow: opts.cast ?? true, ry: opts.ry ?? 0, tint: opts.tint ?? null });
+  // the centre of the box (rotated with the piece) lands on the point
+  const ry = opts.ry ?? 0, c = Math.cos(ry), sn = Math.sin(ry), cx = ((b.min.x + b.max.x) / 2) * s, cz = ((b.min.z + b.max.z) / 2) * s;
+  F.kit(name, lx - (cx * c + cz * sn), (opts.y ?? 0) - b.min.y * s, lz - (-cx * sn + cz * c), { s, collide: opts.collide ?? false, castShadow: opts.cast ?? true, ry, tint: opts.tint ?? null, detail: !!opts.detail });
 }
 
 /** Occupancy of one square: footprints already there (fountains, wells, stalls) + what we place. */
@@ -186,32 +188,74 @@ export function boulevards(W, P) {
     if (S.cls !== 'axis' && S.cls !== 'avenue') continue;
     const [mx, mz] = toW(...S.pts[Math.floor(S.pts.length / 2)]);
     W.group('ain_blv_' + S.id, { x: mx, z: mz }, (rng) => {
+      // the row of trees on the flagstone band (AinstreyCity.streets), 2 m inside the kerb: a slot every 7.5 m; the even slots
+      // are trees, the odd ones between them hold a lamp (every 45 m, the sides alternating), a bench, a planter or a café table
       const off = S.width / 2 - 2.0;
-      let acc = 9, side = 0;
-      for (let i = 1; i < S.pts.length; i++) {
-        const [ax, az] = S.pts[i - 1], [bx, bz] = S.pts[i];
-        const seg = Math.hypot(bx - ax, bz - az);
-        if (seg < 0.01) continue;
-        const dx = (bx - ax) / seg, dz = (bz - az) / seg;
-        for (let t = acc; t < seg; t += 15) {
-          const cu = ax + dx * t, cv = az + dz * t;
-          side++;
-          for (const sd of [-1, 1]) {
-            const u = cu - dz * sd * off, v = cv + dx * sd * off;
-            if (P.streets.some((o) => o !== S && polyDist(o.pts, u, v) < o.width / 2 + (CLASS[o.cls].kerb ?? 1) + 4)) continue;
-            if (P.squares.some((q) => near(q, u, v, 3)) || P.keys.some((q) => near(q, u, v, 4))) continue;
-            if (wallDist(u, v) < 28) continue; // not in the gate passages
-            const [x, z] = toW(u, v);
-            const y = H(W, x, z);
+      const slots = alongLine(S.pts, 9, 7.5);
+      slots.forEach(({ u: cu, v: cv, dx, dz }, k) => {
+        for (const sd of [-1, 1]) {
+          const u = cu - dz * sd * off, v = cv + dx * sd * off;
+          if (P.streets.some((o) => o !== S && polyDist(o.pts, u, v) < o.width / 2 + (CLASS[o.cls].kerb ?? 1) + 4)) continue;
+          if (P.squares.some((q) => near(q, u, v, 3)) || P.keys.some((q) => near(q, u, v, 4))) continue;
+          if (wallDist(u, v) < 28) continue; // not in the gate passages
+          const [x, z] = toW(u, v);
+          const y = H(W, x, z);
+          const ry = Math.atan2(dx, dz);
+          if (k % 2 === 0) {
             // a ring of stone round the trunk, the tree inside
             new Frame(W, x, y, z, 0).cyl(1.1, 0.25, 0, 0, 0, 'stone', { seg: 10, tint: 0xcfc4a8, collide: false, castShadow: false });
-            tree(W, x, z, 0.75 + rng() * 0.2, rng, side % 4 === 0 ? 'birch' : 'oak');
+            tree(W, x, z, 0.75 + rng() * 0.2, rng, (k / 2) % 4 === 0 ? 'birch' : 'oak');
+            continue;
+          }
+          if (Object.values(W.npcSpots).some((p) => Math.hypot(p.pos.x - x, p.pos.z - z) < 3)) continue;
+          const F = new Frame(W, x, y + 0.03, z, ry);
+          if (k % 6 === 1 && sd === (((k - 1) / 6) % 2 ? 1 : -1)) { lamp(W, new THREE.Vector3(x, y + 0.03, z), 0); continue; }
+          const r = rng();
+          if (r < 0.34) {
+            // a bench along the row, its back to the carriageway
+            kitH(W, F, 'furniture/bench', 0.85, 0, 0, { ry: sd > 0 ? Math.PI / 2 : -Math.PI / 2, collide: 'box' });
+          } else if (r < 0.5) {
+            // a café table with two chairs
+            kitH(W, F, 'furniture/tableRound', 0.78, 0, 0, { collide: 'box' });
+            for (const s2 of [-1, 1]) kitH(W, F, 'furniture/chair', 0.95, 0, s2 * 0.85, { ry: s2 > 0 ? Math.PI : 0, collide: false });
+            if (rng() < 0.6) kitH(W, F, 'food/mug', 0.16, 0.15, 0.1, { y: 0.78, cast: false });
+          } else if (r < 0.68) {
+            // a planter
+            kitH(W, F, 'nature/pot_large', 0.75, 0, 0, { collide: 'box', tint: 0xb06a48 });
+            kitH(W, F, 'nature/plant_bushDetailed', 1.0, 0, 0, { y: 0.55 });
           }
         }
-        acc = Math.max(0, (acc - seg) % 15);
-      }
+        // carts left at the kerb of the axis (the carriageway keeps 8 m), now and then
+        if (S.cls === 'axis' && k % 11 === 5 && rng() < 0.45) {
+          const sd = rng() < 0.5 ? -1 : 1, o2 = S.width / 2 - 6.2;
+          const u = cu - dz * sd * o2, v = cv + dx * sd * o2;
+          if (!P.streets.some((o) => o !== S && polyDist(o.pts, u, v) < o.width / 2 + (CLASS[o.cls].kerb ?? 1) + 6) && !P.squares.some((q) => near(q, u, v, 6)) && wallDist(u, v) > 40) {
+            const [x, z] = toW(u, v);
+            if (!Object.values(W.npcSpots).some((p) => Math.hypot(p.pos.x - x, p.pos.z - z) < 5)) {
+              const F = new Frame(W, x, H(W, x, z), z, Math.atan2(dx, dz) + (rng() < 0.5 ? 0 : Math.PI));
+              kitH(W, F, rng() < 0.5 ? 'town/cart' : 'town/cart-high', 1.7, 0, 0, { collide: 'box' });
+              if (rng() < 0.6) kitH(W, F, 'bits/' + (rng() < 0.5 ? 'Textiles_Stack_Large_Colored' : 'Wood_Planks_Stack_Medium'), 0.5, 0, 0, { y: 0.9, cast: false });
+            }
+          }
+        }
+      });
     }, 'Бульвар: ' + S.name);
   }
+}
+
+/** Points every `step` metres along a polyline [u, v] from `start`, with the unit direction there. */
+export function alongLine(pts, start, step) {
+  const out = [];
+  let next = start, cum = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const [ax, az] = pts[i - 1], [bx, bz] = pts[i];
+    const seg = Math.hypot(bx - ax, bz - az);
+    if (seg < 0.01) continue;
+    const dx = (bx - ax) / seg, dz = (bz - az) / seg;
+    while (next <= cum + seg) { const t = next - cum; out.push({ u: ax + dx * t, v: az + dz * t, dx, dz }); next += step; }
+    cum += seg;
+  }
+  return out;
 }
 /**
  * Formal parterres filling the rest of a quiet square: lawns with a stone kerb, clipped hedges along the long sides (gaps in the

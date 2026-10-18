@@ -57,6 +57,7 @@ import { Inventory } from '../systems/Inventory.js';
 import { InventoryUI } from '../ui/InventoryUI.js';
 import { RPG } from '../rpg/RPG.js';
 import { NPCManager } from '../npc/NPCManager.js';
+import { Crowd } from '../npc/Crowd.js';
 import { DialogueUI } from '../ui/DialogueUI.js';
 import { ShopUI } from '../ui/ShopUI.js';
 import { GameMenu } from '../ui/GameMenu.js';
@@ -189,6 +190,7 @@ export class Game {
     this.rpg.setupWorld();
     this.npcs = new NPCManager(this);
     this.rpg.npcs = this.npcs;
+    this.crowd = new Crowd(this, this.npcs); // the anonymous people of the capital's streets
     // UI.
     this.invUI = new InventoryUI(this);
     this.hud.invUI = this.invUI;
@@ -239,6 +241,7 @@ export class Game {
         await this.combat.fx.explosion.prewarmAsync(r, this.composer.readBuffer, this.camera);
       } catch (e) { console.warn('[prewarm]', e); }
       for (const grid of this.npcs.grids) while (!grid.fill(8)) await nap();
+      await this.crowd.prepare(nap);
       this.prewarmMs = Math.round(performance.now() - t0);
     })();
     return this._prewarmP;
@@ -505,6 +508,7 @@ export class Game {
     // RPG systems and townsfolk.
     this.rpg.update(dt);
     this.npcs.update(dt);
+    this.crowd.update(dt);
     this._checkLocation();
 
     // Lighting for the time of day (or the dark of the mine).

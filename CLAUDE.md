@@ -127,6 +127,12 @@ Full description, file map and how-to guides: see `README.md` (Russian). The use
   of spots, streets, keys. City statics use `W._bigChunk = 256`. Dense lots (~4860: frontage + lane + back rows round courtyards,
   sheds; STYLE fw/fd/fgap/pass/vac, segment hash `onStreet`); `lot.simple` (back/inner) = kit house without shutters/balconies/chimneys
   + `lightRoof`; far body = `facadeBox` with the canvas facade tile (`W.mats.facade`, night glow from DayNight). Staff series: 2/2/3 stamina, a press during a swing chains at `cancel_at`.
+- Capital street life: `npc/Crowd.js` (`game.crowd`) = anonymous walkers on the pavement lanes (`LANES` per street class) + standing
+  groups on the squares, pooled round the player inside the walls; bodies = People geometries on shared driver skeletons (detached
+  bind mode, one mixer per driver), count by preset and hour, none in combat. Street furniture keeps off those lanes: boulevards
+  (AinstreyDecor: trees / lamp posts / benches / café tables / planters on a flagstone band 2 m inside the kerb, carts on the axis),
+  `build/AinstreyStreets.js` (goods at shop fronts, benches/pots by doors, wall lanterns on streets and lanes, washing across lanes:
+  all within ~0.7 m of the wall). Pavements and squares' bands use the 'plaza' material (`paveRibbon` `mat`).
 - User assets (2026-10): Mixamo clips -> `tools/pack_mixamo_anims.mjs` -> public/models/anim/mixamo.glb, loaded as a second retarget
   source (`AnimationLibrary.addSource`, clip names 'mx:<name>'; idle/talk/wave/sit of heroines and townsfolk). Rigged Mixamo
   characters -> `tools/pack_body.mjs` -> public/models/bodies/<id>.glb, worn by a named NPC via `body` in data/npcs.js
