@@ -33,6 +33,11 @@ Full description, file map and how-to guides: see `README.md` (Russian). The use
   (page script; all counts must be 0). MAP_REV is 3. Never run two headless SwiftShader browsers at once (OOM).
   `src/world/AxelLayoutCheck.js` = layout geometry check (houses inside each other / on a street vs the generated plan);
   editor button «Проверить дома» (tab Слои) and `node tools/layout_check.mjs [layout.json]` (exit 1 on problems).
+- Load time (2026-10): terrain heights + normals + colours are computed in Web Workers during the asset downloads
+  (`Heightfield.compute` → `world/heightWorker.js`, shared code `world/terrainShade.js`); static batches merge with `mergeMixed` (typed
+  arrays, no three mergeGeometries) and kit pieces skip bounds recomputation (`part.center`); the collider is one triangle soup; NPC
+  NavGrids fill lazily (`fill(ms)` / `ensure()`); shaders: `Game.compileScene()` (compileAsync, before the title) and `prewarmAsync()`
+  (explosion FX + grids, behind the title). `?prewarm=sync` = the old blocking prewarm. `world.buildTimes` has the step timings.
 - Buildings have LOD: `house()` emits a near model and a far proxy (`world.lodMode`), small parts use
   `detail: true`; distances come from the quality preset (`lod`, `detail`). Terrain is chunked (170 m).
 - Saves: `mapRev` (State.MAP_REV) moves the player of an older-map save to a safe spot; placements.json

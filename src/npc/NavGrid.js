@@ -19,17 +19,28 @@ export class NavGrid {
     this.h = Math.ceil((maxZ - minZ) / cell);
     this.blocked = new Uint8Array(this.w * this.h);
     this.cache = new Map();
-    const bvh = world.collider.geometry.boundsTree;
-    const r = cell * 0.36;
-    for (let j = 0; j < this.h; j++) {
+    this.rows = 0; // rows tested so far: the grid is filled in idle time (fill) or at once on first use (ensure)
+  }
+
+  /** Test rows of cells against the world collision for up to `ms` milliseconds; true when the grid is complete. */
+  fill(ms = Infinity) {
+    const bvh = this.world.collider.geometry.boundsTree, r = this.cell * 0.36, t0 = performance.now();
+    while (this.rows < this.h) {
+      const j = this.rows++;
       for (let i = 0; i < this.w; i++) {
-        const x = minX + (i + 0.5) * cell, z = minZ + (j + 0.5) * cell;
-        const g = world.heightAt(x, z);
+        const x = this.minX + (i + 0.5) * this.cell, z = this.minZ + (j + 0.5) * this.cell;
+        const g = this.world.heightAt(x, z);
         _box.min.set(x - r, g + 0.5, z - r);
         _box.max.set(x + r, g + 1.7, z + r);
         if (bvh.intersectsBox(_box, _ident)) this.blocked[j * this.w + i] = 1;
       }
+      if (performance.now() - t0 > ms) break;
     }
+    return this.rows >= this.h;
+  }
+
+  ensure() {
+    if (this.rows < this.h) this.fill();
   }
 
   contains(x, z) {
@@ -75,6 +86,7 @@ export class NavGrid {
 
   /** World-space waypoint list from (ax,az) to (bx,bz), or null. */
   path(ax, az, bx, bz) {
+    this.ensure();
     const s = this._nearestFree(...this._cellOf(ax, az));
     const g = this._nearestFree(...this._cellOf(bx, bz));
     if (!s || !g) return null;

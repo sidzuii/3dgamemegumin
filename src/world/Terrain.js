@@ -302,10 +302,27 @@ function naturalHeightSmooth(x, z, h) {
   return h - fbm(x * 0.03, z * 0.03, 3) * 0.9;
 }
 
-/** Cached height grids (one per sheet) + bilinear sampling. */
+/** Cached height grids (one per sheet) + bilinear sampling. `pre` = { sheetId: { data, normals, colors } } from Heightfield.compute. */
 export class Heightfield {
-  constructor() {
+  /**
+   * Compute the grids in Web Workers (one per sheet, in parallel with the asset downloads); resolves { sheetId: Float32Array },
+   * or null when workers are unavailable (the constructor then computes them here).
+   */
+  static compute() {
+    if (typeof Worker === 'undefined') return Promise.resolve(null);
+    return Promise.all(SHEETS.map((sh) => new Promise((resolve) => {
+      let w;
+      try { w = new Worker(new URL('./heightWorker.js', import.meta.url), { type: 'module' }); } catch { resolve(null); return; }
+      w.onmessage = (e) => { resolve(e.data); w.terminate(); };
+      w.onerror = () => { resolve(null); w.terminate(); };
+      w.postMessage({ id: sh.id });
+    }))).then((list) => (list.every(Boolean) ? Object.fromEntries(list.map((r) => [r.id, r])) : null));
+  }
+
+  constructor(pre = null) {
     this.sheets = SHEETS.map((sh) => {
+      const p = pre?.[sh.id];
+      if (p?.data?.length === sh.nx * sh.nz) return { ...sh, data: p.data, normals: p.normals, colors: p.colors };
       const data = new Float32Array(sh.nx * sh.nz);
       for (let j = 0; j < sh.nz; j++) {
         const z = sh.z0 + j * sh.step;

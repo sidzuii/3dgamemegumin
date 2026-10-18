@@ -7,6 +7,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { Input } from './Input.js';
 import { World } from '../world/World.js';
+import { Heightfield } from '../world/Terrain.js';
 import { DayNight } from '../world/DayNight.js';
 import { inSheet } from '../world/AinstreyPlan.js';
 import { DUNGEON } from '../world/build/Dungeon.js';
@@ -136,6 +137,8 @@ export class Game {
       onProgress?.(frac, msg);
       return new Promise((r) => setTimeout(r, 0)); // let the loading screen repaint
     };
+    // the terrain height grids: computed in workers while everything below downloads (Heightfield.compute)
+    const heightP = Heightfield.compute().catch(() => null);
     this.animLib = new AnimationLibrary();
     // the mocap library + the Mixamo idles / talk / wave / sit (tools/pack_mixamo_anims.mjs); the game runs without the latter
     const animP = this.animLib.load()
@@ -157,12 +160,13 @@ export class Game {
     this.kits = new KitLibrary();
     const kitsP = this.kits.load((f) => { parts.kits = f; report(); });
     const layoutP = loadLayout();
-    const [chest, , , , , , layout] = await Promise.all([chestP, enemiesP, playerModelP, animP, peopleP, kitsP, layoutP]);
+    const [chest, , , , , , layout, heights] = await Promise.all([chestP, enemiesP, playerModelP, animP, peopleP, kitsP, layoutP, heightP]);
 
     await step('Строим Аксель и окрестности…', 0.76);
     this.enemyAssets.prepare(this.animLib);
     this.world = new World(this.renderer, this.scene, this.kits);
     this.world.layout = layout;
+    this.world.heightData = heights;
     this.world.editorMode = this.editorMode;
     this.world.assets.chest = prepareChestModel(chest.scene);
     this.world.build();
@@ -201,7 +205,43 @@ export class Game {
 
     await step('Готовим шейдеры…', 0.95);
     this.quality.apply();
-    this._prewarm();
+    // the shaders compile in the background behind the title screen (prewarmAsync, started by the main menu); the town is
+    // drawn there anyway. `?prewarm=sync` = the old blocking prewarm (tests)
+    if (new URLSearchParams(location.search).get('prewarm') === 'sync') this._prewarm();
+  }
+
+  /**
+   * Request every program of the scene at once through the HDR target (as the composer renders) and wait for them: with
+   * KHR_parallel_shader_compile (Chrome / Edge on Windows) the driver links them on its own threads, so the loading screen keeps
+   * moving and the first frame of the title does not stall. Once (later calls return the same promise).
+   */
+  compileScene() {
+    if (!this._compileP) {
+      const r = this.renderer;
+      r.setRenderTarget(this.composer.readBuffer);
+      this._compileP = r.compileAsync(this.scene, this.camera).catch((e) => console.warn('[compile]', e));
+      r.setRenderTarget(null);
+    }
+    return this._compileP;
+  }
+
+  /**
+   * Background work while the title screen is up (and after it, a few ms a frame): every shader of the scene, the spell effects
+   * and the walk grids of the townsfolk. A step that is needed sooner simply finishes at once (NavGrid.ensure).
+   */
+  async prewarmAsync() {
+    if (this._prewarmP) return this._prewarmP;
+    this._prewarmP = (async () => {
+      const r = this.renderer, t0 = performance.now();
+      const nap = () => new Promise((res) => setTimeout(res, 0));
+      try {
+        await this.compileScene();
+        await this.combat.fx.explosion.prewarmAsync(r, this.composer.readBuffer, this.camera);
+      } catch (e) { console.warn('[prewarm]', e); }
+      for (const grid of this.npcs.grids) while (!grid.fill(8)) await nap();
+      this.prewarmMs = Math.round(performance.now() - t0);
+    })();
+    return this._prewarmP;
   }
 
   /** Compile every material before the first visible frame (no hitches later). */

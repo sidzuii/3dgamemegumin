@@ -88,11 +88,14 @@ export class MainMenu {
   }
 
   /** The world is built: apply the saved settings and show the title screen over the live view. */
-  ready() {
+  async ready() {
+    this.progress(0.97, 'Готовим шейдеры…');
+    await this.game.compileScene(); // before the first frame of the title (else that frame compiles them all, the page stalls)
     clearInterval(this._tipTimer);
     this.applySettings();
     this.game.attract();
     this.title();
+    setTimeout(() => this.game.prewarmAsync(), 200); // shaders and NPC grids while the menu is up
   }
 
   _logo() {
