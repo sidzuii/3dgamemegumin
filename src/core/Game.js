@@ -88,6 +88,8 @@ export class Game {
     this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.08, 480);
     this.clock = new THREE.Clock(false);
     this.input = new Input(renderer.domElement);
+    // the mouse belongs to the game while playing with no window open (Input re-captures it, hides the cursor; Alt frees it)
+    this.input.wantLock = () => !!(this.mainMenu?.started && this.mainMenu.view === 'game' && !this.uiBlocking && !this.editorMode);
     this.hud = new HUD();
     this.paused = true;
     this.time = 0;
@@ -451,6 +453,7 @@ export class Game {
     let dt = Math.min(this.clock.getDelta(), 1 / 20);
     if (this.uiBlocking) this._blockedAt = now; // the main menu tells a window's own pointer release from Esc by this
     else this.quality.update(raw);
+    this.input.syncCursor();
     if (this.fpsEl) this.fpsEl.textContent = this.quality.fps(raw) + ' FPS · ' + this.quality.preset.label + (this.quality.scale < 1 ? ' · ' + Math.round(this.quality.scale * 100) + '%' : '');
     if (this._uiInput(dt)) {
       // Paused (window open): keep the HUD alive, freeze the world.

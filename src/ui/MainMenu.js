@@ -8,7 +8,7 @@ import { PRESETS } from '../core/Quality.js';
  * Settings of its own are kept in localStorage `megumin-settings`; quality, sound and combat keep their own keys.
  */
 const KEY = 'megumin-settings';
-const DEFAULTS = { fov: 60, sens: 1, invertY: false, dynamicRes: true, fps: false, voice: 1 };
+const DEFAULTS = { fov: 60, sens: 1, invertY: false, dynamicRes: true, fps: false, voice: 1, fullscreen: false };
 const TIPS = [
   'Explosion забирает всю ману: после него Мегумин нужна передышка — или помощь Рокси.',
   'E — поговорить, открыть, взять. Компас вверху показывает направление к цели задания.',
@@ -25,7 +25,7 @@ const CONTROLS = [
   ['Средние навыки', 'Q · E'], ['Сильные заклинания (выбор → ЛКМ)', 'R · F'], ['Захват цели', 'СКМ'],
   ['Приказ спутнице', 'T'], ['Сменить героиню', 'Tab · 1 · 2'], ['Взаимодействие', 'E'], ['Поднять героиню', 'E (зажать)'],
   ['Зелья', '3 · 4 · 5'], ['Инвентарь · журнал · карта', 'I · J · M'], ['Персонаж · гильдия · бой · звук', 'C · G · K · O'],
-  ['Пауза и меню', 'Esc'], ['Подсказки', 'H'], ['Звук вкл./выкл.', 'N'], ['Качество графики · счётчик кадров', 'F9 · F8'],
+  ['Пауза и меню', 'Esc'], ['Показать курсор (пока зажат)', 'Alt'], ['Подсказки', 'H'], ['Звук вкл./выкл.', 'N'], ['Качество графики · счётчик кадров', 'F9 · F8'],
   ['Диалог: ответ · дальше · уйти', '1–6 · E/Space · Esc'],
 ];
 
@@ -55,6 +55,12 @@ export class MainMenu {
     this._loading();
     window.addEventListener('keydown', (e) => this._key(e));
     document.addEventListener('pointerlockchange', () => this._lockChange());
+    // left the full screen (Esc held, F11): the setting follows, the Esc lock goes
+    document.addEventListener('fullscreenchange', () => {
+      if (document.fullscreenElement) return;
+      navigator.keyboard?.unlock?.();
+      if (this.settings.fullscreen) this._set('fullscreen', false);
+    });
   }
 
   // ------------------------------------------------------------------------------------------------ loading
@@ -159,7 +165,23 @@ export class MainMenu {
     this._play(true);
   }
 
+  /**
+   * The game's own full screen + the keyboard lock of Esc (Keyboard Lock API, Chromium: Chrome, Edge): Esc then reaches the game
+   * (the pause) instead of the browser taking the cursor; holding Esc leaves the full screen. In a window the browser always
+   * releases the cursor on Esc — a page cannot forbid it. Needs a click (the settings toggle, «Играть»).
+   */
+  fullscreen(on) {
+    const d = document;
+    if (on && !d.fullscreenElement) {
+      d.documentElement.requestFullscreen?.({ navigationUI: 'hide' }).then(() => navigator.keyboard?.lock?.(['Escape'])).catch(() => {});
+    } else if (!on && d.fullscreenElement) {
+      navigator.keyboard?.unlock?.();
+      d.exitFullscreen?.().catch(() => {});
+    }
+  }
+
   _play(newGame) {
+    if (this.settings.fullscreen) this.fullscreen(true);
     this._hide();
     this.started = true;
     this.view = 'game';
@@ -266,6 +288,8 @@ export class MainMenu {
         this._check('Динамическое разрешение', S.dynamicRes, (v) => this._set('dynamicRes', v), 'чёткость падает, когда кадры тяжёлые — игра остаётся плавной'),
         this._range('Поле зрения', 50, 80, 1, S.fov, (v) => this._set('fov', v), (v) => v + '°'),
         this._check('Счётчик кадров', S.fps, (v) => this._set('fps', v), 'F8'),
+        this._check('Полный экран', S.fullscreen, (v) => { this._set('fullscreen', v); this.fullscreen(v); },
+          'Esc в нём открывает только паузу и не отпускает курсор; выйти из полного экрана — зажать Esc'),
       );
     } else if (tab === 'mouse') {
       body.append(
@@ -377,7 +401,8 @@ export class MainMenu {
     const open = this.view !== 'game' && this.view !== 'loading';
     if (e.code === 'Escape') {
       if (this.modal.classList.contains('show')) { this._answer(false); return; }
-      if (this.view === 'game') { if (!this.game.input.locked) this.openPause(); return; }
+      // in game: the pause (with the keyboard lock of the full screen the browser does not take the cursor: the game does it)
+      if (this.view === 'game') { this.openPause(); return; }
       if (this.back) { this._back(); return; }
       if (this.view === 'pause' && performance.now() - this._pausedAt > 250) this.resume();
       return;
@@ -396,6 +421,7 @@ export class MainMenu {
   _lockChange() {
     if (!this.started || this.view !== 'game' || this.game.editorMode) return;
     if (document.pointerLockElement === this.game.renderer.domElement) return;
+    if (this.game.input.freeCursor) return; // Alt: the game let the cursor out itself
     setTimeout(() => {
       const g = this.game;
       if (document.pointerLockElement || g.uiBlocking || performance.now() - (g._blockedAt || 0) < 400) return;

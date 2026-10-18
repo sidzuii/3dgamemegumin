@@ -17,6 +17,10 @@ Full description, file map and how-to guides: see `README.md` (Russian). The use
   rewards + `requires` flags + `AFTER` per quest = what their scenes set), «Открыть столицу»; teleports (regions with `spawn`, carriage
   stops); speed ×1…5 (Player speedMul), immortality (`combat.sim.god` → `isInvulnerable`), endless stamina/mana (`admin.update()`),
   heal, levels, eris, skills, Roxy; time of day, clear enemies. Cheat switches: localStorage `megumin-admin`.
+- Mouse: `Input.wantLock()` (Game: playing, no window open) → the cursor is hidden over the canvas and a refused / lost pointer lock is
+  asked for again on the next key press or click (`_relock`); holding Alt frees the cursor without pausing (`input.freeCursor`,
+  MainMenu `_lockChange` ignores it). Esc in game → pause. Settings «Полный экран» = page fullscreen + `navigator.keyboard.lock(['Escape'])`
+  (Chromium): Esc reaches the game instead of the browser releasing the cursor; in a window the browser always releases it on Esc.
 - RPG layer: `src/rpg/` (state, quests, dialogue, guild, economy, gathering, events, clock); content is data
   in `src/data/` (items, quests, dialogues, npcs, shops, resources). Map data: `src/world/MapData.js`;
   builders: `src/world/build/` (Kit, Town, Countryside, Dungeon). NPCs: `src/npc/`.

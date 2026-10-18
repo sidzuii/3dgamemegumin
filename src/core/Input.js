@@ -4,6 +4,9 @@
  * - "pressed" is an edge flag valid for exactly one frame (cleared in endFrame()).
  * - Mouse look uses Pointer Lock; when the lock is unavailable, dragging with the
  *   left button rotates the camera as a fallback.
+ * - Holding Alt frees the cursor while playing (the game does not pause); letting it go captures it again.
+ * - The lock comes back by itself: when the game wants it (`wantLock()`, set by Game) and does not have it (a refused
+ *   request, the browser's cool-down after Esc), the next key press or click asks again; over the game the cursor is hidden.
  */
 export class Input {
   constructor(element) {
@@ -19,19 +22,34 @@ export class Input {
     this.locked = false;
     this.dragging = false;
     this.enabled = false;
+    this.freeCursor = false; // Alt held: the cursor is out on purpose
+    this.wantLock = () => false; // Game: playing with no window open
+    this._lastAsk = 0;
 
     this._onKeyDown = (e) => {
       if (!this.enabled) return;
       if (['Space', 'Tab'].includes(e.code)) e.preventDefault();
+      if (e.code === 'AltLeft' || e.code === 'AltRight') {
+        e.preventDefault(); // no browser menu on Alt
+        if (!e.repeat && this.wantLock()) { this.freeCursor = true; if (this.locked) document.exitPointerLock?.(); }
+        return;
+      }
       if (e.repeat) return;
+      if (e.code !== 'Escape') this._relock();
       this.down.add(e.code);
       this.pressed.add(e.code);
     };
     this._onKeyUp = (e) => {
+      if (e.code === 'AltLeft' || e.code === 'AltRight') {
+        e.preventDefault();
+        if (this.freeCursor) { this.freeCursor = false; this._relock(true); }
+        return;
+      }
       this.down.delete(e.code);
       this.released.add(e.code);
     };
     this._onBlur = () => {
+      this.freeCursor = false;
       for (const c of this.down) this.released.add(c);
       this.down.clear();
       this.mouseDown.clear();
@@ -49,6 +67,8 @@ export class Input {
       if (this.locked) {
         this.mousePressed.add(e.button);
         this.mouseDown.add(e.button);
+      } else if (this.freeCursor) {
+        // Alt held: the cursor is free, a click does nothing in the world
       } else if (e.button === 0) {
         this.requestLock();
         this.dragging = true;
@@ -79,6 +99,21 @@ export class Input {
     element.addEventListener('wheel', this._onWheel, { passive: false });
     element.addEventListener('contextmenu', (e) => e.preventDefault());
     document.addEventListener('pointerlockchange', this._onLockChange);
+  }
+
+  /** Ask for the lock again when the game wants it and has not got it (at most every 250 ms; `force` = now). */
+  _relock(force = false) {
+    if (this.locked || this.freeCursor || !this.wantLock()) return;
+    const now = performance.now();
+    if (!force && now - this._lastAsk < 250) return;
+    this._lastAsk = now;
+    this.requestLock();
+  }
+
+  /** Every frame: no cursor over the game while playing (even before the lock is back), the arrow while Alt is held. */
+  syncCursor() {
+    const c = this.wantLock() && !this.freeCursor ? 'none' : '';
+    if (this.element.style.cursor !== c) this.element.style.cursor = c;
   }
 
   requestLock() {
