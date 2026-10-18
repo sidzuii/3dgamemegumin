@@ -12,6 +12,15 @@ Full description, file map and how-to guides: see `README.md` (Russian). The use
   (`megumin-settings`: fov, mouse sens, invertY, dynamic res, fps; quality/sound/combat keep their keys), controls, credits, `ask()` modal.
   `tools/debug_helpers.js` `__init` clicks the primary menu button. New game: A00 at the caravan camp OUTSIDE the south gate
   (spots `caravan_arrival`, `marta_road`, sacks there); `RPG.autoIntro` waits for 15 game frames; `npcs.refresh(true)` on load.
+- Admin mode: `src/ui/AdminPanel.js` (`game.admin`), on via Settings → «Админ» (`megumin-settings.admin`) or `?admin`; F10 / pause
+  menu. Story: next stage / finish the tracked quest, jump to a chapter of the main chain (`CHAIN`; earlier quests forced done with
+  rewards + `requires` flags + `AFTER` per quest = what their scenes set), «Открыть столицу»; teleports (regions with `spawn`, carriage
+  stops); speed ×1…5 (Player speedMul), immortality (`combat.sim.god` → `isInvulnerable`), endless stamina/mana (`admin.update()`),
+  heal, levels, eris, skills, Roxy; time of day, clear enemies. Cheat switches: localStorage `megumin-admin`.
+- Mouse: `Input.wantLock()` (Game: playing, no window open) → the cursor is hidden over the canvas and a refused / lost pointer lock is
+  asked for again on the next key press or click (`_relock`); holding Alt frees the cursor without pausing (`input.freeCursor`,
+  MainMenu `_lockChange` ignores it). Esc in game → pause. Settings «Полный экран» = page fullscreen + `navigator.keyboard.lock(['Escape'])`
+  (Chromium): Esc reaches the game instead of the browser releasing the cursor; in a window the browser always releases it on Esc.
 - RPG layer: `src/rpg/` (state, quests, dialogue, guild, economy, gathering, events, clock); content is data
   in `src/data/` (items, quests, dialogues, npcs, shops, resources). Map data: `src/world/MapData.js`;
   builders: `src/world/build/` (Kit, Town, Countryside, Dungeon). NPCs: `src/npc/`.
@@ -33,6 +42,11 @@ Full description, file map and how-to guides: see `README.md` (Russian). The use
   (page script; all counts must be 0). MAP_REV is 3. Never run two headless SwiftShader browsers at once (OOM).
   `src/world/AxelLayoutCheck.js` = layout geometry check (houses inside each other / on a street vs the generated plan);
   editor button «Проверить дома» (tab Слои) and `node tools/layout_check.mjs [layout.json]` (exit 1 on problems).
+- Load time (2026-10): terrain heights + normals + colours are computed in Web Workers during the asset downloads
+  (`Heightfield.compute` → `world/heightWorker.js`, shared code `world/terrainShade.js`); static batches merge with `mergeMixed` (typed
+  arrays, no three mergeGeometries) and kit pieces skip bounds recomputation (`part.center`); the collider is one triangle soup; NPC
+  NavGrids fill lazily (`fill(ms)` / `ensure()`); shaders: `Game.compileScene()` (compileAsync, before the title) and `prewarmAsync()`
+  (explosion FX + grids, behind the title). `?prewarm=sync` = the old blocking prewarm. `world.buildTimes` has the step timings.
 - Buildings have LOD: `house()` emits a near model and a far proxy (`world.lodMode`), small parts use
   `detail: true`; distances come from the quality preset (`lod`, `detail`). Terrain is chunked (170 m).
 - Saves: `mapRev` (State.MAP_REV) moves the player of an older-map save to a safe spot; placements.json
@@ -122,6 +136,14 @@ Full description, file map and how-to guides: see `README.md` (Russian). The use
   of spots, streets, keys. City statics use `W._bigChunk = 256`. Dense lots (~4860: frontage + lane + back rows round courtyards,
   sheds; STYLE fw/fd/fgap/pass/vac, segment hash `onStreet`); `lot.simple` (back/inner) = kit house without shutters/balconies/chimneys
   + `lightRoof`; far body = `facadeBox` with the canvas facade tile (`W.mats.facade`, night glow from DayNight). Staff series: 2/2/3 stamina, a press during a swing chains at `cancel_at`.
+- Capital street life: `npc/Crowd.js` (`game.crowd`) = anonymous walkers on the pavement lanes (`LANES` per street class) + standing
+  groups on the squares, pooled round the player inside the walls; bodies = People geometries on shared driver skeletons (detached
+  bind mode, one mixer per driver), count by preset and hour, none in combat. Street furniture keeps off those lanes: boulevards
+  (AinstreyDecor: trees / lamp posts / benches / café tables / planters on a flagstone band 2 m inside the kerb, carts on the axis),
+  `build/AinstreyStreets.js` (goods at shop fronts, benches/pots by doors, wall lanterns on streets and lanes, washing across lanes:
+  all within ~0.7 m of the wall). Their kit models go through `nearPiece` (AinstreyDecor): static collision box only, the model
+  is built by CityStream near the camera (the props are heavy: built statically they cost +4.5 M vertices and ~18 s of load).
+  Pavements and squares' bands use the 'plaza' material (`paveRibbon` `mat`).
 - User assets (2026-10): Mixamo clips -> `tools/pack_mixamo_anims.mjs` -> public/models/anim/mixamo.glb, loaded as a second retarget
   source (`AnimationLibrary.addSource`, clip names 'mx:<name>'; idle/talk/wave/sit of heroines and townsfolk). Rigged Mixamo
   characters -> `tools/pack_body.mjs` -> public/models/bodies/<id>.glb, worn by a named NPC via `body` in data/npcs.js

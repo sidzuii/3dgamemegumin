@@ -502,9 +502,9 @@ export function cityPlan() {
     for (let v = QUAY_V0 + 12 + row * 20; v < QUAY_V1 - 40; ) {
       const wlen = Math.round(R(30, 46));
       const lot = warehouse(v, wlen, row);
-      v += wlen + R(6, 10);
+      v += wlen + R(2.5, 4.5); // a fire lane between the warehouses (the yards between them: AinstreyPort.quayYards)
       if (nearPier(lot.v, 12 + wlen / 2)) continue;
-      if (rng() < 0.12 + row * 0.25) continue;
+      if (rng() < 0.03 + row * 0.08) continue;
       if (!insideCity(lot.u, lot.v, 6) || !offBands(lot) || hitPlaced(lot, 2)) continue;
       if (!streets.every((S) => S === quayRoad || S.cls === 'stair' || S.kind === 'lane' || rectCorners(lot, 0).every(([x, z]) => polyDist(S.pts, x, z) >= streetNeed(S)))) continue;
       addPlaced(lot);

@@ -15,11 +15,32 @@ const nearStreetW = (x, z, pad) => nearStreet(x - AIN.ORIGIN.x, z - AIN.ORIGIN.z
 const FLOWERS = ['flower_redA', 'flower_redB', 'flower_yellowA', 'flower_yellowB', 'flower_purpleA', 'flower_purpleB'];
 
 /** A kit piece scaled to a height, standing on the ground at a local point of F. */
-function kitH(W, F, name, h, lx, lz, opts = {}) {
+export function kitH(W, F, name, h, lx, lz, opts = {}) {
   if (!W.kits.has(name)) return;
   const b = W.kits.box(name);
   const s = h / Math.max(0.05, b.max.y - b.min.y);
-  F.kit(name, lx - ((b.min.x + b.max.x) / 2) * s, (opts.y ?? 0) - b.min.y * s, lz - ((b.min.z + b.max.z) / 2) * s, { s, collide: opts.collide ?? false, castShadow: opts.cast ?? true, ry: opts.ry ?? 0, tint: opts.tint ?? null });
+  // the centre of the box (rotated with the piece) lands on the point
+  const ry = opts.ry ?? 0, c = Math.cos(ry), sn = Math.sin(ry), cx = ((b.min.x + b.max.x) / 2) * s, cz = ((b.min.z + b.max.z) / 2) * s;
+  F.kit(name, lx - (cx * c + cz * sn), (opts.y ?? 0) - b.min.y * s, lz - (-cx * sn + cz * c), { s, collide: opts.collide ?? false, castShadow: opts.cast ?? true, ry, tint: opts.tint ?? null, detail: !!opts.detail });
+}
+
+/**
+ * A small kit piece of the street dressing (goods, benches, café tables, planters, carts): only its collision box is static; the
+ * model itself is built by the city stream round the camera (CityStream, like the near models of the houses), so thousands of
+ * these pieces cost nothing far away. In the editor (no stream) it is an ordinary static piece.
+ */
+export function nearPiece(W, F, name, h, lx, lz, opts = {}) {
+  if (!W.kits.has(name)) return;
+  const ry = opts.ry ?? 0;
+  if (opts.collide) {
+    const b = W.kits.box(name), s = h / Math.max(0.05, b.max.y - b.min.y);
+    F.box((b.max.x - b.min.x) * s, h, (b.max.z - b.min.z) * s, lx, opts.y ?? 0, lz, 'stone', { collideOnly: true, ry });
+  }
+  const o = { ...opts, collide: false };
+  if (!W.stream) return kitH(W, F, name, h, lx, lz, o);
+  const { x, y, z } = F.origin, rot = F.rot, p = F.at(lx, 0, lz);
+  if (W._D) p.applyMatrix4(W._D);
+  W.stream.add(p.x, p.z, (w) => kitH(w, new Frame(w, x, y, z, rot), name, h, lx, lz, o), W._D ? W._D.clone() : null);
 }
 
 /** Occupancy of one square: footprints already there (fountains, wells, stalls) + what we place. */
@@ -83,6 +104,9 @@ export function decorateSquares(W, P) {
       const at = (lx, lz) => F.at(lx, 0, lz);
       const L = (lx, lz) => { const p = at(lx, lz); return new Frame(W, p.x, H(W, p.x, p.z), p.z, sq.rot); };
       const busy = sq.kind === 'market' || sq.kind === 'wagons' || sq.kind === 'cargo';
+      // the shopping arcades along the long sides (the market, the square of the Steps) and the covered hall of the market
+      if (sq.kind === 'market' || sq.kind === 'steps') arcades(W, F, sq, O, rng);
+      if (sq.kind === 'market') marketHall(W, F, sq, O, rng);
       // perimeter: trees every ~13 m (planters on the busy squares), a lamp now and then
       const inset = 5.5, hw = sq.w / 2 - inset, hd = sq.d / 2 - inset;
       const edge = [];
@@ -163,6 +187,8 @@ export function decorateSquares(W, P) {
           left--;
         }
       }
+      // what is left of the open paving: market goods / trees, planters, kiosks / topiary and pergolas, with walks of 5 m and more
+      if (sq.kind === 'market' || sq.kind === 'steps' || sq.kind === 'council') pavingFill(W, F, sq, O, rng);
       // banners at the two long sides
       const tint = [0x8a2a2a, 0x2a4a8a, 0x2a6a4a, 0x6a2a6a][Math.abs(Math.round(sq.u + sq.v)) % 4];
       for (const s of [-1, 1]) for (const fx of [-0.42, 0.42]) {
@@ -181,32 +207,74 @@ export function boulevards(W, P) {
     if (S.cls !== 'axis' && S.cls !== 'avenue') continue;
     const [mx, mz] = toW(...S.pts[Math.floor(S.pts.length / 2)]);
     W.group('ain_blv_' + S.id, { x: mx, z: mz }, (rng) => {
+      // the row of trees on the flagstone band (AinstreyCity.streets), 2 m inside the kerb: a slot every 7.5 m; the even slots
+      // are trees, the odd ones between them hold a lamp (every 45 m, the sides alternating), a bench, a planter or a café table
       const off = S.width / 2 - 2.0;
-      let acc = 9, side = 0;
-      for (let i = 1; i < S.pts.length; i++) {
-        const [ax, az] = S.pts[i - 1], [bx, bz] = S.pts[i];
-        const seg = Math.hypot(bx - ax, bz - az);
-        if (seg < 0.01) continue;
-        const dx = (bx - ax) / seg, dz = (bz - az) / seg;
-        for (let t = acc; t < seg; t += 15) {
-          const cu = ax + dx * t, cv = az + dz * t;
-          side++;
-          for (const sd of [-1, 1]) {
-            const u = cu - dz * sd * off, v = cv + dx * sd * off;
-            if (P.streets.some((o) => o !== S && polyDist(o.pts, u, v) < o.width / 2 + (CLASS[o.cls].kerb ?? 1) + 4)) continue;
-            if (P.squares.some((q) => near(q, u, v, 3)) || P.keys.some((q) => near(q, u, v, 4))) continue;
-            if (wallDist(u, v) < 28) continue; // not in the gate passages
-            const [x, z] = toW(u, v);
-            const y = H(W, x, z);
+      const slots = alongLine(S.pts, 9, 7.5);
+      slots.forEach(({ u: cu, v: cv, dx, dz }, k) => {
+        for (const sd of [-1, 1]) {
+          const u = cu - dz * sd * off, v = cv + dx * sd * off;
+          if (P.streets.some((o) => o !== S && polyDist(o.pts, u, v) < o.width / 2 + (CLASS[o.cls].kerb ?? 1) + 4)) continue;
+          if (P.squares.some((q) => near(q, u, v, 3)) || P.keys.some((q) => near(q, u, v, 4))) continue;
+          if (wallDist(u, v) < 28) continue; // not in the gate passages
+          const [x, z] = toW(u, v);
+          const y = H(W, x, z);
+          const ry = Math.atan2(dx, dz);
+          if (k % 2 === 0) {
             // a ring of stone round the trunk, the tree inside
             new Frame(W, x, y, z, 0).cyl(1.1, 0.25, 0, 0, 0, 'stone', { seg: 10, tint: 0xcfc4a8, collide: false, castShadow: false });
-            tree(W, x, z, 0.75 + rng() * 0.2, rng, side % 4 === 0 ? 'birch' : 'oak');
+            tree(W, x, z, 0.75 + rng() * 0.2, rng, (k / 2) % 4 === 0 ? 'birch' : 'oak');
+            continue;
+          }
+          if (Object.values(W.npcSpots).some((p) => Math.hypot(p.pos.x - x, p.pos.z - z) < 3)) continue;
+          const F = new Frame(W, x, y + 0.03, z, ry);
+          if (k % 6 === 1 && sd === (((k - 1) / 6) % 2 ? 1 : -1)) { lamp(W, new THREE.Vector3(x, y + 0.03, z), 0); continue; }
+          const r = rng();
+          if (r < 0.34) {
+            // a bench along the row, its back to the carriageway
+            nearPiece(W, F, 'furniture/bench', 0.85, 0, 0, { ry: sd > 0 ? Math.PI / 2 : -Math.PI / 2, collide: 'box' });
+          } else if (r < 0.5) {
+            // a café table with two chairs
+            nearPiece(W, F, 'furniture/tableRound', 0.78, 0, 0, { collide: 'box' });
+            for (const s2 of [-1, 1]) nearPiece(W, F, 'furniture/chair', 0.95, 0, s2 * 0.85, { ry: s2 > 0 ? Math.PI : 0, collide: false });
+            if (rng() < 0.6) nearPiece(W, F, 'food/mug', 0.16, 0.15, 0.1, { y: 0.78, cast: false });
+          } else if (r < 0.68) {
+            // a planter
+            nearPiece(W, F, 'nature/pot_large', 0.75, 0, 0, { collide: 'box', tint: 0xb06a48 });
+            nearPiece(W, F, 'nature/plant_bushDetailed', 1.0, 0, 0, { y: 0.55 });
           }
         }
-        acc = Math.max(0, (acc - seg) % 15);
-      }
+        // carts left at the kerb of the axis (the carriageway keeps 8 m), now and then
+        if (S.cls === 'axis' && k % 11 === 5 && rng() < 0.45) {
+          const sd = rng() < 0.5 ? -1 : 1, o2 = S.width / 2 - 6.2;
+          const u = cu - dz * sd * o2, v = cv + dx * sd * o2;
+          if (!P.streets.some((o) => o !== S && polyDist(o.pts, u, v) < o.width / 2 + (CLASS[o.cls].kerb ?? 1) + 6) && !P.squares.some((q) => near(q, u, v, 6)) && wallDist(u, v) > 40) {
+            const [x, z] = toW(u, v);
+            if (!Object.values(W.npcSpots).some((p) => Math.hypot(p.pos.x - x, p.pos.z - z) < 5)) {
+              const F = new Frame(W, x, H(W, x, z), z, Math.atan2(dx, dz) + (rng() < 0.5 ? 0 : Math.PI));
+              nearPiece(W, F, rng() < 0.5 ? 'town/cart' : 'town/cart-high', 1.7, 0, 0, { collide: 'box' });
+              if (rng() < 0.6) nearPiece(W, F, 'bits/' + (rng() < 0.5 ? 'Textiles_Stack_Large_Colored' : 'Wood_Planks_Stack_Medium'), 0.5, 0, 0, { y: 0.9, cast: false });
+            }
+          }
+        }
+      });
     }, 'Бульвар: ' + S.name);
   }
+}
+
+/** Points every `step` metres along a polyline [u, v] from `start`, with the unit direction there. */
+export function alongLine(pts, start, step) {
+  const out = [];
+  let next = start, cum = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const [ax, az] = pts[i - 1], [bx, bz] = pts[i];
+    const seg = Math.hypot(bx - ax, bz - az);
+    if (seg < 0.01) continue;
+    const dx = (bx - ax) / seg, dz = (bz - az) / seg;
+    while (next <= cum + seg) { const t = next - cum; out.push({ u: ax + dx * t, v: az + dz * t, dx, dz }); next += step; }
+    cum += seg;
+  }
+  return out;
 }
 /**
  * Formal parterres filling the rest of a quiet square: lawns with a stone kerb, clipped hedges along the long sides (gaps in the
@@ -244,9 +312,10 @@ function parterres(W, F, sq, O, rng) {
 function stallRows(W, F, sq, O, rng) {
   const cols = [0xb8453a, 0x3a6a8a, 0x4a7a4a, 0xc89a3a, 0x8a4a7a, 0xd8cfb8];
   // rows of stalls with aisles of ~5 m between them
-  for (let lx = -sq.w / 2 + 12; lx <= sq.w / 2 - 12; lx += 8.5) for (let lz = -sq.d / 2 + 12; lz <= sq.d / 2 - 12; lz += 9.5) {
+  const dx = sq.kind === 'market' ? 7.5 : 8.5, dz = sq.kind === 'market' ? 8 : 9.5;
+  for (let lx = -sq.w / 2 + 12; lx <= sq.w / 2 - 12; lx += dx) for (let lz = -sq.d / 2 + 12; lz <= sq.d / 2 - 12; lz += dz) {
     const p = F.at(lx, 0, lz);
-    if (rng() < 0.12 || !O.free(p, 3.2)) continue;
+    if (rng() < 0.05 || !O.free(p, 3.2)) continue;
     if (sq.kind === 'market') stall(W, p.x, p.z, sq.rot + (rng() < 0.5 ? 0 : Math.PI), cols[Math.floor(rng() * cols.length)], ['fruit', 'mixed', 'bread'][Math.floor(rng() * 3)], rng);
     else wagon(W, p.x, p.z, sq.rot + (rng() < 0.5 ? 0 : Math.PI) + (rng() - 0.5) * 0.3, [0xe8dcc0, 0xd8c8a0, 0xc8d0d8][Math.floor(rng() * 3)]);
     O.add(p, 3.4);
@@ -263,3 +332,126 @@ const wallDist = (u, v) => {
   }
   return d;
 };
+
+/**
+ * Shopping arcades along the two long sides of a square: bays of 6 m under a tiled lean-to roof on stone columns, a plastered back
+ * wall with a door, a window and a sign for every shop, goods by the doors. A bay that would stand on a street, a story place or
+ * another piece is left out (the arcade breaks there and gets an end wall).
+ */
+function arcades(W, F, sq, O, rng) {
+  const bay = 6, depth = 5.4, hgt = 4.4;
+  const walls = [0xe3d6bb, 0xd8ccb0, 0xe8d8b8], signs = [0x5a3a24, 0x2f4f6a, 0x4a5a2a, 0x6a2a2a];
+  for (const s of [-1, 1]) {
+    const zb = s * (sq.d / 2 - 0.9), zf = s * (sq.d / 2 - 0.9 - depth), zc = (zb + zf) / 2;
+    const n = Math.floor((sq.w - 20) / bay), x0 = -((n - 1) * bay) / 2;
+    const ok = [];
+    for (let i = 0; i < n; i++) {
+      const bx = x0 + i * bay;
+      ok.push([[0, zc], [-bay / 2 + 0.6, zc], [bay / 2 - 0.6, zc]].every(([a, b]) => O.free(F.at(bx + a, 0, b), 1.9)));
+    }
+    const tint = walls[(s + 1) / 2 + (Math.abs(Math.round(sq.u)) % 2)] ?? walls[0];
+    for (let i = 0; i < n; i++) {
+      if (!ok[i]) continue;
+      const bx = x0 + i * bay;
+      F.box(bay, 0.12, depth, bx, 0, zc, 'stone', { tint: 0xd8ccb0, collide: false, castShadow: false });
+      F.box(bay, hgt + 0.3, 0.45, bx, 0, zb, 'plaster', { tint });
+      F.box(bay + 0.1, 0.5, 0.6, bx, 0, zb, 'stone', { tint: 0xb4aa94, collide: false });
+      // the shop front on the inner face: a door, a window, a sign board, goods by the door now and then
+      const fz = zb - s * 0.25;
+      F.box(1.3, 2.4, 0.1, bx - 1.3, 0, fz, 'door', { tint: 0x5a3c28, collide: false });
+      F.box(1.8, 1.3, 0.1, bx + 1.2, 0.95, fz, 'window', { collide: false, castShadow: false, detail: true });
+      F.box(2.6, 0.55, 0.08, bx, 2.85, fz - s * 0.02, 'wood', { tint: signs[i % signs.length], collide: false, detail: true });
+      if (rng() < 0.45 && W.kits.has('props/Barrel')) prop(F, rng() < 0.5 ? 'props/Barrel' : 'props/Crate_Wooden', bx + 2.3, 0, zb - s * 0.9, { s: 0.9, ry: rng() * 6 });
+      // the roof (a lean-to falling towards the square) and the columns at the front line
+      F.box(bay + 0.06, 0.28, depth + 0.6, bx, hgt - 0.1, zc - s * 0.3, 'roof', { tint: 0x8a5040, collide: false, rx: -s * 0.08 });
+      F.box(bay, 0.45, 0.5, bx, hgt - 0.55, zf, 'stone', { tint: 0xd8ccb0, collide: false });
+      for (const e of [-1, 1]) {
+        if (e < 0 && i > 0 && ok[i - 1]) continue; // the column between two bays is placed once
+        F.cyl(0.3, hgt - 0.55, bx + e * bay / 2, 0, zf, 'stone', { seg: 10, tint: 0xe6dfcf });
+      }
+      // end walls where the arcade breaks
+      for (const e of [-1, 1]) if (!(ok[i + e] ?? false)) F.box(0.4, hgt, depth, bx + e * (bay / 2 - 0.2), 0, zc, 'plaster', { tint });
+      O.add(F.at(bx, 0, zc), 3.2);
+      O.add(F.at(bx - 2, 0, zc), 2.6);
+      O.add(F.at(bx + 2, 0, zc), 2.6);
+    }
+  }
+}
+
+/** The covered market hall: a stone floor, two rows of columns, a hipped roof, trestle tables with produce under it. */
+function marketHall(W, F, sq, O, rng) {
+  const hw = 26, hd = 13;
+  for (const [lx, lz] of [[0, -sq.d * 0.2], [0, sq.d * 0.2], [-sq.w * 0.22, 0], [sq.w * 0.22, 0]]) {
+    const probe = [[0, 0], [-hw / 2, -hd / 2], [hw / 2, -hd / 2], [hw / 2, hd / 2], [-hw / 2, hd / 2], [0, -hd / 2], [0, hd / 2], [-hw / 2, 0], [hw / 2, 0], [-hw / 4, 0], [hw / 4, 0]];
+    if (!probe.every(([a, b]) => O.free(F.at(lx + a, 0, lz + b), 2))) continue;
+    F.box(hw + 1, 0.18, hd + 1, lx, 0, lz, 'stone', { tint: 0xcfc4a8, collide: false, castShadow: false });
+    const cols = 6;
+    for (let k = 0; k < cols; k++) for (const s of [-1, 1]) F.cyl(0.38, 5.2, lx - hw / 2 + 1 + k * ((hw - 2) / (cols - 1)), 0.18, lz + s * (hd / 2 - 0.5), 'stone', { seg: 10, tint: 0xe6dfcf });
+    for (const s of [-1, 1]) F.box(hw, 0.6, 0.7, lx, 5.3, lz + s * (hd / 2 - 0.5), 'timber', { collide: false });
+    F.put(new THREE.ConeGeometry(Math.SQRT1_2, 1, 4).rotateY(Math.PI / 4).translate(0, 0.5, 0), hw + 2.4, 4.2, hd + 2.4, lx, 5.9, lz, 'roof', { tint: 0x9a5a44, collide: false });
+    const goods = ['props/FarmCrate_Apple', 'props/FarmCrate_Carrot', 'props/Barrel_Apples', 'props/FarmCrate_Empty'];
+    for (let i = 0; i < 4; i++) for (const s of [-1, 1]) {
+      const tx = lx - hw / 2 + 4 + i * ((hw - 8) / 3), tz = lz + s * 2.6;
+      F.box(3.2, 0.85, 1.1, tx, 0.18, tz, 'wood', { tint: 0x7a5232 });
+      for (const o of [-0.9, 0.9]) { const g = goods[(i + (s > 0 ? 2 : 0) + (o > 0 ? 1 : 0)) % goods.length]; if (W.kits.has(g)) prop(F, g, tx + o, 1.03, tz, { s: 0.75, ry: rng() * 0.4 }); }
+    }
+    O.add(F.at(lx, 0, lz), hd / 2 + 1);
+    for (const a of [-1, -0.5, 0.5, 1]) O.add(F.at(lx + a * (hw / 2 - 3), 0, lz), hd / 2 + 1);
+    return;
+  }
+}
+
+/**
+ * The rest of the open paving, on a 10 m grid (one piece per cell, so the walks between them stay 5 m wide or more): market goods
+ * and carts; on the square of the Steps trees in stone rings, planters, benches round a lamp, kiosks; in the garden topiary,
+ * flower planters and small pergolas.
+ */
+function pavingFill(W, F, sq, O, rng) {
+  const g = sq.kind === 'market' ? 10 : 8.5, nx = Math.floor((sq.w - 16) / g), nz = Math.floor((sq.d - 16) / g);
+  const x0 = -((nx - 1) * g) / 2, z0 = -((nz - 1) * g) / 2;
+  let k = Math.floor(rng() * 5);
+  const planter = (lx, lz) => {
+    F.cyl(1.1, 0.7, lx, 0, lz, 'stone', { seg: 12, tint: 0xd2c6aa });
+    F.cyl(0.95, 0.06, lx, 0.66, lz, 'stoneDark', { seg: 12, collide: false, castShadow: false, tint: 0x4a3a28 });
+    for (let f = 0; f < 6; f++) { const a = (f / 6) * Math.PI * 2; kitH(W, F, 'nature/' + FLOWERS[(f + k) % FLOWERS.length], 0.5, lx + Math.cos(a) * 0.55, lz + Math.sin(a) * 0.55, { y: 0.7, cast: false }); }
+    kitH(W, F, 'nature/plant_bushDetailed', 0.9, lx, lz, { y: 0.7 });
+  };
+  for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
+    const lx = x0 + i * g + (rng() - 0.5) * 1.5, lz = z0 + j * g + (rng() - 0.5) * 1.5, p = F.at(lx, 0, lz);
+    if (!O.free(p, 2.4)) continue;
+    k++;
+    if (sq.kind === 'market') {
+      const G = new Frame(W, p.x, H(W, p.x, p.z), p.z, sq.rot + rng() * 6.28);
+      const list = ['props/FarmCrate_Apple', 'props/Barrel_Apples', 'props/Crate_Wooden', 'props/FarmCrate_Carrot', 'bits/Textiles_Stack_Small'];
+      if (k % 5 === 0) { const m = heroKit(F, 'obj/vendor_cart', { w: 3 }, lx, 0, lz, { ry: rng() * 6.28 }); if (m) F.box(m.w * 0.8, 1.4, m.d * 0.8, lx, 0, lz, 'wood', { collideOnly: true }); }
+      else for (let c = 0; c < 3; c++) { const nm = list[(k + c) % list.length]; if (W.kits.has(nm)) prop(G, nm, (c - 1) * 1.1, 0, (c % 2) * 0.8, { s: nm.startsWith('bits/') ? 1.2 : 1, ry: rng() * 0.6 }); }
+      O.add(p, 2.4);
+    } else if (sq.kind === 'steps') {
+      const m = k % 4;
+      if (m === 0 || m === 2) { F.cyl(1.2, 0.3, lx, 0, lz, 'stone', { seg: 12, tint: 0xd2c6aa, collide: false, castShadow: false }); tree(W, p.x, p.z, 0.75 + rng() * 0.2, rng, m === 0 ? 'oak' : 'birch'); }
+      else if (m === 1) { planter(lx, lz); }
+      else {
+        lamp(W, new THREE.Vector3(p.x, H(W, p.x, p.z) + 0.12, p.z), 0);
+        for (const s of [-1, 1]) bench(W, F, lx + s * 1.8, lz, s > 0 ? -Math.PI / 2 : Math.PI / 2);
+      }
+      O.add(p, 2.6);
+    } else {
+      // the garden: a grove of trees in lawn rounds, clipped topiary, planters and rose pergolas
+      const m = k % 4;
+      if (m === 0 || m === 2) {
+        F.cyl(1.6, 0.25, lx, 0, lz, 'lawn', { seg: 14, tint: 0x6a9a44, collide: false, castShadow: false });
+        tree(W, p.x, p.z, 0.85 + rng() * 0.25, rng, m === 0 ? 'oak' : 'birch');
+      } else if (m === 1) {
+        F.cyl(1.5, 0.35, lx, 0, lz, 'stone', { seg: 12, tint: 0xd2c6aa });
+        kitH(W, F, 'nature/plant_bushTriangle', 3.0, lx, lz, { y: 0.35 });
+      } else if (rng() < 0.5) planter(lx, lz);
+      else {
+        for (const [a, b] of [[-1.6, -1.6], [1.6, -1.6], [1.6, 1.6], [-1.6, 1.6]]) F.box(0.22, 2.8, 0.22, lx + a, 0, lz + b, 'wood', { tint: 0xe8e0cc, collide: a < 0 && b < 0 });
+        for (let r = -2; r <= 2; r++) F.box(3.6, 0.12, 0.14, lx, 2.8, lz + r * 0.8, 'wood', { tint: 0xe8e0cc, collide: false });
+        for (const [a, b] of [[-1.6, -1.6], [1.6, 1.6]]) kitH(W, F, 'nature/plant_bushLarge', 1.6, lx + a, lz + b, {});
+        kitH(W, F, 'nature/' + FLOWERS[k % FLOWERS.length], 0.7, lx, lz, { cast: false });
+      }
+      O.add(p, 2.6);
+    }
+  }
+}

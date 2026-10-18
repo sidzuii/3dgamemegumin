@@ -248,4 +248,30 @@ export class ExplosionFX {
       e.dispose();
     }
   }
+
+  /**
+   * The same in the background (Game.prewarmAsync, while the title screen is up): the effects join the scene hidden right after
+   * their programs are requested, so nothing is ever drawn; with KHR_parallel_shader_compile the driver links them off the main thread.
+   */
+  async prewarmAsync(renderer, target, camera) {
+    const g = this.game;
+    const p = g.player.position.clone();
+    const list = [
+      new MagicCircle({ radius: 1, position: p }),
+      new MagicCircle({ radius: 1, variant: 1, position: p }),
+      new Fireball(p, 1), new CoreFlash(p, 1), new Shockwave(p, 1), new DustWall(p, 1),
+      new LightBeam(p, 1), new Scorch(g.world, p, 1), new Debris(g.world, p, 1),
+    ];
+    const holder = new THREE.Group();
+    for (const e of list) { e.update?.(0.016); holder.add(e.object); }
+    g.scene.add(holder);
+    renderer.setRenderTarget(target);
+    const ready = renderer.compileAsync(holder, camera, g.scene);
+    renderer.setRenderTarget(null);
+    holder.visible = false;
+    try { await ready; } finally {
+      g.scene.remove(holder);
+      for (const e of list) e.dispose();
+    }
+  }
 }

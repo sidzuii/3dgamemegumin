@@ -8,6 +8,7 @@ import { Signpost, ModelChest } from './Interactables.js';
 import { CITY_WALL as AIN_WALL, toWorld as AIN_TO_WORLD, SHEET as AIN_SHEET, TRAKT as AIN_TRAKT, ORIGIN as AIN_ORIGIN } from './AinstreyPlan.js';
 import { HALF, REGIONS, REGION, RIVERS, LAKES, LAVA, CAMPS, SIGNS, FORESTS, regionContains } from './MapData.js';
 import { Heightfield, GRID_N, GRID_STEP, roadInfo, riverDistance, surfaceAt, polygonDistance } from './Terrain.js';
+import { cityDistance, forestAt, planeNormals, shadeTerrain, FOREST_BOX, CITIES } from './terrainShade.js';
 import { WALL, toWorld } from './AxelPlan.js';
 import { createWaterSurface, riverGeometry, lakeGeometry } from './Water.js';
 import { createLava } from './Surfaces.js';
@@ -42,31 +43,7 @@ const LOD_CHUNK = 64; // buildings: full model within `lodDistance` of the cell,
 const TERRAIN_CHUNK = 68; // terrain grid cells per chunk side (170 m)
 const LIGHT_POOL = 8; // fixed number of point lights (no shader recompiles)
 
-/** The city wall as a world polygon (+ bbox) for the "inside Axel" tests. */
-const CITIES = [WALL.nodes.map((n) => toWorld(n.u, n.v)), AIN_WALL.map((n) => AIN_TO_WORLD(n.u, n.v))].map((pts) => ({
-  pts, box: [Math.min(...pts.map((p) => p[0])), Math.min(...pts.map((p) => p[1])), Math.max(...pts.map((p) => p[0])), Math.max(...pts.map((p) => p[1]))],
-}));
-/** Signed distance to the nearest city wall line (negative inside the walls; Axel and Ainstrey); far away: a cheap lower bound. */
-export function cityDistance(x, z) {
-  let best = Infinity;
-  for (const C of CITIES) {
-    const dx = Math.max(C.box[0] - x, 0, x - C.box[2]), dz = Math.max(C.box[1] - z, 0, z - C.box[3]);
-    best = Math.min(best, dx > 30 || dz > 30 ? Math.hypot(dx, dz) : polygonDistance(C.pts, x, z));
-  }
-  return best;
-}
-const FOREST_BOX = FORESTS.map((f) => [Math.min(...f.pts.map((p) => p[0])), Math.min(...f.pts.map((p) => p[1])), Math.max(...f.pts.map((p) => p[0])), Math.max(...f.pts.map((p) => p[1]))]);
-/** Signed distance to the nearest forest polygon (negative inside) and that forest. */
-export function forestAt(x, z) {
-  let best = Infinity, forest = null;
-  FORESTS.forEach((f, i) => {
-    const b = FOREST_BOX[i];
-    if (x < b[0] - 40 || x > b[2] + 40 || z < b[1] - 40 || z > b[3] + 40) return;
-    const d = polygonDistance(f.pts, x, z);
-    if (d < best) { best = d; forest = f; }
-  });
-  return { d: best, forest };
-}
+export { cityDistance, forestAt } from './terrainShade.js';
 
 /**
  * The overworld: sky + lighting, heightfield terrain, rivers/lakes, every static structure
@@ -304,7 +281,7 @@ export class World {
     const T = (name, fn) => { const t = performance.now(); fn(); times[name] = Math.round(performance.now() - t); };
     T('sky', () => this._setupSkyAndLights());
     T('materials', () => { this._buildMaterials(); Object.assign(this.mats, this.kits.materials); });
-    T('heightfield', () => { this.heightfield = new Heightfield(); });
+    T('heightfield', () => { this.heightfield = new Heightfield(this.heightData); this.heightData = null; }); // grids from the workers (Game.init)
     T('terrain', () => this._buildTerrain());
     T('water', () => this._buildWater());
     T('town', () => buildTown(this));
@@ -479,69 +456,11 @@ export class World {
     geo.translate(sh.x0 + sizeX / 2, 0, sh.z0 + sizeZ / 2);
     const pos = geo.attributes.position;
     for (let i = 0; i < pos.count; i++) pos.setY(i, sh.data[i]);
-    geo.computeVertexNormals();
-    const nrm = geo.attributes.normal;
-    const colors = new Float32Array(pos.count * 3);
-    const c = new THREE.Color();
-    const T = {
-      grassA: new THREE.Color(0x5f8f3a), grassB: new THREE.Color(0x87a74a),
-      forest: new THREE.Color(0x3f6a2c), meadow: new THREE.Color(0x9bb456), farm: new THREE.Color(0xa8ae58),
-      dirt: new THREE.Color(0x8d7454), trail: new THREE.Color(0x9a8a62), rock: new THREE.Color(0x857d70),
-      snow: new THREE.Color(0xe8eef2), scorch: new THREE.Color(0x3b2a24), mud: new THREE.Color(0x6e5e44),
-      sand: new THREE.Color(0xb9a77e), town: new THREE.Color(0x8e8a64), ruin: new THREE.Color(0x9a9a86),
-      chalk: new THREE.Color(0xc9c4b0), stone: new THREE.Color(0xa59d88), dry: new THREE.Color(0x9aa35a), gravel: new THREE.Color(0x9c927c), earth: new THREE.Color(0x7e7258), patch: new THREE.Color(0x6d8c46),
-    };
-    const farms = REGION.farms.center;
-    const gorge = REGION.crimson_gorge.center, astra = REGION.astrarium.center;
-    const chalkC = REGION.chalk.center;
-    for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i), z = pos.getZ(i), y = pos.getY(i);
-      const n = fbm(x * 0.08, z * 0.08, 3) * 0.5 + 0.5;
-      const big = fbm(x * 0.012 + 40, z * 0.012, 2) * 0.5 + 0.5;
-      c.copy(T.grassA).lerp(T.grassB, n * 0.7 + big * 0.3);
-      const df = forestAt(x, z).d;
-      c.lerp(T.forest, (1 - smoothstep(-25, 15, df)) * 0.75);
-      if (main) {
-        const dfa = Math.hypot(x - farms.x, z - farms.z);
-        c.lerp(T.farm, (1 - smoothstep(30, 70, dfa)) * 0.45);
-      } else {
-        // Ainstrey: dry meadows, chalk on the slopes of the south-west, worn stone in and around the city.
-        c.lerp(T.dry, smoothstep(0.35, 0.7, big) * 0.4);
-        c.lerp(T.chalk, (1 - smoothstep(60, 240, Math.hypot(x - chalkC.x, z - chalkC.z))) * 0.55 * smoothstep(3, 9, y));
-      }
-      c.lerp(T.meadow, smoothstep(0.62, 0.8, big) * 0.35);
-      const dt = cityDistance(x, z);
-      if (dt < 6) c.lerp(main ? T.town : T.stone, (1 - smoothstep(-6, 6, dt)) * (main ? 0.55 : 0.92));
-      if (!main && dt < -10) {
-        // Ainstrey: the garden of the Council stays green (lawns), everything else inside the walls is trodden earth and gravel
-        const gu = x - AIN_ORIGIN.x, gv = z - AIN_ORIGIN.z;
-        if (gu > -310 && gu < 410 && gv < -690 && gv > -910) c.lerp(T.grassB, 0.8);
-        else {
-          const w = 1 - smoothstep(-40, -10, dt), g2 = fbm(x * 0.05 + 9, z * 0.05 - 4, 3) * 0.5 + 0.5;
-          c.lerp(T.gravel, (0.75 + 0.2 * n) * w);
-          c.lerp(T.earth, smoothstep(0.38, 0.62, g2) * 0.45 * w);
-          c.lerp(T.patch, smoothstep(0.7, 0.85, g2) * 0.22 * w); // a little worn grass in the yards (a capital is trodden ground)
-        }
-      }
-      const rd = riverDistance(x, z);
-      c.lerp(T.mud, (1 - smoothstep(-1, 4, rd)) * 0.9);
-      c.lerp(T.sand, (1 - smoothstep(2, 7, rd)) * smoothstep(-1, 2, rd) * 0.45);
-      for (const L of LAKES) {
-        const dl = Math.hypot(x - L.center.x, z - L.center.z);
-        c.lerp(T.sand, (1 - smoothstep(L.radius * 0.95, L.radius * 1.25, dl)) * 0.8);
-      }
-      const r = roadInfo(x, z);
-      const edge = 0.6 + fbm(x * 0.3, z * 0.3, 2) * 0.5;
-      c.lerp(r.kind === 'trail' ? T.trail : T.dirt, smoothstep(edge + 0.6, edge - 0.6, r.d) * (r.kind === 'trail' ? 0.7 : 0.9));
-      const slope = 1 - nrm.getY(i);
-      c.lerp(T.rock, clamp(smoothstep(0.2, 0.42, slope) + smoothstep(main ? 14 : 30, main ? 26 : 50, y) * 0.75, 0, 1));
-      c.lerp(T.snow, smoothstep(40, 52, y) * 0.85);
-      if (main) {
-        c.lerp(T.scorch, (1 - smoothstep(30, 70, Math.hypot(x - gorge.x, z - gorge.z))) * 0.9);
-        c.lerp(T.ruin, (1 - smoothstep(28, 46, Math.hypot(x - astra.x, z - astra.z))) * 0.4);
-      }
-      colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
-    }
+    // normals and ground colours: from the worker that computed the heights (Heightfield.compute), else here (terrainShade.js)
+    const normals = sh.normals || planeNormals(sh, sh.data);
+    geo.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+    const colors = sh.colors || shadeTerrain(sh, sh.data, normals);
+    sh.normals = sh.colors = null;
     geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     const uv = geo.attributes.uv;
     for (let i = 0; i < uv.count; i++) uv.setXY(i, pos.getX(i) * 0.25, pos.getZ(i) * 0.25);
@@ -611,6 +530,7 @@ export class World {
   addSolid(geometry, matrix, materialKey, { collide = true, castShadow = true, tint = null, collideOnly = false, detail = false, keepUV = false } = {}) {
     const g = geometry.index ? geometry.toNonIndexed() : geometry.clone();
     if (this._mute) return g;
+    g.boundingBox = g.boundingSphere = null; // applyMatrix4 would recompute them over every vertex
     g.applyMatrix4(this._D ? _dm.multiplyMatrices(this._D, matrix) : matrix);
     if (collideOnly) {
       const cg = new THREE.BufferGeometry();
@@ -650,7 +570,10 @@ export class World {
       const { geometry } = part;
       let mat = variant && this.mats[part.mat + '@' + variant] ? part.mat + '@' + variant : part.mat;
       const g = geometry.clone();
+      g.boundingBox = g.boundingSphere = null; // (applyMatrix4 recomputes existing bounds over every vertex: tens of thousands of pieces)
       g.applyMatrix4(matrix);
+      if (!part.center) { geometry.computeBoundingBox(); part.center = geometry.boundingBox.getCenter(new THREE.Vector3()); }
+      const center = _kc.copy(part.center).applyMatrix4(matrix);
       if (retex && (!retex.only || retex.only === part.mat)) {
         planarUVs(g, retex.scale ?? 0.5);
         mat = retex.mat;
@@ -659,7 +582,7 @@ export class World {
         const c = g.attributes.color;
         for (let i = 0; i < c.count; i++) c.setXYZ(i, c.getX(i) * _tint.r, c.getY(i) * _tint.g, c.getZ(i) * _tint.b);
       }
-      this._pushBatch(g, mat, castShadow, detail);
+      this._pushBatch(g, mat, castShadow, detail, center);
       if (collide === true) this._staticCollision.push(g);
     }
     if (collide === 'box') {
@@ -672,7 +595,8 @@ export class World {
     }
   }
 
-  _pushBatch(g, materialKey, castShadow, detail = false) {
+  /** `center`: where the piece is (world) when the caller knows it; else the centre of its bounds. */
+  _pushBatch(g, materialKey, castShadow, detail = false, center = null) {
     if (this._streamSink) {
       const key = materialKey + '|1'; // one mesh per material and cell (small parts cast shadows too)
       if (!this._streamSink.has(key)) this._streamSink.set(key, []);
@@ -687,13 +611,13 @@ export class World {
       this._group.batches.get(key).push(g);
       return;
     }
-    g.computeBoundingSphere();
+    if (!center) { g.computeBoundingBox(); center = g.boundingBox.getCenter(_kc); }
     // 's' = the far proxy of a streamed building (CityStream): hidden while the near model of its stream cell exists
     const tier = this.lodMode === 'stream' ? 's' : detail ? 'd' : this.lodMode === 'near' ? 'n' : this.lodMode === 'far' ? 'f' : '';
     // `_bigChunk`: a dense big city (Ainstrey) batches its static pieces in coarser cells (fewer draw calls when it is seen whole)
     const big = !tier && this._bigChunk;
     const S = tier === 'd' ? DETAIL_CHUNK : tier === 's' ? STREAM_CELL : tier ? LOD_CHUNK : big || CHUNK;
-    const c = tier && tier !== 'd' && this._forceCell ? this._forceCell : g.boundingSphere.center;
+    const c = tier && tier !== 'd' && this._forceCell ? this._forceCell : center;
     const cx = Math.floor(c.x / S), cz = Math.floor(c.z / S);
     const key = `${materialKey}|${castShadow && tier !== 'd' && tier !== 'f' && tier !== 's' ? 1 : 0}|${big ? 'B' : ''}${cx},${cz}${tier ? '|' + tier : ''}`;
     if (!this._visualBatches.has(key)) this._visualBatches.set(key, []);
@@ -762,7 +686,7 @@ export class World {
       const [matKey, shadow, cell, tier] = key.split('|');
       const merged = mergeMixed(list);
       if (!merged) { console.warn('[world] batch did not merge', key); continue; }
-      merged.computeBoundingSphere();
+      fastBounds(merged);
       const mesh = new THREE.Mesh(merged, this.mats[matKey]);
       mesh.castShadow = shadow === '1';
       mesh.receiveShadow = true;
@@ -782,13 +706,22 @@ export class World {
   }
 
   _buildCollider() {
-    const geos = this._staticCollision.map((g) => {
-      const ng = g.index ? g.toNonIndexed() : g;
-      const out = new THREE.BufferGeometry();
-      out.setAttribute('position', ng.attributes.position.clone());
-      return out;
-    });
-    const merged = mergeGeometries(geos, false);
+    // one triangle soup of every collider piece, written straight into a single array
+    let n = 0;
+    for (const g of this._staticCollision) n += g.index ? g.index.count : g.attributes.position.count;
+    const out = new Float32Array(n * 3);
+    let o = 0;
+    for (const g of this._staticCollision) {
+      const p = g.attributes.position, a = p.array, st = p.isInterleavedBufferAttribute ? p.data.stride : p.itemSize, off = p.offset || 0;
+      if (g.index) {
+        const ix = g.index.array;
+        for (let i = 0; i < g.index.count; i++) { const k = ix[i] * st + off; out[o++] = a[k]; out[o++] = a[k + 1]; out[o++] = a[k + 2]; }
+      } else {
+        for (let i = 0; i < p.count; i++) { const k = i * st + off; out[o++] = a[k]; out[o++] = a[k + 1]; out[o++] = a[k + 2]; }
+      }
+    }
+    const merged = new THREE.BufferGeometry();
+    merged.setAttribute('position', new THREE.BufferAttribute(out, 3));
     merged.boundsTree = new MeshBVH(merged, { maxLeafTris: 8 });
     this.collider = new THREE.Mesh(merged, new THREE.MeshBasicMaterial({ visible: false, side: THREE.DoubleSide }));
     this.collider.name = 'Collider';
@@ -1106,6 +1039,7 @@ const _dn = new THREE.Vector3(0, -1, 0);
 const _up = new THREE.Vector3(0, 1, 0);
 const _tint = new THREE.Color();
 const _kv = new THREE.Vector3();
+const _kc = new THREE.Vector3(); // the batch cell centre of a piece (_pushBatch)
 const _dm = new THREE.Matrix4();
 
 /** Final placement of a group: { x, y, z, rot, s } (y = ground at the new spot + dy). */
@@ -1144,45 +1078,120 @@ const polyArea = (pts) => Math.abs(pts.reduce((s, p, i) => { const q = pts[(i + 
 
 /** World-space planar UV projection per face (cheap triplanar bake). */
 /**
- * The tile of the far facades (World mats.facade): 4 window bays x 2 storeys of cream plaster (white-ish: the vertex tint gives
- * the house its colour), a timber beam at each floor, framed windows with shutters (some shut), stone sills; the glow map lights
- * about half of the panes at night.
+ * The tile of the far facades (World mats.facade): 8 window bays x 4 storeys of cream plaster (white-ish: the vertex tint gives
+ * the house its colour). Every storey row has its own manner (half-timbered, plain with stone sills, arched windows, pairs of
+ * narrow windows), the bays differ (shutters open or shut, flower boxes, a blind bay now and then) and the plaster has patches,
+ * so neighbouring houses that start at other bays and rows (AinstreyBuildings facadeBox) do not repeat one another. The glow
+ * map lights about half of the panes at night.
  */
 function makeFacadeTextures() {
-  const BW = 64, SH = 96, W = BW * 4, Hh = SH * 2;
+  const BW = 64, SH = 96, NB = 8, NS = 4, W = BW * NB, Hh = SH * NS;
   const mk = () => { const c = document.createElement('canvas'); c.width = W; c.height = Hh; return c; };
   const c = mk(), g = c.getContext('2d'), cg = mk(), gg = cg.getContext('2d');
   let seed = 7;
   const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
   g.fillStyle = '#f2ece0'; g.fillRect(0, 0, W, Hh);
-  for (let i = 0; i < 900; i++) { const v = 225 + Math.floor(rnd() * 26); g.fillStyle = `rgb(${v},${v - 6},${v - 16})`; g.fillRect(rnd() * W, rnd() * Hh, 2 + rnd() * 5, 2 + rnd() * 4); }
+  for (let i = 0; i < 60; i++) { const v = 228 + Math.floor(rnd() * 22); g.fillStyle = `rgba(${v},${v - 8},${v - 20},0.55)`; g.fillRect(rnd() * W, rnd() * Hh, 20 + rnd() * 70, 14 + rnd() * 50); }
+  for (let i = 0; i < 1600; i++) { const v = 222 + Math.floor(rnd() * 28); g.fillStyle = `rgb(${v},${v - 6},${v - 16})`; g.fillRect(rnd() * W, rnd() * Hh, 2 + rnd() * 5, 2 + rnd() * 4); }
   gg.fillStyle = '#000'; gg.fillRect(0, 0, W, Hh);
-  for (let f = 0; f < 2; f++) {
-    const y0 = f * SH;
-    g.fillStyle = '#6a4a32'; g.fillRect(0, y0, W, 6); // the floor beam (the top of the tile row is the storey above)
-    // the timber frame: posts between the bays, a brace now and then (the near houses are half-timbered too)
-    for (let b = 0; b <= 4; b++) g.fillRect(b * BW - 3, y0, 6, SH);
-    g.strokeStyle = '#6a4a32'; g.lineWidth = 5;
-    for (let b = 0; b < 4; b++) if (rnd() < 0.5) { g.beginPath(); const l = rnd() < 0.5; g.moveTo(b * BW + (l ? 3 : BW - 3), y0 + SH * 0.86); g.lineTo(b * BW + (l ? BW * 0.26 : BW * 0.74), y0 + SH * 0.62); g.stroke(); }
-    for (let b = 0; b < 4; b++) {
-      const x = b * BW + BW * 0.3, wx = BW * 0.4, y = y0 + SH * 0.28, wy = SH * 0.46;
-      g.fillStyle = '#5a3c28'; g.fillRect(x - 3, y - 3, wx + 6, wy + 6); // frame
-      g.fillStyle = '#2a3440'; g.fillRect(x, y, wx, wy); // glass
-      g.fillStyle = '#5a3c28'; g.fillRect(x + wx / 2 - 1, y, 2, wy); g.fillRect(x, y + wy * 0.45, wx, 2); // the cross bars
-      g.fillStyle = '#c8bca4'; g.fillRect(x - 5, y + wy + 3, wx + 10, 4); // sill
-      const shut = rnd();
-      if (shut < 0.55) { g.fillStyle = ['#4a6a4a', '#7a4a34', '#3a5a7a'][Math.floor(rnd() * 3)]; g.fillRect(x - 3 - BW * 0.17, y - 3, BW * 0.15, wy + 6); g.fillRect(x + wx + 4, y - 3, BW * 0.15, wy + 6); }
-      if (rnd() < 0.55) { gg.fillStyle = '#fff'; gg.fillRect(x, y, wx, wy); }
+  const TIMBER = '#6a4a32', SHUT = ['#4a6a4a', '#7a4a34', '#3a5a7a', '#6a5a3a', '#5a3a4a'];
+  for (let f = 0; f < NS; f++) {
+    const y0 = f * SH, manner = f; // 0 half-timbered, 1 plain + stone sills, 2 arched, 3 pairs of narrow windows
+    if (manner === 0) {
+      g.fillStyle = TIMBER; g.fillRect(0, y0, W, 6);
+      for (let b = 0; b <= NB; b++) g.fillRect(b * BW - 3, y0, 6, SH);
+      g.strokeStyle = TIMBER; g.lineWidth = 5;
+      for (let b = 0; b < NB; b++) if (rnd() < 0.5) { g.beginPath(); const l = rnd() < 0.5; g.moveTo(b * BW + (l ? 3 : BW - 3), y0 + SH * 0.86); g.lineTo(b * BW + (l ? BW * 0.26 : BW * 0.74), y0 + SH * 0.62); g.stroke(); }
+    } else {
+      g.fillStyle = manner === 2 ? '#d8ccb4' : '#e2d8c4'; g.fillRect(0, y0, W, 5); // a string course
+    }
+    for (let b = 0; b < NB; b++) {
+      if (rnd() < 0.09) continue; // a blind bay
+      const pane = (x, y, wx, wy, arch) => {
+        g.fillStyle = '#5a3c28'; g.fillRect(x - 3, y - 3, wx + 6, wy + 6);
+        if (arch) { g.beginPath(); g.arc(x + wx / 2, y, wx / 2 + 3, Math.PI, 0); g.fill(); }
+        g.fillStyle = '#2a3440'; g.fillRect(x, y, wx, wy);
+        if (arch) { g.beginPath(); g.arc(x + wx / 2, y, wx / 2, Math.PI, 0); g.fill(); }
+        g.fillStyle = '#5a3c28'; g.fillRect(x + wx / 2 - 1, y, 2, wy); g.fillRect(x, y + wy * 0.45, wx, 2);
+        if (rnd() < 0.55) { gg.fillStyle = '#fff'; gg.fillRect(x, y - (arch ? wx / 2 : 0), wx, wy + (arch ? wx / 2 : 0)); }
+      };
+      const shutters = (x, y, wx, wy) => { if (rnd() < 0.5) { g.fillStyle = SHUT[Math.floor(rnd() * SHUT.length)]; const sw = BW * 0.14; if (rnd() < 0.3) g.fillRect(x, y - 3, wx, wy + 6); else { g.fillRect(x - 3 - sw, y - 3, sw, wy + 6); g.fillRect(x + wx + 3, y - 3, sw, wy + 6); } } };
+      const sill = (x, y, wx) => { g.fillStyle = '#c8bca4'; g.fillRect(x - 5, y, wx + 10, 4); };
+      const flowers = (x, y, wx) => { if (rnd() < 0.3) { g.fillStyle = '#5a3c28'; g.fillRect(x - 2, y, wx + 4, 6); for (let k = 0; k < 6; k++) { g.fillStyle = ['#c84a4a', '#e8c84a', '#d86aa8', '#4a8a3a'][Math.floor(rnd() * 4)]; g.beginPath(); g.arc(x + 2 + k * (wx / 5.5), y - 1, 3, 0, 7); g.fill(); } } };
+      if (manner === 3) {
+        for (const k of [0, 1]) { const x = b * BW + BW * (0.2 + k * 0.36), wx = BW * 0.24, y = y0 + SH * 0.26, wy = SH * 0.5; pane(x, y, wx, wy, false); sill(x, y + wy + 3, wx); }
+        flowers(b * BW + BW * 0.2, y0 + SH * 0.26 + SH * 0.5 + 3, BW * 0.6);
+      } else {
+        const arch = manner === 2, x = b * BW + BW * 0.3, wx = BW * 0.4, y = y0 + SH * (arch ? 0.36 : 0.28), wy = SH * (arch ? 0.4 : 0.46);
+        shutters(x, y, wx, wy);
+        pane(x, y, wx, wy, arch);
+        sill(x, y + wy + 3, wx);
+        flowers(x, y + wy + 3, wx);
+      }
     }
   }
   const tex = (cv, srgb) => { const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; if (srgb) t.colorSpace = THREE.SRGBColorSpace; return t; };
   return { map: tex(c, true), glow: tex(cg, true) };
 }
 
-/** mergeGeometries of a list that may mix indexed kit parts and non-indexed solids (a kit material used by a plain box). */
+/**
+ * Merge static pieces into one geometry: the same attributes in every piece, indexed or not (a kit material used by a plain box):
+ * the result is indexed when any piece is. Typed arrays are filled in one go (three's mergeGeometries pushes every index into a JS
+ * array: with the big city that was most of the load time); interleaved or mismatched pieces fall back to it.
+ */
 export function mergeMixed(list) {
-  if (list.some((g) => g.index) && list.some((g) => !g.index)) list = list.map((g) => (g.index ? g.toNonIndexed() : g));
-  return mergeGeometries(list, false);
+  if (!list.length) return null;
+  const names = Object.keys(list[0].attributes);
+  const simple = list.every((g) => {
+    const a = g.attributes;
+    if (Object.keys(a).length !== names.length) return false;
+    for (const n of names) {
+      const x = a[n], f = list[0].attributes[n];
+      if (!x || x.isInterleavedBufferAttribute || x.itemSize !== f.itemSize || x.normalized !== f.normalized || x.array.constructor !== f.array.constructor) return false;
+    }
+    return true;
+  });
+  const indexed = list.some((g) => g.index);
+  if (!simple) {
+    if (indexed && list.some((g) => !g.index)) list = list.map((g) => (g.index ? g : withIndex(g)));
+    return mergeGeometries(list, false);
+  }
+  let verts = 0, idx = 0;
+  for (const g of list) { verts += g.attributes.position.count; idx += g.index ? g.index.count : g.attributes.position.count; }
+  const out = new THREE.BufferGeometry();
+  for (const n of names) {
+    const f = list[0].attributes[n];
+    const arr = new f.array.constructor(verts * f.itemSize);
+    let o = 0;
+    for (const g of list) { const a = g.attributes[n]; arr.set(a.array.length === a.count * a.itemSize ? a.array : a.array.subarray(0, a.count * a.itemSize), o); o += a.count * a.itemSize; }
+    out.setAttribute(n, new THREE.BufferAttribute(arr, f.itemSize, f.normalized));
+  }
+  if (indexed) {
+    const ix = new (verts > 65535 ? Uint32Array : Uint16Array)(idx);
+    let o = 0, base = 0;
+    for (const g of list) {
+      const n = g.attributes.position.count;
+      if (g.index) { const a = g.index.array, c = g.index.count; for (let k = 0; k < c; k++) ix[o++] = a[k] + base; }
+      else for (let k = 0; k < n; k++) ix[o++] = base + k;
+      base += n;
+    }
+    out.setIndex(new THREE.BufferAttribute(ix, 1));
+  }
+  return out;
+}
+
+function withIndex(g) {
+  const n = g.attributes.position.count, ix = new (n > 65535 ? Uint32Array : Uint16Array)(n);
+  for (let i = 0; i < n; i++) ix[i] = i;
+  g.setIndex(new THREE.BufferAttribute(ix, 1));
+  return g;
+}
+
+/** Bounds of a merged static mesh in one pass over its vertices (the sphere encloses the box: a little loose, never too small). */
+export function fastBounds(g) {
+  g.computeBoundingBox();
+  const b = g.boundingBox;
+  g.boundingSphere = new THREE.Sphere(b.getCenter(new THREE.Vector3()), b.getSize(_kv).length() / 2);
 }
 
 function planarUVs(g, scale) {

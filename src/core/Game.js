@@ -7,6 +7,7 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { Input } from './Input.js';
 import { World } from '../world/World.js';
+import { Heightfield } from '../world/Terrain.js';
 import { DayNight } from '../world/DayNight.js';
 import { inSheet } from '../world/AinstreyPlan.js';
 import { DUNGEON } from '../world/build/Dungeon.js';
@@ -56,6 +57,8 @@ import { Inventory } from '../systems/Inventory.js';
 import { InventoryUI } from '../ui/InventoryUI.js';
 import { RPG } from '../rpg/RPG.js';
 import { NPCManager } from '../npc/NPCManager.js';
+import { Crowd } from '../npc/Crowd.js';
+import { AdminPanel } from '../ui/AdminPanel.js';
 import { DialogueUI } from '../ui/DialogueUI.js';
 import { ShopUI } from '../ui/ShopUI.js';
 import { GameMenu } from '../ui/GameMenu.js';
@@ -85,6 +88,8 @@ export class Game {
     this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.08, 480);
     this.clock = new THREE.Clock(false);
     this.input = new Input(renderer.domElement);
+    // the mouse belongs to the game while playing with no window open (Input re-captures it, hides the cursor; Alt frees it)
+    this.input.wantLock = () => !!(this.mainMenu?.started && this.mainMenu.view === 'game' && !this.uiBlocking && !this.editorMode);
     this.hud = new HUD();
     this.paused = true;
     this.time = 0;
@@ -126,7 +131,7 @@ export class Game {
 
   /** Any window that pauses the game (dialogue, shop, menu, book). */
   get uiBlocking() {
-    return !!(this.dialogueUI?.open || this.shopUI?.open || this.menu?.open || this.invUI?.bookOpen || this.mainMenu?.pauseOpen);
+    return !!(this.dialogueUI?.open || this.shopUI?.open || this.menu?.open || this.invUI?.bookOpen || this.mainMenu?.pauseOpen || this.admin?.open);
   }
 
   async init(onProgress) {
@@ -136,6 +141,8 @@ export class Game {
       onProgress?.(frac, msg);
       return new Promise((r) => setTimeout(r, 0)); // let the loading screen repaint
     };
+    // the terrain height grids: computed in workers while everything below downloads (Heightfield.compute)
+    const heightP = Heightfield.compute().catch(() => null);
     this.animLib = new AnimationLibrary();
     // the mocap library + the Mixamo idles / talk / wave / sit (tools/pack_mixamo_anims.mjs); the game runs without the latter
     const animP = this.animLib.load()
@@ -157,12 +164,13 @@ export class Game {
     this.kits = new KitLibrary();
     const kitsP = this.kits.load((f) => { parts.kits = f; report(); });
     const layoutP = loadLayout();
-    const [chest, , , , , , layout] = await Promise.all([chestP, enemiesP, playerModelP, animP, peopleP, kitsP, layoutP]);
+    const [chest, , , , , , layout, heights] = await Promise.all([chestP, enemiesP, playerModelP, animP, peopleP, kitsP, layoutP, heightP]);
 
     await step('Строим Аксель и окрестности…', 0.76);
     this.enemyAssets.prepare(this.animLib);
     this.world = new World(this.renderer, this.scene, this.kits);
     this.world.layout = layout;
+    this.world.heightData = heights;
     this.world.editorMode = this.editorMode;
     this.world.assets.chest = prepareChestModel(chest.scene);
     this.world.build();
@@ -185,6 +193,7 @@ export class Game {
     this.rpg.setupWorld();
     this.npcs = new NPCManager(this);
     this.rpg.npcs = this.npcs;
+    this.crowd = new Crowd(this, this.npcs); // the anonymous people of the capital's streets
     // UI.
     this.invUI = new InventoryUI(this);
     this.hud.invUI = this.invUI;
@@ -192,6 +201,7 @@ export class Game {
     this.shopUI = new ShopUI(this);
     this.menu = new GameMenu(this);
     this.rpgHud = new RPGHud(this);
+    this.admin = new AdminPanel(this); // F10 when the admin mode is on (settings «Админ» or ?admin)
     this.rpg.ui = { dialogue: this.dialogueUI, shop: this.shopUI, menu: this.menu, notify: (k, t) => this.rpgHud.notify(k, t) };
     this.hud.setupCompass(this.world.regions, this.discovered);
     this.currentLocation = null;
@@ -201,7 +211,44 @@ export class Game {
 
     await step('Готовим шейдеры…', 0.95);
     this.quality.apply();
-    this._prewarm();
+    // the shaders compile in the background behind the title screen (prewarmAsync, started by the main menu); the town is
+    // drawn there anyway. `?prewarm=sync` = the old blocking prewarm (tests)
+    if (new URLSearchParams(location.search).get('prewarm') === 'sync') this._prewarm();
+  }
+
+  /**
+   * Request every program of the scene at once through the HDR target (as the composer renders) and wait for them: with
+   * KHR_parallel_shader_compile (Chrome / Edge on Windows) the driver links them on its own threads, so the loading screen keeps
+   * moving and the first frame of the title does not stall. Once (later calls return the same promise).
+   */
+  compileScene() {
+    if (!this._compileP) {
+      const r = this.renderer;
+      r.setRenderTarget(this.composer.readBuffer);
+      this._compileP = r.compileAsync(this.scene, this.camera).catch((e) => console.warn('[compile]', e));
+      r.setRenderTarget(null);
+    }
+    return this._compileP;
+  }
+
+  /**
+   * Background work while the title screen is up (and after it, a few ms a frame): every shader of the scene, the spell effects
+   * and the walk grids of the townsfolk. A step that is needed sooner simply finishes at once (NavGrid.ensure).
+   */
+  async prewarmAsync() {
+    if (this._prewarmP) return this._prewarmP;
+    this._prewarmP = (async () => {
+      const r = this.renderer, t0 = performance.now();
+      const nap = () => new Promise((res) => setTimeout(res, 0));
+      try {
+        await this.compileScene();
+        await this.combat.fx.explosion.prewarmAsync(r, this.composer.readBuffer, this.camera);
+      } catch (e) { console.warn('[prewarm]', e); }
+      for (const grid of this.npcs.grids) while (!grid.fill(8)) await nap();
+      await this.crowd.prepare(nap);
+      this.prewarmMs = Math.round(performance.now() - t0);
+    })();
+    return this._prewarmP;
   }
 
   /** Compile every material before the first visible frame (no hitches later). */
@@ -340,6 +387,7 @@ export class Game {
   /** Window hotkeys; returns true while a window pauses the game. */
   _uiInput(dt) {
     const input = this.input;
+    if (this.admin?.open) return true;
     if (this.dialogueUI.open) {
       this.dialogueUI.update(dt, input);
       return true;
@@ -405,6 +453,7 @@ export class Game {
     let dt = Math.min(this.clock.getDelta(), 1 / 20);
     if (this.uiBlocking) this._blockedAt = now; // the main menu tells a window's own pointer release from Esc by this
     else this.quality.update(raw);
+    this.input.syncCursor();
     if (this.fpsEl) this.fpsEl.textContent = this.quality.fps(raw) + ' FPS · ' + this.quality.preset.label + (this.quality.scale < 1 ? ' · ' + Math.round(this.quality.scale * 100) + '%' : '');
     if (this._uiInput(dt)) {
       // Paused (window open): keep the HUD alive, freeze the world.
@@ -454,6 +503,7 @@ export class Game {
     this.combat.input(input);
     this._surfaceEffects(dt);
     this.player.update(dt, input, this.cameraRig);
+    this.admin.update();
     this.combat.update(dt);
     this.inventory.update(dt);
     const pp = this.player.position;
@@ -465,6 +515,7 @@ export class Game {
     // RPG systems and townsfolk.
     this.rpg.update(dt);
     this.npcs.update(dt);
+    this.crowd.update(dt);
     this._checkLocation();
 
     // Lighting for the time of day (or the dark of the mine).

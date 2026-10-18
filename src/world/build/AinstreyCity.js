@@ -10,6 +10,7 @@ import { QuestProp } from '../Interactables.js';
 import { CITIZEN_SPOTS } from '../../data/citizens.js';
 import { CityStream } from '../CityStream.js';
 import { decorateSquares, boulevards } from './AinstreyDecor.js';
+import { streetLife } from './AinstreyStreets.js';
 import * as AIN from '../AinstreyPlan.js';
 
 /**
@@ -24,6 +25,19 @@ const nearStreetW = (x, z, pad) => nearStreet(x - AIN.ORIGIN.x, z - AIN.ORIGIN.z
 const H = (W, x, z) => W.heightAt(x, z);
 
 /** A polyline moved sideways by d (metres, to the left of the direction of travel), mitred. */
+/** covered(x, z) for the strips of a street S: on another street's carriageway or a square (grown by m metres). */
+function crossings(P, S, m) {
+  const others = P.streets.filter((o) => o !== S && o.cls !== 'stair' && o.kind !== 'path').map((o) => {
+    const us = o.pts.map((p) => p[0]), vs = o.pts.map((p) => p[1]), r = o.width / 2 + m;
+    return { o, r, u0: Math.min(...us) - r, u1: Math.max(...us) + r, v0: Math.min(...vs) - r, v1: Math.max(...vs) + r };
+  });
+  return (x, z) => {
+    const u = x - AIN.ORIGIN.x, v = z - AIN.ORIGIN.z;
+    if (P.squares.some((q) => pointNear(q, u, v, m))) return true;
+    return others.some((b) => u > b.u0 && u < b.u1 && v > b.v0 && v < b.v1 && polyDist(b.o.pts, u, v) < b.r);
+  };
+}
+
 function offsetLine(pts, d) {
   const n = pts.length, out = [];
   for (let i = 0; i < n; i++) {
@@ -68,6 +82,7 @@ function buildParts(W, P) {
   // the dressing goes last: it keeps clear of every named place and piece already there
   decorateSquares(W, P);
   boulevards(W, P);
+  streetLife(W, P);
 }
 
 // -----------------------------------------------------------------------------------------------------------------
@@ -81,10 +96,19 @@ function streets(W, P) {
     W.group('ain_st_' + S.id, { x: mid[0], z: mid[1] }, () => {
       const cls = S.cls;
       const width = cls === 'stair' ? 22 : S.width;
-      paveRibbon(W, pts, width, { tint: TINT[cls] ?? TINT.street, lift: LIFT[cls] ?? 0.088 });
+      const lift = LIFT[cls] ?? 0.088;
+      paveRibbon(W, pts, width, { tint: TINT[cls] ?? TINT.street, lift });
       const kerb = CLASS[cls].kerb;
       if (kerb > 0.8 && cls !== 'lane') {
-        for (const side of [-1, 1]) paveRibbon(W, offsetLine(pts, side * (width / 2 + kerb / 2)), kerb, { tint: 0xe9e1cf, lift: (LIFT[cls] ?? 0.088) + 0.05 });
+        // the pavements: flagstones along the fronts, a darker gutter at the edge of the carriageway
+        for (const side of [-1, 1]) paveRibbon(W, offsetLine(pts, side * (width / 2 + kerb / 2)), kerb, { mat: 'plaza', tint: 0xe4dac6, lift: lift + 0.05 });
+        const cov = crossings(P, S, 4);
+        for (const side of [-1, 1]) paveRibbon(W, offsetLine(pts, side * (width / 2 - 0.3)), 0.45, { tint: 0x9a9182, lift: lift + 0.014, covered: cov });
+        // the boulevards: a band of flagstones under the row of trees (AinstreyDecor.boulevards) narrows the open cobbles
+        if (cls === 'axis' || cls === 'avenue') {
+          const cov5 = crossings(P, S, 5);
+          for (const side of [-1, 1]) paveRibbon(W, offsetLine(pts, side * (width / 2 - 2.0)), 2.6, { mat: 'plaza', tint: 0xbcb19a, lift: lift + 0.03, covered: cov5 });
+        }
       }
     }, 'Улица: ' + S.name);
   }
@@ -118,6 +142,16 @@ function squares(W, P, rng0) {
     W.group('ain_sq_' + sq.id, { x: cx, z: cz, rot: sq.rot }, (rng) => {
       pavePoly(W, corners, { tint: 0xf0e8d8, lift: 0.125 });
       const F = new Frame(W, cx, H(W, cx, cz), cz, sq.rot);
+      // the pattern of the paving: a darker frame round the square and bands of flagstones every ~22 m, so a large square reads
+      // as laid out in fields instead of one even sheet of tiles
+      {
+        const L = (a, b) => [a, b].map(([x, z]) => { const p = F.at(x, 0, z); return [p.x, p.z]; });
+        const hw = sq.w / 2 - 2.5, hd = sq.d / 2 - 2.5;
+        paveRibbon(W, L([-hw, -hd], [hw, -hd]).concat(L([hw, hd], [-hw, hd])), 1.6, { mat: 'plaza', tint: 0xc9bea6, lift: 0.15, closed: true });
+        const nx = Math.max(1, Math.round(sq.w / 22)), nz = Math.max(1, Math.round(sq.d / 22));
+        for (let i = 1; i < nx; i++) { const x = -sq.w / 2 + (i * sq.w) / nx; paveRibbon(W, L([x, -hd], [x, hd]), 0.9, { mat: 'plaza', tint: 0xd6ccb6, lift: 0.15 }); }
+        for (let j = 1; j < nz; j++) { const z = -sq.d / 2 + (j * sq.d) / nz; paveRibbon(W, L([-hw, z], [hw, z]), 0.9, { mat: 'plaza', tint: 0xd6ccb6, lift: 0.15 }); }
+      }
       switch (sq.kind) {
         case 'steps': {
           // the low water cascade beside the stair (north-west corner) and benches under the arcade
@@ -611,7 +645,7 @@ function signs(W, P) {
 function lamps(W, P) {
   const rng = mulberry32(2024);
   for (const S of P.streets) {
-    if (S.cls !== 'axis' && S.cls !== 'avenue' && S.cls !== 'quay') continue;
+    if (S.cls !== 'quay') continue; // the axis and the avenues: in the rows of trees (AinstreyDecor.boulevards); streets and lanes: lanterns on the walls (AinstreyStreets)
     const [mx, mz] = w2(...S.pts[Math.floor(S.pts.length / 2)]);
     W.group('ain_lamps_' + S.id, { x: mx, z: mz }, () => {
       // one lamp every ~46 m, alternating sides, on the kerb
