@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import { mulberry32 } from '../../core/math.js';
-import { Frame, paveRibbon, lamp, barrel, crate, heroKit } from './Kit.js';
+import { Frame, paveRibbon, lamp, barrel, crate, heroKit, prop, wagon } from './Kit.js';
 import { toW } from './AinstreyBuildings.js';
-import { cityPlan, PIERS, BRIDGES, eastWallU } from '../AinstreyCityPlan.js';
+import { cityPlan, PIERS, BRIDGES, eastWallU, pointInRect, polyDist, CLASS } from '../AinstreyCityPlan.js';
 import * as AIN from '../AinstreyPlan.js';
 
 /**
@@ -16,6 +16,7 @@ const WATER = AIN.BIG_RIVER.level;
 export function buildPort(W) {
   const P = cityPlan();
   quay(W, P);
+  quayYards(W, P);
   PIERS.forEach((pr, i) => { if (pr.v > -100) pier(W, pr, i); else riverStair(W, pr); });
   cranes(W);
   boats(W);
@@ -36,6 +37,62 @@ function quay(W, P) {
       F.cyl(0.28, 0.6, 0, 0, 0, 'metal', { seg: 8, collide: true });
     }
   }, 'Набережная: площадка');
+}
+
+/**
+ * The working quay: cargo yards in the gaps between the warehouses (stacks of planks and logs, stone, crates, barrels, bales) and
+ * the goods along the wall side of the promenade, with a cart now and then; the pier roads, the cross streets, the story places and
+ * the walk along the promenade stay free. One editable group per 140 m of quay.
+ */
+function quayYards(W, P) {
+  const front = CLASS.quay.width / 2 + CLASS.quay.kerb + 0.5;
+  const spots = Object.values(W.npcSpots);
+  const others = P.streets.filter((S) => S !== P.quayRoad && S.cls !== 'stair');
+  const clear = (u, v, r) => {
+    if (PIERS.some((pr) => Math.abs(pr.v - v) < 12 + r)) return false;
+    if (P.lots.some((l) => Math.abs(l.v - v) < 45 && Math.abs(l.u - u) < 45 && pointInRect(l, u, v, r))) return false;
+    if (P.keys.some((k) => pointInRect(k, u, v, r + 2) || (k.yard && Math.hypot(k.u - u, k.v - v) < k.yard + r))) return false;
+    if (others.some((S) => polyDist(S.pts, u, v) < S.width / 2 + r + 1.5)) return false;
+    const [x, z] = toW(u, v);
+    return !spots.some((s) => Math.hypot(s.pos.x - x, s.pos.z - z) < r + 2.5);
+  };
+  const piles = ['bits/Wood_Planks_Stack_Large', 'bits/Wood_Log_Stack', 'bits/Stone_Bricks_Stack_Medium', 'bits/Textiles_Stack_Large_Colored', 'props/Crate_Wooden', 'props/Barrel'];
+  const pile = (F, kind, rng) => {
+    const name = piles[kind % piles.length];
+    if (name === 'props/Crate_Wooden') {
+      for (const [a, b, c] of [[-0.75, 0, -0.75], [0.75, 0, -0.75], [-0.75, 0, 0.75], [0.75, 0, 0.75], [-0.4, 1.4, 0], [0.5, 1.4, 0.3], [0, 2.8, 0]]) if (W.kits.has(name)) prop(F, name, a, b, c, { s: 1.25, ry: rng() * 0.3 });
+    } else if (name === 'props/Barrel') {
+      for (const [a, c] of [[-0.9, -0.5], [0.9, -0.5], [0, 0.7], [-0.9, 1.4], [0.9, 1.4], [0, -1.6]]) if (W.kits.has(name)) prop(F, name, a, 0, c, { s: 1.15 });
+    } else if (W.kits.has(name)) prop(F, name, 0, 0, 0, { s: 2.0, ry: rng() * 0.4 });
+    F.box(3.0, 2.0, 3.2, 0, 0, 0, 'wood', { collideOnly: true });
+  };
+  const step = 140;
+  for (let v0 = -560; v0 < 830; v0 += step) {
+    const uQ = eastWallU(v0 + step / 2) - 28;
+    const [gx, gz] = toW(uQ, v0 + step / 2);
+    W.group('ain_quay_goods_' + Math.round(v0), { x: gx, z: gz }, (rng) => {
+      let k = Math.floor(rng() * 6);
+      for (let v = v0 + 2; v < v0 + step; v += 5.5) {
+        const uq = eastWallU(v) - 28;
+        // the yards in the warehouse rows (a gap between two warehouses, or a skipped one): two piles across the band
+        for (const [ub, depth] of [[uq - front - 12, 24], [uq - front - 48, 20]]) {
+          for (const off of [-depth / 3, 0, depth / 3]) {
+            const u = ub + off;
+            if (!clear(u, v, 2.2)) continue;
+            const [x, z] = toW(u, v);
+            pile(new Frame(W, x, H(W, x, z), z, Math.PI / 2 + (rng() - 0.5) * 0.2), k++, rng);
+          }
+        }
+        // the promenade: goods against the wall (the walk between the road and them stays open), a cart every ~70 m
+        const up = uq + 23.5;
+        if (!clear(up, v, 2.4)) continue;
+        const [x, z] = toW(up, v);
+        if (k % 13 === 0) { wagon(W, x, z, Math.PI * (rng() < 0.5 ? 0 : 1), [0xe8dcc0, 0xd8c8a0][k % 2]); k++; continue; }
+        if (rng() < 0.3) { k++; continue; } // breathing space
+        pile(new Frame(W, x, H(W, x, z), z, Math.PI / 2), k++, rng);
+      }
+    }, 'Набережная: грузы ' + Math.round(v0));
+  }
 }
 
 /** A timber pier through a water gate: planks on piles, bollards, a canopy (the city pier), a pipe housing (the pump pier). */
