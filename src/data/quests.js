@@ -217,13 +217,14 @@ export const QUESTS = Object.fromEntries([
   Q('ch2_people', {
     title: 'Люди Акселя', category: 'story', chapter: 2, giver: 'luna', noAuto: true, requires: { quest: 'ch1_name', status: 'done' },
     summary: 'Ранг E открывает дальние маршруты. Вечером город разговорчивее: в таверне поёт Фенрик, в храме Клара хранит записи, а Бернард после заката стоит на стене.',
+    // one after another: the song sends her to Clara, Clara sends her to Bernard (a save inside the old single stage moves on by its flags)
     stages: [
-      { id: 'talks', text: 'Поговори с людьми: Фенрик поёт в таверне вечером, Клара ждёт в храме, Бернард на стене после заката.', target: 'npc:fenrik',
-        objectives: [
-          { type: 'flag', flag: 'A10_DONE', label: 'Фенрик и песня (таверна, вечером)' },
-          { type: 'flag', flag: 'A11_DONE', label: 'Клара и легенда (храм)' },
-          { type: 'flag', flag: 'A12_DONE', label: 'Бернард на стене (после заката)' },
-        ] },
+      { id: 'talks', text: 'Вечером в таверне поёт Фенрик. Послушай песню.', target: 'npc:fenrik',
+        objectives: [{ type: 'flag', flag: 'A10_DONE', label: 'Фенрик и песня (таверна, вечером)' }] },
+      { id: 'clara', text: 'Фенрик спел о звёздах под городом. Клара хранит записи тех лет — спроси её в храме.', target: 'npc:clara',
+        objectives: [{ type: 'flag', flag: 'A11_DONE', label: 'Клара и легенда (храм)' }] },
+      { id: 'bernard', text: 'Клара сказала: Бернард наблюдает свет над хребтом. После заката он на северной стене.', target: 'npc:bernard',
+        objectives: [{ type: 'flag', flag: 'A12_DONE', label: 'Бернард на стене (после заката)' }] },
     ],
     rewards: { eris: 40, xp: 80 },
   }),

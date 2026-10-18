@@ -40,7 +40,7 @@ const JUMPS = [
 const AFTER = {
   join_guild: (R) => { R.state.guild.member = true; },
   ch1_name: (R) => { rankAtLeast(R, 'E'); R.setFlag('skill_M_Q'); R.setFlag('skill_M_E'); R.setFlag('skill_M_F'); },
-  ch2_people: (R) => { R.setFlag('A12_DONE'); },
+  ch2_people: (R) => { for (const f of ['A10_DONE', 'A11_DONE', 'A12_DONE']) R.setFlag(f); },
   roxy_trust: (R) => { R.apply([{ unlockRoxy: true }]); },
   ch4_return: (R) => { rankAtLeast(R, 'D'); },
   ainstrey_road: (R) => { R.setVar('AINSTRAY_ROAD_OPEN', true); },

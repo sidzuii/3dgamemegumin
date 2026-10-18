@@ -281,8 +281,10 @@ export const NPCS = [
     talk: [
       { if: { quest: 'prologue_arrival', stage: 'gate' }, dialogue: 'A01' },
       { if: { quest: 'c_lost_cat', stage: 'ask' }, dialogue: 'B02b' },
-      { if: { quest: 'ch2_people', status: 'active', notFlag: 'A12_DONE', hour: [19, 24] }, dialogue: 'A12' },
-      { if: { quest: 'ch2_people', status: 'active', notFlag: 'A12_DONE' }, bark: ['Ворота ещё открыты. Если нужен я, не днём. После заката я на северной стене.'] },
+      // A12 only after Clara (A11): she is the one who sends Megumin to him
+      { if: { quest: 'ch2_people', status: 'active', flag: 'A11_DONE', notFlag: 'A12_DONE', hour: [19, 24] }, dialogue: 'A12' },
+      { if: { quest: 'ch2_people', status: 'active', flag: 'A11_DONE', notFlag: 'A12_DONE' }, bark: ['Ворота ещё открыты. Если нужен я, не днём. После заката я на северной стене.'] },
+      { if: { quest: 'ch2_people', status: 'active', notFlag: 'A11_DONE' }, bark: ['Ворота ещё открыты. Если выходишь, возьми фонарь.'] },
       { if: { quest: 'ch2_bernard', stage: 'bernard' }, dialogue: 'A14' },
       { dialogue: 'bernard_idle' },
     ],
@@ -449,7 +451,9 @@ export const NPCS = [
       { if: { quest: 'ch5_crypt', stage: 'clara' }, dialogue: 'C00' },
       { if: { quest: 'ch5_crypt', stage: 'prep' }, bark: ['Гаррет проверит лестницу. Луна выделит лампы. Нижнюю комнату я прошу осмотреть вас.'] },
       { if: { quest: 'ch5_crypt', stage: 'seal' }, dialogue: 'C02' },
-      { if: { quest: 'ch2_people', status: 'active', notFlag: 'A11_DONE' }, dialogue: 'A11' },
+      // A11 only after Fenrik's song (A10): Megumin comes to her with what he sang
+      { if: { quest: 'ch2_people', status: 'active', flag: 'A10_DONE', notFlag: 'A11_DONE' }, dialogue: 'A11' },
+      { if: { quest: 'ch2_people', status: 'active', notFlag: 'A10_DONE' }, bark: ['Ты ищешь молитвенный зал или архив? О старых звёздах вечером поют в таверне. С песней Фенрика ко мне приходят чаще, чем с вопросами.'] },
       { if: { quest: 'ch4_return', stage: 'clara' }, dialogue: 'A29' },
       { dialogue: 'clara_main' },
     ],
