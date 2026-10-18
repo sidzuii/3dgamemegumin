@@ -56,7 +56,7 @@ const LANES = {
 /** Paving heights (world/build/AinstreyCity.js LIFT; the pavements beyond the carriageway are 5 cm higher). */
 const LIFT = { axis: 0.1, avenue: 0.094, street: 0.088, lane: 0.082, quay: 0.09, path: 0.06 };
 /** Walkers / standing groups per preset (the far ones are dropped first). */
-const COUNT = { low: [14, 4], medium: [26, 8], high: [40, 12] };
+const COUNT = { low: [18, 5], medium: [32, 9], high: [50, 13] };
 const R_WALK = 72, R_STAND = 64;
 /** Streets with raised pavements (a kerb wider than 0.8 m: AinstreyCity.streets). */
 const paved = (st) => st.cls !== 'lane' && st.cls !== 'path' && CLASS[st.cls].kerb > 0.8;
@@ -258,6 +258,7 @@ export class Crowd {
       this._at(st, s, pt);
       const d = Math.hypot(pt[0] - p.x, pt[1] - p.z);
       if (d < r0 || d > r1) continue;
+      if (d > 40 && this._rng() < 0.5) continue; // more of them near the player (a ring is mostly its far part)
       if (hidden && tries < 18) {
         const dx = pt[0] - cam.position.x, dz = pt[1] - cam.position.z, L = Math.hypot(dx, dz) || 1;
         if ((dx * _f.x + dz * _f.z) / L > 0.35 && d < 55) continue; // in front of the camera and near: would pop in

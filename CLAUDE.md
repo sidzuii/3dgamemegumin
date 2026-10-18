@@ -132,7 +132,9 @@ Full description, file map and how-to guides: see `README.md` (Russian). The use
   bind mode, one mixer per driver), count by preset and hour, none in combat. Street furniture keeps off those lanes: boulevards
   (AinstreyDecor: trees / lamp posts / benches / café tables / planters on a flagstone band 2 m inside the kerb, carts on the axis),
   `build/AinstreyStreets.js` (goods at shop fronts, benches/pots by doors, wall lanterns on streets and lanes, washing across lanes:
-  all within ~0.7 m of the wall). Pavements and squares' bands use the 'plaza' material (`paveRibbon` `mat`).
+  all within ~0.7 m of the wall). Their kit models go through `nearPiece` (AinstreyDecor): static collision box only, the model
+  is built by CityStream near the camera (the props are heavy: built statically they cost +4.5 M vertices and ~18 s of load).
+  Pavements and squares' bands use the 'plaza' material (`paveRibbon` `mat`).
 - User assets (2026-10): Mixamo clips -> `tools/pack_mixamo_anims.mjs` -> public/models/anim/mixamo.glb, loaded as a second retarget
   source (`AnimationLibrary.addSource`, clip names 'mx:<name>'; idle/talk/wave/sit of heroines and townsfolk). Rigged Mixamo
   characters -> `tools/pack_body.mjs` -> public/models/bodies/<id>.glb, worn by a named NPC via `body` in data/npcs.js

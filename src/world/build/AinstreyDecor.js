@@ -24,6 +24,25 @@ export function kitH(W, F, name, h, lx, lz, opts = {}) {
   F.kit(name, lx - (cx * c + cz * sn), (opts.y ?? 0) - b.min.y * s, lz - (-cx * sn + cz * c), { s, collide: opts.collide ?? false, castShadow: opts.cast ?? true, ry, tint: opts.tint ?? null, detail: !!opts.detail });
 }
 
+/**
+ * A small kit piece of the street dressing (goods, benches, café tables, planters, carts): only its collision box is static; the
+ * model itself is built by the city stream round the camera (CityStream, like the near models of the houses), so thousands of
+ * these pieces cost nothing far away. In the editor (no stream) it is an ordinary static piece.
+ */
+export function nearPiece(W, F, name, h, lx, lz, opts = {}) {
+  if (!W.kits.has(name)) return;
+  const ry = opts.ry ?? 0;
+  if (opts.collide) {
+    const b = W.kits.box(name), s = h / Math.max(0.05, b.max.y - b.min.y);
+    F.box((b.max.x - b.min.x) * s, h, (b.max.z - b.min.z) * s, lx, opts.y ?? 0, lz, 'stone', { collideOnly: true, ry });
+  }
+  const o = { ...opts, collide: false };
+  if (!W.stream) return kitH(W, F, name, h, lx, lz, o);
+  const { x, y, z } = F.origin, rot = F.rot, p = F.at(lx, 0, lz);
+  if (W._D) p.applyMatrix4(W._D);
+  W.stream.add(p.x, p.z, (w) => kitH(w, new Frame(w, x, y, z, rot), name, h, lx, lz, o), W._D ? W._D.clone() : null);
+}
+
 /** Occupancy of one square: footprints already there (fountains, wells, stalls) + what we place. */
 function occupancy(W, P, sq) {
   const [cx, cz] = toW(sq.u, sq.v), R = Math.hypot(sq.w, sq.d) / 2 + 4;
@@ -213,16 +232,16 @@ export function boulevards(W, P) {
           const r = rng();
           if (r < 0.34) {
             // a bench along the row, its back to the carriageway
-            kitH(W, F, 'furniture/bench', 0.85, 0, 0, { ry: sd > 0 ? Math.PI / 2 : -Math.PI / 2, collide: 'box' });
+            nearPiece(W, F, 'furniture/bench', 0.85, 0, 0, { ry: sd > 0 ? Math.PI / 2 : -Math.PI / 2, collide: 'box' });
           } else if (r < 0.5) {
             // a café table with two chairs
-            kitH(W, F, 'furniture/tableRound', 0.78, 0, 0, { collide: 'box' });
-            for (const s2 of [-1, 1]) kitH(W, F, 'furniture/chair', 0.95, 0, s2 * 0.85, { ry: s2 > 0 ? Math.PI : 0, collide: false });
-            if (rng() < 0.6) kitH(W, F, 'food/mug', 0.16, 0.15, 0.1, { y: 0.78, cast: false });
+            nearPiece(W, F, 'furniture/tableRound', 0.78, 0, 0, { collide: 'box' });
+            for (const s2 of [-1, 1]) nearPiece(W, F, 'furniture/chair', 0.95, 0, s2 * 0.85, { ry: s2 > 0 ? Math.PI : 0, collide: false });
+            if (rng() < 0.6) nearPiece(W, F, 'food/mug', 0.16, 0.15, 0.1, { y: 0.78, cast: false });
           } else if (r < 0.68) {
             // a planter
-            kitH(W, F, 'nature/pot_large', 0.75, 0, 0, { collide: 'box', tint: 0xb06a48 });
-            kitH(W, F, 'nature/plant_bushDetailed', 1.0, 0, 0, { y: 0.55 });
+            nearPiece(W, F, 'nature/pot_large', 0.75, 0, 0, { collide: 'box', tint: 0xb06a48 });
+            nearPiece(W, F, 'nature/plant_bushDetailed', 1.0, 0, 0, { y: 0.55 });
           }
         }
         // carts left at the kerb of the axis (the carriageway keeps 8 m), now and then
@@ -233,8 +252,8 @@ export function boulevards(W, P) {
             const [x, z] = toW(u, v);
             if (!Object.values(W.npcSpots).some((p) => Math.hypot(p.pos.x - x, p.pos.z - z) < 5)) {
               const F = new Frame(W, x, H(W, x, z), z, Math.atan2(dx, dz) + (rng() < 0.5 ? 0 : Math.PI));
-              kitH(W, F, rng() < 0.5 ? 'town/cart' : 'town/cart-high', 1.7, 0, 0, { collide: 'box' });
-              if (rng() < 0.6) kitH(W, F, 'bits/' + (rng() < 0.5 ? 'Textiles_Stack_Large_Colored' : 'Wood_Planks_Stack_Medium'), 0.5, 0, 0, { y: 0.9, cast: false });
+              nearPiece(W, F, rng() < 0.5 ? 'town/cart' : 'town/cart-high', 1.7, 0, 0, { collide: 'box' });
+              if (rng() < 0.6) nearPiece(W, F, 'bits/' + (rng() < 0.5 ? 'Textiles_Stack_Large_Colored' : 'Wood_Planks_Stack_Medium'), 0.5, 0, 0, { y: 0.9, cast: false });
             }
           }
         }

@@ -107,7 +107,7 @@ function streets(W, P) {
         // the boulevards: a band of flagstones under the row of trees (AinstreyDecor.boulevards) narrows the open cobbles
         if (cls === 'axis' || cls === 'avenue') {
           const cov5 = crossings(P, S, 5);
-          for (const side of [-1, 1]) paveRibbon(W, offsetLine(pts, side * (width / 2 - 2.0)), 2.6, { mat: 'plaza', tint: 0xcdc3ac, lift: lift + 0.03, covered: cov5 });
+          for (const side of [-1, 1]) paveRibbon(W, offsetLine(pts, side * (width / 2 - 2.0)), 2.6, { mat: 'plaza', tint: 0xbcb19a, lift: lift + 0.03, covered: cov5 });
         }
       }
     }, 'Улица: ' + S.name);

@@ -1,6 +1,6 @@
 import { Frame, lantern } from './Kit.js';
 import { toW } from './AinstreyBuildings.js';
-import { kitH } from './AinstreyDecor.js';
+import { nearPiece } from './AinstreyDecor.js';
 import { CLASS, polyDist } from '../AinstreyCityPlan.js';
 import * as AIN from '../AinstreyPlan.js';
 
@@ -65,7 +65,7 @@ function dressLot(W, P, B, lot, rng, spots, onRoad) {
     const p = at(lx, out, opts.r);
     if (!p) return false;
     const F = new Frame(W, p.x, H(W, p.x, p.z), p.z, lot.rot);
-    kitH(W, F, name, h, 0, 0, { ry: opts.ry ?? (rng() - 0.5) * 0.6, collide: opts.collide ?? 'box', cast: opts.cast ?? false, detail: true, tint: opts.tint, y: opts.y });
+    nearPiece(W, F, name, h, 0, 0, { ry: opts.ry ?? (rng() - 0.5) * 0.6, collide: opts.collide ?? true, cast: opts.cast ?? false, tint: opts.tint, y: opts.y });
     return true;
   };
   const goods = GOODS[lot.district] || GOODS.posad;
@@ -90,8 +90,8 @@ function dressLot(W, P, B, lot, rng, spots, onRoad) {
   } else if (cls !== 'lane' && rng() < 0.28 && wide > 2.4) {
     // a plain house: a bench or a pair of flower pots by the door
     const s = rng() < 0.5 ? -1 : 1;
-    if (rng() < 0.45) piece(s * 2.1, 0.4, 'furniture/bench', 0.8, { ry: Math.PI, collide: 'box' });
-    else for (const k of [0, 1]) if (piece(s * (1.35 + k * 0.7), 0.35, 'nature/pot_small', 0.45, { tint: 0xb06a48 })) { const p = at(s * (1.35 + k * 0.7), 0.35); if (p) kitH(W, new Frame(W, p.x, H(W, p.x, p.z), p.z, lot.rot), 'nature/plant_bushSmall', 0.55, 0, 0, { y: 0.32, detail: true }); }
+    if (rng() < 0.45) piece(s * 2.1, 0.4, 'furniture/bench', 0.8, { ry: Math.PI });
+    else for (const k of [0, 1]) if (piece(s * (1.35 + k * 0.7), 0.35, 'nature/pot_small', 0.45, { tint: 0xb06a48 })) { const p = at(s * (1.35 + k * 0.7), 0.35); if (p) nearPiece(W, new Frame(W, p.x, H(W, p.x, p.z), p.z, lot.rot), 'nature/plant_bushSmall', 0.55, 0, 0, { y: 0.32 }); }
   } else if (cls === 'lane' && rng() < 0.3 && wide > 1.6) {
     // the lanes: a barrel, a bucket, a pot of flowers by a wall
     const s = rng() < 0.5 ? -1 : 1;
