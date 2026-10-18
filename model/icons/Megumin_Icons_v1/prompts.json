@@ -1,0 +1,805 @@
+[
+  {
+    "key": "items_01",
+    "filename": "items_01.png",
+    "entries": [
+      {
+        "id": "eris",
+        "name": "Эрисы",
+        "kind": "currency",
+        "rarity": "common",
+        "description": "Монеты королевства Бельзерг.",
+        "description_en": "A small stack of shiny golden eris coins, a simple sun/star embossed on the top coin. Currency, warm gold.",
+        "row": 0,
+        "column": 0
+      },
+      {
+        "id": "hp_potion",
+        "name": "Зелье исцеления",
+        "kind": "consumable",
+        "rarity": "common",
+        "description": "Восстанавливает 30% здоровья. Пить 0,9 с; общая задержка зелий отряда 20 с.",
+        "description_en": "A small round corked glass healing potion bottle with ruby red liquid and a simple leather neck tie.",
+        "row": 0,
+        "column": 1
+      },
+      {
+        "id": "hp_potion_big",
+        "name": "Большое зелье исцеления",
+        "kind": "consumable",
+        "rarity": "rare",
+        "description": "Восстанавливает 60% здоровья. Пить 0,9 с; общая задержка зелий отряда 20 с.",
+        "description_en": "A noticeably larger broad-shouldered healing potion flask, rich crimson red liquid, two brass bands around its body. Clearly different silhouette from the small healing potion.",
+        "row": 0,
+        "column": 2
+      },
+      {
+        "id": "st_potion",
+        "name": "Эликсир бодрости",
+        "kind": "consumable",
+        "rarity": "common",
+        "description": "Полностью восстанавливает выносливость.",
+        "description_en": "A slim corked emerald green stamina elixir flask with a leaf-shaped tag, energetic green liquid.",
+        "row": 0,
+        "column": 3
+      },
+      {
+        "id": "mana_potion",
+        "name": "Эликсир маны",
+        "kind": "consumable",
+        "rarity": "common",
+        "description": "Восстанавливает 25 маны. Не снимает истощение. Общая задержка зелий 20 с.",
+        "description_en": "A tall teardrop glass mana elixir flask filled with sapphire blue liquid, silver neck collar.",
+        "row": 1,
+        "column": 0
+      },
+      {
+        "id": "manatite",
+        "name": "Манатит",
+        "kind": "consumable",
+        "rarity": "epic",
+        "description": "Кристалл, хранящий ману. Мгновенно восполняет ману. Истощение не снимает, перезарядки не сбрасывает.",
+        "description_en": "A cluster of three sharply faceted brilliant cyan manatite crystals with a restrained blue inner glow.",
+        "row": 1,
+        "column": 1
+      },
+      {
+        "id": "scroll_return",
+        "name": "Свиток возвращения",
+        "kind": "consumable",
+        "rarity": "rare",
+        "description": "Переносит на центральную площадь Акселя.",
+        "description_en": "A rolled parchment return scroll tied with a blue ribbon, a small circular return-arrow magic seal on the exposed parchment, no letters.",
+        "row": 1,
+        "column": 2
+      },
+      {
+        "id": "bread",
+        "name": "Свежий хлеб",
+        "kind": "food",
+        "rarity": "common",
+        "description": "Из пекарни Лины. +15 HP.",
+        "description_en": "A warm golden-brown freshly baked loaf of bread with three pale diagonal scoring cuts.",
+        "row": 1,
+        "column": 3
+      },
+      {
+        "id": "apple",
+        "name": "Яблоко",
+        "kind": "food",
+        "rarity": "common",
+        "description": "Хрустящее. +8 HP.",
+        "description_en": "A ripe red apple with a single green leaf, bright highlight.",
+        "row": 2,
+        "column": 0
+      },
+      {
+        "id": "cheese",
+        "name": "Сыр",
+        "kind": "food",
+        "rarity": "common",
+        "description": "+12 HP и немного бодрости.",
+        "description_en": "A wedge of golden yellow cheese with two or three round holes and a thin rind.",
+        "row": 2,
+        "column": 1
+      },
+      {
+        "id": "frog_meat",
+        "name": "Мясо гигантской жабы",
+        "kind": "food",
+        "rarity": "common",
+        "description": "Сочное и питательное. +25 HP.",
+        "description_en": "A roasted fantasy frog-meat haunch on a small bone, appetising warm brown cooked meat, compact silhouette.",
+        "row": 2,
+        "column": 2
+      },
+      {
+        "id": "stew",
+        "name": "Рагу из таверны",
+        "kind": "food",
+        "rarity": "common",
+        "description": "Фирменное блюдо Дорис. +40 HP, полная выносливость.",
+        "description_en": "A small dark ceramic bowl of hearty stew with visible vegetables and meat, one subtle curl of steam.",
+        "row": 2,
+        "column": 3
+      },
+      {
+        "id": "pumpkin_pie",
+        "name": "Тыквенный пирог",
+        "kind": "food",
+        "rarity": "common",
+        "description": "С фермы Бориса. +35 HP.",
+        "description_en": "A triangular slice of pumpkin pie with golden crust and rich orange filling, small cream accent.",
+        "row": 3,
+        "column": 0
+      },
+      {
+        "id": "herb",
+        "name": "Лечебная трава",
+        "kind": "material",
+        "rarity": "common",
+        "description": "Растёт на лугах. Нужна алхимику.",
+        "description_en": "A tied bundle of fresh healing herbs: three pointed green leaves and pale stems.",
+        "row": 3,
+        "column": 1
+      },
+      {
+        "id": "moonflower",
+        "name": "Лунный цветок",
+        "kind": "material",
+        "rarity": "rare",
+        "description": "Светится в темноте. Растёт в тихих, забытых местах.",
+        "description_en": "One luminous pale blue moonflower with five soft petals, silver centre and a short dark green stem. Small, controlled cool glow.",
+        "row": 3,
+        "column": 2
+      },
+      {
+        "id": "iron_ore",
+        "name": "Железная руда",
+        "kind": "material",
+        "rarity": "common",
+        "description": "Тяжёлая. Кузнец знает, что с ней делать.",
+        "description_en": "A jagged dark grey iron ore rock with distinct silver metallic veins.",
+        "row": 3,
+        "column": 3
+      }
+    ],
+    "prompt": "Use case: stylized-concept. Asset type: one production game UI SPRITE ATLAS, not a screenshot or presentation. Create ONE SQUARE transparent PNG texture atlas with exactly 16 hand-painted fantasy RPG icons in an exact four-column by four-row regular grid. Prefer 2048x2048 pixels, square. The canvas is partitioned into 16 identical square cells: icon centers at x=12.5%,37.5%,62.5%,87.5% and y=12.5%,37.5%,62.5%,87.5%. Keep each complete icon within the middle 72% of its own cell so there is clean transparent padding on all sides. Every cell contains exactly the specified single item or compact symbol. Empty space has true alpha transparency, including the gutters. No drawn checkerboard. No cell backgrounds, no frames, no slot borders, no grid lines, no captions, no numbers, no lettering, no logos, no watermark. Never combine neighbouring cells or let glows and shadows cross a cell boundary.\nArt direction: polished 2D hand-painted anime fantasy inventory assets for Megumin's third-person RPG in Axel and Ainstrey. Strong readable silhouettes at 32–64px, warm dark brown clean outlines, restrained cel shading, bright material colours, small warm highlights from upper left, subtle edge highlights. Three-quarter product view of tangible items. Consistent scale and rendering throughout the atlas. Saturated crimson magic for Megumin, clear turquoise and deep blue magic for Roxy, warm brass and aged parchment for the guild and Astrarium. Objects occupy about two thirds of their cells. Colour resides in the object, not in opaque background squares. Avoid photographic realism, pixel art, flat emoji, excessive tiny detail, long trails, thick smoke, lens flares, blurry glow, text-like scribbles. Papers may have simple nonlinguistic diagrams or emblems, never readable writing.\nStrict ordering: read the following 16 cells left to right, top row first. These cells are animation-independent icons and the exact grid layout is required for engine use. Do not omit, repeat, or swap an item.\nCell 1 (row 1, column 1): A small stack of shiny golden eris coins, a simple sun/star embossed on the top coin. Currency, warm gold.\nCell 2 (row 1, column 2): A small round corked glass healing potion bottle with ruby red liquid and a simple leather neck tie.\nCell 3 (row 1, column 3): A noticeably larger broad-shouldered healing potion flask, rich crimson red liquid, two brass bands around its body. Clearly different silhouette from the small healing potion.\nCell 4 (row 1, column 4): A slim corked emerald green stamina elixir flask with a leaf-shaped tag, energetic green liquid.\nCell 5 (row 2, column 1): A tall teardrop glass mana elixir flask filled with sapphire blue liquid, silver neck collar.\nCell 6 (row 2, column 2): A cluster of three sharply faceted brilliant cyan manatite crystals with a restrained blue inner glow.\nCell 7 (row 2, column 3): A rolled parchment return scroll tied with a blue ribbon, a small circular return-arrow magic seal on the exposed parchment, no letters.\nCell 8 (row 2, column 4): A warm golden-brown freshly baked loaf of bread with three pale diagonal scoring cuts.\nCell 9 (row 3, column 1): A ripe red apple with a single green leaf, bright highlight.\nCell 10 (row 3, column 2): A wedge of golden yellow cheese with two or three round holes and a thin rind.\nCell 11 (row 3, column 3): A roasted fantasy frog-meat haunch on a small bone, appetising warm brown cooked meat, compact silhouette.\nCell 12 (row 3, column 4): A small dark ceramic bowl of hearty stew with visible vegetables and meat, one subtle curl of steam.\nCell 13 (row 4, column 1): A triangular slice of pumpkin pie with golden crust and rich orange filling, small cream accent.\nCell 14 (row 4, column 2): A tied bundle of fresh healing herbs: three pointed green leaves and pale stems.\nCell 15 (row 4, column 3): One luminous pale blue moonflower with five soft petals, silver centre and a short dark green stem. Small, controlled cool glow.\nCell 16 (row 4, column 4): A jagged dark grey iron ore rock with distinct silver metallic veins."
+  },
+  {
+    "key": "items_02",
+    "filename": "items_02.png",
+    "entries": [
+      {
+        "id": "wood",
+        "name": "Древесина",
+        "kind": "material",
+        "rarity": "common",
+        "description": "Крепкие сухие ветви.",
+        "description_en": "Two short pieces of dry warm brown wood tied with twine, visible circular cut ends.",
+        "row": 0,
+        "column": 0
+      },
+      {
+        "id": "goblin_hood",
+        "name": "Обрывок капюшона",
+        "kind": "material",
+        "rarity": "common",
+        "description": "Трофей с гоблина. Пахнет лесом и чем-то ещё.",
+        "description_en": "A torn olive green goblin hood fragment with a pointed folded corner and rough stitches. Clearly cloth.",
+        "row": 0,
+        "column": 1
+      },
+      {
+        "id": "mushroom_cap",
+        "name": "Шляпка гриба",
+        "kind": "material",
+        "rarity": "common",
+        "description": "Упругая. Алхимики добавляют её в зелья бодрости.",
+        "description_en": "A broad reddish-brown mushroom cap with a cream underside and a short stem remnant.",
+        "row": 0,
+        "column": 2
+      },
+      {
+        "id": "demon_horn",
+        "name": "Рог демона",
+        "kind": "material",
+        "rarity": "rare",
+        "description": "Ещё тёплый.",
+        "description_en": "One curved dark purple demon horn with a reddish broken base, ridged surface.",
+        "row": 0,
+        "column": 3
+      },
+      {
+        "id": "leather",
+        "name": "Выделанная кожа",
+        "kind": "material",
+        "rarity": "common",
+        "description": "Охотники выменивают её на зелья.",
+        "description_en": "A rolled piece of tanned reddish-brown leather with a soft folded corner and a simple strap.",
+        "row": 1,
+        "column": 0
+      },
+      {
+        "id": "guardian_core",
+        "name": "Ядро стража",
+        "kind": "material",
+        "rarity": "rare",
+        "description": "Холодный камень, внутри которого ещё теплится магия.",
+        "description_en": "A stone guardian core: an angular dark stone shell with a single glowing turquoise diamond at the centre.",
+        "row": 1,
+        "column": 1
+      },
+      {
+        "id": "staff_apprentice",
+        "name": "Посох ученицы",
+        "kind": "weapon",
+        "rarity": "common",
+        "description": "Верный посох Мегумин с алым камнем.",
+        "description_en": "A full apprentice mage staff diagonally placed within its cell: simple dark wood shaft, circular curled top holding a small crimson orb. Megumin-associated starter staff.",
+        "row": 1,
+        "column": 2
+      },
+      {
+        "id": "staff_ash",
+        "name": "Ясеневый посох",
+        "kind": "weapon",
+        "rarity": "common",
+        "description": "Лёгкий и прочный. Удары посохом +15%, мана +10.",
+        "description_en": "A full slender pale ash wood staff diagonally placed, elegantly forked branch top, small amber gemstone, no metal armour.",
+        "row": 1,
+        "column": 3
+      },
+      {
+        "id": "staff_iron",
+        "name": "Посох с железным навершием",
+        "kind": "weapon",
+        "rarity": "rare",
+        "description": "Работа Гаррета. Удары посохом +32%.",
+        "description_en": "A full stout brown staff diagonally placed with a substantial dark iron spiked ferrule head and a red gem, sturdy forged construction.",
+        "row": 2,
+        "column": 0
+      },
+      {
+        "id": "staff_crimson",
+        "name": "Посох Алого клана",
+        "kind": "weapon",
+        "rarity": "epic",
+        "description": "Удары +45%, мана +20, восстановление маны +30%.",
+        "description_en": "A full premium Crimson Clan mage staff diagonally placed: dark red-brown wood, distinctive golden crescent/ring head embracing a large ruby orb, refined craftsmanship.",
+        "row": 2,
+        "column": 1
+      },
+      {
+        "id": "ring_crimson",
+        "name": "Кольцо Алых Демонов",
+        "kind": "accessory",
+        "rarity": "epic",
+        "description": "Урон посохом +20%.",
+        "description_en": "A golden ring with a large vivid crimson ruby gemstone, compact jewellery icon.",
+        "row": 2,
+        "column": 2
+      },
+      {
+        "id": "amulet_wind",
+        "name": "Амулет попутного ветра",
+        "kind": "accessory",
+        "rarity": "rare",
+        "description": "Бег тратит на 35% меньше выносливости.",
+        "description_en": "A wind amulet: silver pendant with a pale green gem and a tiny feather-shaped metal wing, short cord loop.",
+        "row": 2,
+        "column": 3
+      },
+      {
+        "id": "ring_iron",
+        "name": "Железное кольцо",
+        "kind": "accessory",
+        "rarity": "common",
+        "description": "Получаемый урон −10%.",
+        "description_en": "A plain heavy dark iron ring with a simple squared signet face and no gemstone.",
+        "row": 3,
+        "column": 0
+      },
+      {
+        "id": "charm_herb",
+        "name": "Травяной оберег",
+        "kind": "accessory",
+        "rarity": "common",
+        "description": "Макс. HP +15.",
+        "description_en": "A small herbal good-luck charm: green leaves tucked into a tan fabric pouch bound with red thread.",
+        "row": 3,
+        "column": 1
+      },
+      {
+        "id": "amulet_moon",
+        "name": "Лунный амулет",
+        "kind": "accessory",
+        "rarity": "rare",
+        "description": "Восстановление маны +40%.",
+        "description_en": "A moon amulet: silver crescent pendant cradling a pale blue moonstone on a short dark cord.",
+        "row": 3,
+        "column": 2
+      },
+      {
+        "id": "book_explosion",
+        "name": "Гримуар Взрывной магии",
+        "kind": "book",
+        "rarity": "epic",
+        "description": "Потрёпанный гримуар с пометками на полях.",
+        "description_en": "An ornate crimson explosion grimoire closed in three-quarter view, brass corners and a gold burst emblem on the cover, no writing.",
+        "row": 3,
+        "column": 3
+      }
+    ],
+    "prompt": "Use case: stylized-concept. Asset type: one production game UI SPRITE ATLAS, not a screenshot or presentation. Create ONE SQUARE transparent PNG texture atlas with exactly 16 hand-painted fantasy RPG icons in an exact four-column by four-row regular grid. Prefer 2048x2048 pixels, square. The canvas is partitioned into 16 identical square cells: icon centers at x=12.5%,37.5%,62.5%,87.5% and y=12.5%,37.5%,62.5%,87.5%. Keep each complete icon within the middle 72% of its own cell so there is clean transparent padding on all sides. Every cell contains exactly the specified single item or compact symbol. Empty space has true alpha transparency, including the gutters. No drawn checkerboard. No cell backgrounds, no frames, no slot borders, no grid lines, no captions, no numbers, no lettering, no logos, no watermark. Never combine neighbouring cells or let glows and shadows cross a cell boundary.\nArt direction: polished 2D hand-painted anime fantasy inventory assets for Megumin's third-person RPG in Axel and Ainstrey. Strong readable silhouettes at 32–64px, warm dark brown clean outlines, restrained cel shading, bright material colours, small warm highlights from upper left, subtle edge highlights. Three-quarter product view of tangible items. Consistent scale and rendering throughout the atlas. Saturated crimson magic for Megumin, clear turquoise and deep blue magic for Roxy, warm brass and aged parchment for the guild and Astrarium. Objects occupy about two thirds of their cells. Colour resides in the object, not in opaque background squares. Avoid photographic realism, pixel art, flat emoji, excessive tiny detail, long trails, thick smoke, lens flares, blurry glow, text-like scribbles. Papers may have simple nonlinguistic diagrams or emblems, never readable writing.\nStrict ordering: read the following 16 cells left to right, top row first. These cells are animation-independent icons and the exact grid layout is required for engine use. Do not omit, repeat, or swap an item.\nCell 1 (row 1, column 1): Two short pieces of dry warm brown wood tied with twine, visible circular cut ends.\nCell 2 (row 1, column 2): A torn olive green goblin hood fragment with a pointed folded corner and rough stitches. Clearly cloth.\nCell 3 (row 1, column 3): A broad reddish-brown mushroom cap with a cream underside and a short stem remnant.\nCell 4 (row 1, column 4): One curved dark purple demon horn with a reddish broken base, ridged surface.\nCell 5 (row 2, column 1): A rolled piece of tanned reddish-brown leather with a soft folded corner and a simple strap.\nCell 6 (row 2, column 2): A stone guardian core: an angular dark stone shell with a single glowing turquoise diamond at the centre.\nCell 7 (row 2, column 3): A full apprentice mage staff diagonally placed within its cell: simple dark wood shaft, circular curled top holding a small crimson orb. Megumin-associated starter staff.\nCell 8 (row 2, column 4): A full slender pale ash wood staff diagonally placed, elegantly forked branch top, small amber gemstone, no metal armour.\nCell 9 (row 3, column 1): A full stout brown staff diagonally placed with a substantial dark iron spiked ferrule head and a red gem, sturdy forged construction.\nCell 10 (row 3, column 2): A full premium Crimson Clan mage staff diagonally placed: dark red-brown wood, distinctive golden crescent/ring head embracing a large ruby orb, refined craftsmanship.\nCell 11 (row 3, column 3): A golden ring with a large vivid crimson ruby gemstone, compact jewellery icon.\nCell 12 (row 3, column 4): A wind amulet: silver pendant with a pale green gem and a tiny feather-shaped metal wing, short cord loop.\nCell 13 (row 4, column 1): A plain heavy dark iron ring with a simple squared signet face and no gemstone.\nCell 14 (row 4, column 2): A small herbal good-luck charm: green leaves tucked into a tan fabric pouch bound with red thread.\nCell 15 (row 4, column 3): A moon amulet: silver crescent pendant cradling a pale blue moonstone on a short dark cord.\nCell 16 (row 4, column 4): An ornate crimson explosion grimoire closed in three-quarter view, brass corners and a gold burst emblem on the cover, no writing."
+  },
+  {
+    "key": "items_03",
+    "filename": "items_03.png",
+    "entries": [
+      {
+        "id": "book_aqua",
+        "name": "Дневник «богини»",
+        "kind": "book",
+        "rarity": "rare",
+        "description": "Подписан золотыми блёстками.",
+        "description_en": "A playful aqua blue notebook with a gold water-drop emblem, blue bookmark and lightly worn edges, no writing.",
+        "row": 0,
+        "column": 0
+      },
+      {
+        "id": "book_bestiary",
+        "name": "Бестиарий Акселя",
+        "kind": "book",
+        "rarity": "common",
+        "description": "Справочник гильдии искателей приключений.",
+        "description_en": "A sturdy olive-brown bestiary book with a clear gold paw-print emblem and a red bookmark, no writing.",
+        "row": 0,
+        "column": 1
+      },
+      {
+        "id": "book_axel",
+        "name": "Краткая история Акселя",
+        "kind": "book",
+        "rarity": "common",
+        "description": "Брошюра из храма Эрис.",
+        "description_en": "A small warm tan adventurer guidebook with a simple walled-town silhouette emblem and green bookmark, no writing.",
+        "row": 0,
+        "column": 2
+      },
+      {
+        "id": "book_water",
+        "name": "Учебник водной магии",
+        "kind": "book",
+        "rarity": "rare",
+        "description": "Аккуратный почерк Рокси Мигурдии.",
+        "description_en": "A refined deep navy water mage notebook with a silver wave emblem, turquoise binding and bookmark, no writing. Distinct from the lighter aqua notebook.",
+        "row": 0,
+        "column": 3
+      },
+      {
+        "id": "parcel_bread",
+        "name": "Свёрток для кузнеца",
+        "kind": "quest",
+        "rarity": "common",
+        "description": "Тёплый, пахнет хлебом. Лина просила отнести Гаррету.",
+        "description_en": "A bakery parcel: two bread loaves partly visible in folded cream wrapping tied with red-and-white twine.",
+        "row": 1,
+        "column": 0
+      },
+      {
+        "id": "guild_license",
+        "name": "Лицензия искателя",
+        "kind": "quest",
+        "rarity": "rare",
+        "description": "Карточка гильдии: имя, класс «Архимаг» и ранг.",
+        "description_en": "An adventurer guild licence card: small upright ivory parchment with a shield-shaped guild emblem, red wax seal and burgundy ribbon. No text.",
+        "row": 1,
+        "column": 1
+      },
+      {
+        "id": "star_shard",
+        "name": "Звёздный осколок",
+        "kind": "quest",
+        "rarity": "epic",
+        "description": "Холодный и лёгкий, как кусочек ночного неба. Тихо звенит, если поднести к уху.",
+        "description_en": "One irregular luminous star shard: a broken asymmetrical crystal shard of silvery white glass with a violet-blue core and tiny golden edge glints, not a whole star.",
+        "row": 1,
+        "column": 2
+      },
+      {
+        "id": "scout_report",
+        "name": "Отчёт разведчиков",
+        "kind": "quest",
+        "rarity": "common",
+        "description": "Записи гильдии о гоблинах у кромки леса.",
+        "description_en": "A scout report: folded cream parchment, a simple dark trail diagram and a little green corner tab, no writing.",
+        "row": 1,
+        "column": 3
+      },
+      {
+        "id": "sealed_letter",
+        "name": "Запечатанное письмо",
+        "kind": "quest",
+        "rarity": "rare",
+        "description": "От учёного Эдмунда — «для мага, что изучает руины».",
+        "description_en": "A clean sealed cream envelope with a prominent round red wax seal and one diagonal burgundy band.",
+        "row": 2,
+        "column": 0
+      },
+      {
+        "id": "resonance_crystal",
+        "name": "Резонирующий кристалл",
+        "kind": "quest",
+        "rarity": "rare",
+        "description": "Осколок кристалла из Астрариума. Гудит в такт с осколком звезды.",
+        "description_en": "A resonating crystal: tall faceted violet quartz crystal held by a small brass base, two thin cyan resonance rings hugging the crystal, contained within cell.",
+        "row": 2,
+        "column": 1
+      },
+      {
+        "id": "merchant_goods",
+        "name": "Товары Тобиаса",
+        "kind": "quest",
+        "rarity": "common",
+        "description": "Тюк с тканями для Ольховки.",
+        "description_en": "A merchant cargo bundle: one small wooden crate with a cloth-wrapped bundle strapped on top, unified compact icon.",
+        "row": 2,
+        "column": 2
+      },
+      {
+        "id": "gem_ruby",
+        "name": "Алый самоцвет",
+        "kind": "trophy",
+        "rarity": "epic",
+        "description": "Сияет как глаза Алых Демонов.",
+        "description_en": "A single large cut ruby gemstone, rich red, polished facets, no jewellery setting.",
+        "row": 2,
+        "column": 3
+      },
+      {
+        "id": "reg_flask",
+        "name": "Регистрационный флакон",
+        "kind": "quest",
+        "rarity": "common",
+        "description": "Флакон Висс с красной этикеткой. Его нужно показать Луне. Выпить можно после проверки.",
+        "description_en": "An empty clear registration flask: small plain cylindrical stoppered glass vial with an ivory paper tag, no writing and no coloured potion.",
+        "row": 3,
+        "column": 0
+      },
+      {
+        "id": "edmund_device",
+        "name": "Прибор Эдмунда",
+        "kind": "quest",
+        "rarity": "rare",
+        "description": "Керамическая тарелка с двумя иглами: показывает направление резонанса. Эдмунд просил вернуть целым.",
+        "description_en": "Edmund’s measuring instrument: compact brass astrolabe on a dark wooden base, concentric rings around a tiny cyan crystal.",
+        "row": 3,
+        "column": 1
+      },
+      {
+        "id": "astra_token",
+        "name": "Жетон снабженца",
+        "kind": "quest",
+        "rarity": "rare",
+        "description": "Монета со знаком Астрариума. Сайрус говорит: жетон служебной кладовой. Продать можно, но Эдмунд просил сначала показать.",
+        "description_en": "An Astrarium token: a single old bronze hexagonal medallion with a silver four-point star emblem, worn edges. Clearly different from round currency coins.",
+        "row": 3,
+        "column": 2
+      },
+      {
+        "id": "rope_kit",
+        "name": "Канат и клинья",
+        "kind": "quest",
+        "rarity": "common",
+        "description": "Снаряжение для спуска к отводу: канат и стальные клинья. Приготовил Гаррет.",
+        "description_en": "A coiled hemp rope with one dark iron climbing hook tucked into the coil.",
+        "row": 3,
+        "column": 3
+      }
+    ],
+    "prompt": "Use case: stylized-concept. Asset type: one production game UI SPRITE ATLAS, not a screenshot or presentation. Create ONE SQUARE transparent PNG texture atlas with exactly 16 hand-painted fantasy RPG icons in an exact four-column by four-row regular grid. Prefer 2048x2048 pixels, square. The canvas is partitioned into 16 identical square cells: icon centers at x=12.5%,37.5%,62.5%,87.5% and y=12.5%,37.5%,62.5%,87.5%. Keep each complete icon within the middle 72% of its own cell so there is clean transparent padding on all sides. Every cell contains exactly the specified single item or compact symbol. Empty space has true alpha transparency, including the gutters. No drawn checkerboard. No cell backgrounds, no frames, no slot borders, no grid lines, no captions, no numbers, no lettering, no logos, no watermark. Never combine neighbouring cells or let glows and shadows cross a cell boundary.\nArt direction: polished 2D hand-painted anime fantasy inventory assets for Megumin's third-person RPG in Axel and Ainstrey. Strong readable silhouettes at 32–64px, warm dark brown clean outlines, restrained cel shading, bright material colours, small warm highlights from upper left, subtle edge highlights. Three-quarter product view of tangible items. Consistent scale and rendering throughout the atlas. Saturated crimson magic for Megumin, clear turquoise and deep blue magic for Roxy, warm brass and aged parchment for the guild and Astrarium. Objects occupy about two thirds of their cells. Colour resides in the object, not in opaque background squares. Avoid photographic realism, pixel art, flat emoji, excessive tiny detail, long trails, thick smoke, lens flares, blurry glow, text-like scribbles. Papers may have simple nonlinguistic diagrams or emblems, never readable writing.\nStrict ordering: read the following 16 cells left to right, top row first. These cells are animation-independent icons and the exact grid layout is required for engine use. Do not omit, repeat, or swap an item.\nCell 1 (row 1, column 1): A playful aqua blue notebook with a gold water-drop emblem, blue bookmark and lightly worn edges, no writing.\nCell 2 (row 1, column 2): A sturdy olive-brown bestiary book with a clear gold paw-print emblem and a red bookmark, no writing.\nCell 3 (row 1, column 3): A small warm tan adventurer guidebook with a simple walled-town silhouette emblem and green bookmark, no writing.\nCell 4 (row 1, column 4): A refined deep navy water mage notebook with a silver wave emblem, turquoise binding and bookmark, no writing. Distinct from the lighter aqua notebook.\nCell 5 (row 2, column 1): A bakery parcel: two bread loaves partly visible in folded cream wrapping tied with red-and-white twine.\nCell 6 (row 2, column 2): An adventurer guild licence card: small upright ivory parchment with a shield-shaped guild emblem, red wax seal and burgundy ribbon. No text.\nCell 7 (row 2, column 3): One irregular luminous star shard: a broken asymmetrical crystal shard of silvery white glass with a violet-blue core and tiny golden edge glints, not a whole star.\nCell 8 (row 2, column 4): A scout report: folded cream parchment, a simple dark trail diagram and a little green corner tab, no writing.\nCell 9 (row 3, column 1): A clean sealed cream envelope with a prominent round red wax seal and one diagonal burgundy band.\nCell 10 (row 3, column 2): A resonating crystal: tall faceted violet quartz crystal held by a small brass base, two thin cyan resonance rings hugging the crystal, contained within cell.\nCell 11 (row 3, column 3): A merchant cargo bundle: one small wooden crate with a cloth-wrapped bundle strapped on top, unified compact icon.\nCell 12 (row 3, column 4): A single large cut ruby gemstone, rich red, polished facets, no jewellery setting.\nCell 13 (row 4, column 1): An empty clear registration flask: small plain cylindrical stoppered glass vial with an ivory paper tag, no writing and no coloured potion.\nCell 14 (row 4, column 2): Edmund’s measuring instrument: compact brass astrolabe on a dark wooden base, concentric rings around a tiny cyan crystal.\nCell 15 (row 4, column 3): An Astrarium token: a single old bronze hexagonal medallion with a silver four-point star emblem, worn edges. Clearly different from round currency coins.\nCell 16 (row 4, column 4): A coiled hemp rope with one dark iron climbing hook tucked into the coil."
+  },
+  {
+    "key": "items_04",
+    "filename": "items_04.png",
+    "entries": [
+      {
+        "id": "drain_map",
+        "name": "Карта отводного канала",
+        "kind": "quest",
+        "rarity": "common",
+        "description": "Схема аварийного отвода: Багровое ущелье, подъёмник, две площадки охлаждения и заслонка у западной стены.",
+        "description_en": "A map of an external water drain: open parchment with a clearly drawn blue branching channel and a brass compass pin, no words.",
+        "row": 0,
+        "column": 0
+      },
+      {
+        "id": "road_scanner",
+        "name": "Прибор Эдмунда",
+        "kind": "quest",
+        "rarity": "uncommon",
+        "description": "Показывает, где дорожный камень получает питание. После обвала старые посты иногда включаются сами.",
+        "description_en": "A portable road scanner: a short brass-handled tuning fork with two vertical prongs around a glowing small cyan stone, field instrument.",
+        "row": 0,
+        "column": 1
+      },
+      {
+        "id": "road_braces",
+        "name": "Мешок креплений",
+        "kind": "quest",
+        "rarity": "common",
+        "description": "Две стальные скобы с клиньями. Гаррет сделал их с запасом и отправил с Тобиасом.",
+        "description_en": "A set of heavy iron road support brackets: two dark steel U-shaped braces and two large bolts arranged as one compact repair bundle.",
+        "row": 0,
+        "column": 2
+      },
+      {
+        "id": "capital_index",
+        "name": "Опись водяной сети",
+        "kind": "quest",
+        "rarity": "common",
+        "description": "Основная опись архива Айнстрея: местный узел Астрариума, восточный пост и столичный водозабор числятся участками одной старой сети.",
+        "description_en": "A bound capital water-network index: thick ivory paper folio with burgundy cloth spine, a simple blue water-network emblem and brass clasp, no writing.",
+        "row": 0,
+        "column": 3
+      },
+      {
+        "id": "pump_scheme",
+        "name": "Схема портового насоса",
+        "kind": "quest",
+        "rarity": "common",
+        "description": "Рабочая схема Мирены. Для ручного разделения нужны две заслонки; в копии порта одну вычеркнули.",
+        "description_en": "A port pump schematic: blue engineering plan on pale parchment with a simple round pump and pipe diagram in dark blue, one folded corner, no text.",
+        "row": 1,
+        "column": 0
+      },
+      {
+        "id": "pump_permit",
+        "name": "Допуск водяной службы",
+        "kind": "quest",
+        "rarity": "common",
+        "description": "Допуск к нижнему насосу на один день: границы работ и точная цель (белая отметка на боковой муфте). Городскую стену в допуск не вписывают.",
+        "description_en": "A water-service access permit: small pale-blue ticket with clipped corners, a circular navy wave seal and a short brass clip, no text.",
+        "row": 1,
+        "column": 1
+      },
+      {
+        "id": "pump_annex",
+        "name": "Приложение о ручном обходе",
+        "kind": "quest",
+        "rarity": "uncommon",
+        "description": "Полный лист схемы ручного разделения потоков, возвращённый Иларом. Нужен, чтобы отделить городской поток в Акселе.",
+        "description_en": "A manual bypass annex: two overlapping ivory technical sheets held by a bronze paper clip; one simple diagram of a bypass pipe and valve, no words.",
+        "row": 1,
+        "column": 2
+      },
+      {
+        "id": "post_plan",
+        "name": "План восточного поста",
+        "kind": "quest",
+        "rarity": "uncommon",
+        "description": "Копия служебного входа восточного ретранслятора за хребтом. Журнал поста сравнят с временем приёма сигнала.",
+        "description_en": "An eastern relay post plan: folded map showing a tiny stone watchtower icon and a marked mountain trail, deep blue corner ribbon, no words.",
+        "row": 1,
+        "column": 3
+      },
+      {
+        "id": "n01_letter_item",
+        "name": "Письмо с другого берега",
+        "kind": "quest",
+        "rarity": "common",
+        "description": "Конверт, трижды вернувшийся к отправителю. Читать нельзя, адрес проверить можно.",
+        "description_en": "A much-travelled letter from the opposite bank: creased tan envelope with worn corners, blue wax seal and three tiny faded coloured postal marks without lettering.",
+        "row": 2,
+        "column": 0
+      },
+      {
+        "id": "n05_reserve_lantern",
+        "name": "Запасной фонарь",
+        "kind": "quest",
+        "rarity": "common",
+        "description": "Запасной сигнальный фонарь для поворота у мельниц. Масла хватит на всю ночь.",
+        "description_en": "A reserve signal lantern: compact red-and-brass enclosed square lantern with a clear amber flame, sturdy carrying handle.",
+        "row": 2,
+        "column": 1
+      },
+      {
+        "id": "valve_key",
+        "name": "Ключ насоса",
+        "kind": "quest",
+        "rarity": "common",
+        "description": "Тяжёлый ключ для клапанов насосной станции. Он висел на стойке рабочей галереи.",
+        "description_en": "A heavy pump valve key: a thick dark iron T-shaped key with square socket end and a short brass grip stripe.",
+        "row": 2,
+        "column": 2
+      },
+      {
+        "id": "link_module",
+        "name": "Модуль связи Эдмунда",
+        "kind": "quest",
+        "rarity": "uncommon",
+        "description": "Привезённый модуль для сервисной линии: после установки Эдмунд и Луна услышат героинь из глубокой шахты.",
+        "description_en": "Edmund’s communication module: compact brass-framed rectangular magic device with a turquoise circular crystal face, a little folded wire aerial and a dark wooden back.",
+        "row": 2,
+        "column": 3
+      },
+      {
+        "id": "waterproof_case",
+        "name": "Водостойкий футляр",
+        "kind": "quest",
+        "rarity": "uncommon",
+        "description": "Герметичный футляр из старого снабжения. Удобно хранить свитки и реагенты.",
+        "description_en": "A waterproof document case: compact blue-grey rectangular hard case with brass corner protectors, a pale gasket line and a sturdy clasp.",
+        "row": 3,
+        "column": 0
+      },
+      {
+        "id": "tar_tools",
+        "name": "Набор инструментов смолокура",
+        "kind": "material",
+        "rarity": "uncommon",
+        "description": "Старые инструменты из кладовой смолокуров: для крафта и ремонта.",
+        "description_en": "A tar worker’s tool kit: a small open leather tool roll holding a short scraper, wooden-handled brush and two small iron repair tools, compact bundle.",
+        "row": 3,
+        "column": 1
+      },
+      {
+        "id": "crypt_lamp",
+        "name": "Лампа гильдии",
+        "kind": "quest",
+        "rarity": "common",
+        "description": "Лампа с запасом масла. Повесь её у развилки в крипте: это твоя отметка на обратном пути.",
+        "description_en": "A guild crypt lamp: rounded brass oil lantern with a protective metal cage, warm yellow flame and a short burgundy handle wrap; distinct from the red square signal lantern.",
+        "row": 3,
+        "column": 2
+      },
+      {
+        "id": "old_coin",
+        "name": "Старинная монета",
+        "kind": "trophy",
+        "rarity": "rare",
+        "description": "Чеканка времён Астрариума. Коллекционеры платят хорошо.",
+        "description_en": "A single ancient silver coin with green patina and a worn crescent/star relief, irregular chipped rim. Distinct from golden currency and bronze Astrarium token.",
+        "row": 3,
+        "column": 3
+      }
+    ],
+    "prompt": "Use case: stylized-concept. Asset type: one production game UI SPRITE ATLAS, not a screenshot or presentation. Create ONE SQUARE transparent PNG texture atlas with exactly 16 hand-painted fantasy RPG icons in an exact four-column by four-row regular grid. Prefer 2048x2048 pixels, square. The canvas is partitioned into 16 identical square cells: icon centers at x=12.5%,37.5%,62.5%,87.5% and y=12.5%,37.5%,62.5%,87.5%. Keep each complete icon within the middle 72% of its own cell so there is clean transparent padding on all sides. Every cell contains exactly the specified single item or compact symbol. Empty space has true alpha transparency, including the gutters. No drawn checkerboard. No cell backgrounds, no frames, no slot borders, no grid lines, no captions, no numbers, no lettering, no logos, no watermark. Never combine neighbouring cells or let glows and shadows cross a cell boundary.\nArt direction: polished 2D hand-painted anime fantasy inventory assets for Megumin's third-person RPG in Axel and Ainstrey. Strong readable silhouettes at 32–64px, warm dark brown clean outlines, restrained cel shading, bright material colours, small warm highlights from upper left, subtle edge highlights. Three-quarter product view of tangible items. Consistent scale and rendering throughout the atlas. Saturated crimson magic for Megumin, clear turquoise and deep blue magic for Roxy, warm brass and aged parchment for the guild and Astrarium. Objects occupy about two thirds of their cells. Colour resides in the object, not in opaque background squares. Avoid photographic realism, pixel art, flat emoji, excessive tiny detail, long trails, thick smoke, lens flares, blurry glow, text-like scribbles. Papers may have simple nonlinguistic diagrams or emblems, never readable writing.\nStrict ordering: read the following 16 cells left to right, top row first. These cells are animation-independent icons and the exact grid layout is required for engine use. Do not omit, repeat, or swap an item.\nCell 1 (row 1, column 1): A map of an external water drain: open parchment with a clearly drawn blue branching channel and a brass compass pin, no words.\nCell 2 (row 1, column 2): A portable road scanner: a short brass-handled tuning fork with two vertical prongs around a glowing small cyan stone, field instrument.\nCell 3 (row 1, column 3): A set of heavy iron road support brackets: two dark steel U-shaped braces and two large bolts arranged as one compact repair bundle.\nCell 4 (row 1, column 4): A bound capital water-network index: thick ivory paper folio with burgundy cloth spine, a simple blue water-network emblem and brass clasp, no writing.\nCell 5 (row 2, column 1): A port pump schematic: blue engineering plan on pale parchment with a simple round pump and pipe diagram in dark blue, one folded corner, no text.\nCell 6 (row 2, column 2): A water-service access permit: small pale-blue ticket with clipped corners, a circular navy wave seal and a short brass clip, no text.\nCell 7 (row 2, column 3): A manual bypass annex: two overlapping ivory technical sheets held by a bronze paper clip; one simple diagram of a bypass pipe and valve, no words.\nCell 8 (row 2, column 4): An eastern relay post plan: folded map showing a tiny stone watchtower icon and a marked mountain trail, deep blue corner ribbon, no words.\nCell 9 (row 3, column 1): A much-travelled letter from the opposite bank: creased tan envelope with worn corners, blue wax seal and three tiny faded coloured postal marks without lettering.\nCell 10 (row 3, column 2): A reserve signal lantern: compact red-and-brass enclosed square lantern with a clear amber flame, sturdy carrying handle.\nCell 11 (row 3, column 3): A heavy pump valve key: a thick dark iron T-shaped key with square socket end and a short brass grip stripe.\nCell 12 (row 3, column 4): Edmund’s communication module: compact brass-framed rectangular magic device with a turquoise circular crystal face, a little folded wire aerial and a dark wooden back.\nCell 13 (row 4, column 1): A waterproof document case: compact blue-grey rectangular hard case with brass corner protectors, a pale gasket line and a sturdy clasp.\nCell 14 (row 4, column 2): A tar worker’s tool kit: a small open leather tool roll holding a short scraper, wooden-handled brush and two small iron repair tools, compact bundle.\nCell 15 (row 4, column 3): A guild crypt lamp: rounded brass oil lantern with a protective metal cage, warm yellow flame and a short burgundy handle wrap; distinct from the red square signal lantern.\nCell 16 (row 4, column 4): A single ancient silver coin with green patina and a worn crescent/star relief, irregular chipped rim. Distinct from golden currency and bronze Astrarium token."
+  },
+  {
+    "key": "skills_ui",
+    "filename": "skills_ui.png",
+    "entries": [
+      {
+        "id": "skill_explosion",
+        "name": "Взрыв",
+        "kind": "skill",
+        "row": 0,
+        "column": 0,
+        "description_en": "A compact dramatic orange-gold magical explosion burst with a bright star-shaped centre and a dark red ring, no smoke cloud background."
+      },
+      {
+        "id": "skill_crimson_breach",
+        "name": "Алый пролом",
+        "kind": "skill",
+        "row": 0,
+        "column": 1,
+        "description_en": "A crimson magical ground-breaking wedge surging forward diagonally through a small cracked dark stone fragment, clear directional silhouette."
+      },
+      {
+        "id": "skill_staff_lunge",
+        "name": "Проламывающий выпад",
+        "kind": "skill",
+        "row": 0,
+        "column": 2,
+        "description_en": "A brown mage staff thrusting diagonally with two short warm yellow forward motion strokes, physical attack symbol."
+      },
+      {
+        "id": "skill_staff_sweep",
+        "name": "Круговой отбив",
+        "kind": "skill",
+        "row": 0,
+        "column": 3,
+        "description_en": "A brown mage staff across a strong curved golden sweep arc, defensive circular staff strike symbol."
+      },
+      {
+        "id": "skill_water_volley",
+        "name": "Водяной залп",
+        "kind": "skill",
+        "row": 1,
+        "column": 0,
+        "description_en": "Exactly FIVE separated small turquoise water arrows arranged in a compact fanning volley, silver-blue tips, no extras."
+      },
+      {
+        "id": "skill_tidal_collapse",
+        "name": "Приливный обвал",
+        "kind": "skill",
+        "row": 1,
+        "column": 1,
+        "description_en": "A dense sapphire blue mass of water falling downward into a small turquoise splash, strong vertical downward motion."
+      },
+      {
+        "id": "skill_water_lash",
+        "name": "Водяной хлыст",
+        "kind": "skill",
+        "row": 1,
+        "column": 2,
+        "description_en": "A single elegant S-curved turquoise water whip ribbon with a pointed splash tip."
+      },
+      {
+        "id": "skill_counter_thrust",
+        "name": "Встречный укол",
+        "kind": "skill",
+        "row": 1,
+        "column": 3,
+        "description_en": "A slim mage staff point wrapped in a tight blue water spiral striking forward, compact silver-blue impact star."
+      },
+      {
+        "id": "ui_health",
+        "name": "Здоровье",
+        "kind": "ui",
+        "row": 2,
+        "column": 0,
+        "description_en": "A rich crimson heart symbol with a small warm highlight, chunky clean readable silhouette."
+      },
+      {
+        "id": "ui_mana",
+        "name": "Мана",
+        "kind": "ui",
+        "row": 2,
+        "column": 1,
+        "description_en": "A faceted sapphire-blue mana droplet with a tiny silver diamond highlight, clean readable silhouette."
+      },
+      {
+        "id": "ui_stamina",
+        "name": "Выносливость",
+        "kind": "ui",
+        "row": 2,
+        "column": 2,
+        "description_en": "A bright emerald green lightning bolt with a restrained pale yellow edge highlight, clean readable silhouette."
+      },
+      {
+        "id": "ui_inventory",
+        "name": "Инвентарь",
+        "kind": "ui",
+        "row": 2,
+        "column": 3,
+        "description_en": "A small brown leather adventurer satchel with a brass clasp and a neatly folded strap."
+      },
+      {
+        "id": "ui_quest",
+        "name": "Задания",
+        "kind": "ui",
+        "row": 3,
+        "column": 0,
+        "description_en": "A rolled ivory parchment tied with a crimson ribbon, one golden shield-shaped wax seal, no lettering."
+      },
+      {
+        "id": "ui_map",
+        "name": "Карта",
+        "kind": "ui",
+        "row": 3,
+        "column": 1,
+        "description_en": "A compact folded map with a blue river and a tiny brass compass rose, no words."
+      },
+      {
+        "id": "ui_craft",
+        "name": "Ремесло",
+        "kind": "ui",
+        "row": 3,
+        "column": 2,
+        "description_en": "A small iron anvil and wooden-handled smith hammer crossing above it, compact unified crafting symbol."
+      },
+      {
+        "id": "ui_settings",
+        "name": "Настройки",
+        "kind": "ui",
+        "row": 3,
+        "column": 3,
+        "description_en": "A chunky antique brass cogwheel with eight broad teeth and a dark circular centre, fantasy interface symbol."
+      }
+    ],
+    "prompt": "Use case: stylized-concept. Asset type: one production game UI SPRITE ATLAS, not a screenshot or presentation. Create ONE SQUARE transparent PNG texture atlas with exactly 16 hand-painted fantasy RPG icons in an exact four-column by four-row regular grid. Prefer 2048x2048 pixels, square. The canvas is partitioned into 16 identical square cells: icon centers at x=12.5%,37.5%,62.5%,87.5% and y=12.5%,37.5%,62.5%,87.5%. Keep each complete icon within the middle 72% of its own cell so there is clean transparent padding on all sides. Every cell contains exactly the specified single item or compact symbol. Empty space has true alpha transparency, including the gutters. No drawn checkerboard. No cell backgrounds, no frames, no slot borders, no grid lines, no captions, no numbers, no lettering, no logos, no watermark. Never combine neighbouring cells or let glows and shadows cross a cell boundary.\nArt direction: polished 2D hand-painted anime fantasy inventory assets for Megumin's third-person RPG in Axel and Ainstrey. Strong readable silhouettes at 32–64px, warm dark brown clean outlines, restrained cel shading, bright material colours, small warm highlights from upper left, subtle edge highlights. Three-quarter product view of tangible items. Consistent scale and rendering throughout the atlas. Saturated crimson magic for Megumin, clear turquoise and deep blue magic for Roxy, warm brass and aged parchment for the guild and Astrarium. Objects occupy about two thirds of their cells. Colour resides in the object, not in opaque background squares. Avoid photographic realism, pixel art, flat emoji, excessive tiny detail, long trails, thick smoke, lens flares, blurry glow, text-like scribbles. Papers may have simple nonlinguistic diagrams or emblems, never readable writing.\nStrict ordering: read the following 16 cells left to right, top row first. These cells are animation-independent icons and the exact grid layout is required for engine use. Do not omit, repeat, or swap an item.\nCell 1 (row 1, column 1): A compact dramatic orange-gold magical explosion burst with a bright star-shaped centre and a dark red ring, no smoke cloud background.\nCell 2 (row 1, column 2): A crimson magical ground-breaking wedge surging forward diagonally through a small cracked dark stone fragment, clear directional silhouette.\nCell 3 (row 1, column 3): A brown mage staff thrusting diagonally with two short warm yellow forward motion strokes, physical attack symbol.\nCell 4 (row 1, column 4): A brown mage staff across a strong curved golden sweep arc, defensive circular staff strike symbol.\nCell 5 (row 2, column 1): Exactly FIVE separated small turquoise water arrows arranged in a compact fanning volley, silver-blue tips, no extras.\nCell 6 (row 2, column 2): A dense sapphire blue mass of water falling downward into a small turquoise splash, strong vertical downward motion.\nCell 7 (row 2, column 3): A single elegant S-curved turquoise water whip ribbon with a pointed splash tip.\nCell 8 (row 2, column 4): A slim mage staff point wrapped in a tight blue water spiral striking forward, compact silver-blue impact star.\nCell 9 (row 3, column 1): A rich crimson heart symbol with a small warm highlight, chunky clean readable silhouette.\nCell 10 (row 3, column 2): A faceted sapphire-blue mana droplet with a tiny silver diamond highlight, clean readable silhouette.\nCell 11 (row 3, column 3): A bright emerald green lightning bolt with a restrained pale yellow edge highlight, clean readable silhouette.\nCell 12 (row 3, column 4): A small brown leather adventurer satchel with a brass clasp and a neatly folded strap.\nCell 13 (row 4, column 1): A rolled ivory parchment tied with a crimson ribbon, one golden shield-shaped wax seal, no lettering.\nCell 14 (row 4, column 2): A compact folded map with a blue river and a tiny brass compass rose, no words.\nCell 15 (row 4, column 3): A small iron anvil and wooden-handled smith hammer crossing above it, compact unified crafting symbol.\nCell 16 (row 4, column 4): A chunky antique brass cogwheel with eight broad teeth and a dark circular centre, fantasy interface symbol."
+  }
+]

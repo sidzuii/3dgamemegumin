@@ -1,0 +1,2140 @@
+{
+  "version": "1.0",
+  "created": "2026-10-18",
+  "format": "transparent_png_atlas_with_individual_frames",
+  "origin": "top-left",
+  "items_count": 64,
+  "skills_count": 8,
+  "ui_count": 8,
+  "atlases": {
+    "items_01": {
+      "file": "items_01.png",
+      "width": 1254,
+      "height": 1254,
+      "columns": 4,
+      "rows": 4,
+      "nominal_cell_width": 313.5,
+      "nominal_cell_height": 313.5
+    },
+    "items_02": {
+      "file": "items_02.png",
+      "width": 1254,
+      "height": 1254,
+      "columns": 4,
+      "rows": 4,
+      "nominal_cell_width": 313.5,
+      "nominal_cell_height": 313.5
+    },
+    "items_03": {
+      "file": "items_03.png",
+      "width": 1254,
+      "height": 1254,
+      "columns": 4,
+      "rows": 4,
+      "nominal_cell_width": 313.5,
+      "nominal_cell_height": 313.5
+    },
+    "items_04": {
+      "file": "items_04.png",
+      "width": 1254,
+      "height": 1254,
+      "columns": 4,
+      "rows": 4,
+      "nominal_cell_width": 313.5,
+      "nominal_cell_height": 313.5
+    },
+    "skills_ui": {
+      "file": "skills_ui.png",
+      "width": 1254,
+      "height": 1254,
+      "columns": 4,
+      "rows": 4,
+      "nominal_cell_width": 313.5,
+      "nominal_cell_height": 313.5
+    }
+  },
+  "icons": {
+    "eris": {
+      "name": "Эрисы",
+      "kind": "currency",
+      "atlas": "items_01",
+      "file": "items_01.png",
+      "row": 0,
+      "column": 0,
+      "frame": {
+        "x": 46,
+        "y": 101,
+        "w": 262,
+        "h": 200
+      },
+      "uv": {
+        "u": 0.03668261562998405,
+        "v": 0.08054226475279107,
+        "width": 0.20893141945773525,
+        "height": 0.1594896331738437
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        259,
+        197
+      ]
+    },
+    "hp_potion": {
+      "name": "Зелье исцеления",
+      "kind": "consumable",
+      "atlas": "items_01",
+      "file": "items_01.png",
+      "row": 0,
+      "column": 1,
+      "frame": {
+        "x": 385,
+        "y": 64,
+        "w": 201,
+        "h": 244
+      },
+      "uv": {
+        "u": 0.30701754385964913,
+        "v": 0.051036682615629984,
+        "width": 0.16028708133971292,
+        "height": 0.19457735247208932
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        198,
+        241
+      ]
+    },
+    "hp_potion_big": {
+      "name": "Большое зелье исцеления",
+      "kind": "consumable",
+      "atlas": "items_01",
+      "file": "items_01.png",
+      "row": 0,
+      "column": 2,
+      "frame": {
+        "x": 666,
+        "y": 35,
+        "w": 248,
+        "h": 288
+      },
+      "uv": {
+        "u": 0.5311004784688995,
+        "v": 0.027910685805422646,
+        "width": 0.19776714513556617,
+        "height": 0.22966507177033493
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        245,
+        285
+      ]
+    },
+    "st_potion": {
+      "name": "Эликсир бодрости",
+      "kind": "consumable",
+      "atlas": "items_01",
+      "file": "items_01.png",
+      "row": 0,
+      "column": 3,
+      "frame": {
+        "x": 1038,
+        "y": 36,
+        "w": 174,
+        "h": 284
+      },
+      "uv": {
+        "u": 0.8277511961722488,
+        "v": 0.028708133971291867,
+        "width": 0.13875598086124402,
+        "height": 0.22647527910685805
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        171,
+        281
+      ]
+    },
+    "mana_potion": {
+      "name": "Эликсир маны",
+      "kind": "consumable",
+      "atlas": "items_01",
+      "file": "items_01.png",
+      "row": 1,
+      "column": 0,
+      "frame": {
+        "x": 84,
+        "y": 327,
+        "w": 150,
+        "h": 295
+      },
+      "uv": {
+        "u": 0.06698564593301436,
+        "v": 0.2607655502392344,
+        "width": 0.11961722488038277,
+        "height": 0.23524720893141945
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        147,
+        292
+      ]
+    },
+    "manatite": {
+      "name": "Манатит",
+      "kind": "consumable",
+      "atlas": "items_01",
+      "file": "items_01.png",
+      "row": 1,
+      "column": 1,
+      "frame": {
+        "x": 380,
+        "y": 351,
+        "w": 212,
+        "h": 271
+      },
+      "uv": {
+        "u": 0.30303030303030304,
+        "v": 0.2799043062200957,
+        "width": 0.16905901116427433,
+        "height": 0.21610845295055822
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        209,
+        268
+      ]
+    },
+    "scroll_return": {
+      "name": "Свиток возвращения",
+      "kind": "consumable",
+      "atlas": "items_01",
+      "file": "items_01.png",
+      "row": 1,
+      "column": 2,
+      "frame": {
+        "x": 642,
+        "y": 378,
+        "w": 298,
+        "h": 232
+      },
+      "uv": {
+        "u": 0.5119617224880383,
+        "v": 0.3014354066985646,
+        "width": 0.23763955342902712,
+        "height": 0.1850079744816587
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        295,
+        229
+      ]
+    },
+    "bread": {
+      "name": "Свежий хлеб",
+      "kind": "food",
+      "atlas": "items_01",
+      "file": "items_01.png",
+      "row": 1,
+      "column": 3,
+      "frame": {
+        "x": 957,
+        "y": 388,
+        "w": 280,
+        "h": 222
+      },
+      "uv": {
+        "u": 0.7631578947368421,
+        "v": 0.3094098883572568,
+        "width": 0.22328548644338117,
+        "height": 0.17703349282296652
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        277,
+        219
+      ]
+    },
+    "apple": {
+      "name": "Яблоко",
+      "kind": "food",
+      "atlas": "items_01",
+      "file": "items_01.png",
+      "row": 2,
+      "column": 0,
+      "frame": {
+        "x": 49,
+        "y": 644,
+        "w": 252,
+        "h": 257
+      },
+      "uv": {
+        "u": 0.03907496012759171,
+        "v": 0.5135566188197768,
+        "width": 0.20095693779904306,
+        "height": 0.20494417862838915
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        249,
+        254
+      ]
+    },
+    "cheese": {
+      "name": "Сыр",
+      "kind": "food",
+      "atlas": "items_01",
+      "file": "items_01.png",
+      "row": 2,
+      "column": 1,
+      "frame": {
+        "x": 356,
+        "y": 658,
+        "w": 249,
+        "h": 240
+      },
+      "uv": {
+        "u": 0.2838915470494418,
+        "v": 0.5247208931419458,
+        "width": 0.19856459330143542,
+        "height": 0.19138755980861244
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        246,
+        237
+      ]
+    },
+    "frog_meat": {
+      "name": "Мясо гигантской жабы",
+      "kind": "food",
+      "atlas": "items_01",
+      "file": "items_01.png",
+      "row": 2,
+      "column": 2,
+      "frame": {
+        "x": 644,
+        "y": 663,
+        "w": 280,
+        "h": 230
+      },
+      "uv": {
+        "u": 0.5135566188197768,
+        "v": 0.5287081339712919,
+        "width": 0.22328548644338117,
+        "height": 0.18341307814992025
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        277,
+        227
+      ]
+    },
+    "stew": {
+      "name": "Рагу из таверны",
+      "kind": "food",
+      "atlas": "items_01",
+      "file": "items_01.png",
+      "row": 2,
+      "column": 3,
+      "frame": {
+        "x": 957,
+        "y": 632,
+        "w": 279,
+        "h": 270
+      },
+      "uv": {
+        "u": 0.7631578947368421,
+        "v": 0.5039872408293461,
+        "width": 0.22248803827751196,
+        "height": 0.215311004784689
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        276,
+        267
+      ]
+    },
+    "pumpkin_pie": {
+      "name": "Тыквенный пирог",
+      "kind": "food",
+      "atlas": "items_01",
+      "file": "items_01.png",
+      "row": 3,
+      "column": 0,
+      "frame": {
+        "x": 41,
+        "y": 955,
+        "w": 274,
+        "h": 240
+      },
+      "uv": {
+        "u": 0.03269537480063796,
+        "v": 0.7615629984051037,
+        "width": 0.21850079744816586,
+        "height": 0.19138755980861244
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        271,
+        237
+      ]
+    },
+    "herb": {
+      "name": "Лечебная трава",
+      "kind": "material",
+      "atlas": "items_01",
+      "file": "items_01.png",
+      "row": 3,
+      "column": 1,
+      "frame": {
+        "x": 353,
+        "y": 925,
+        "w": 268,
+        "h": 291
+      },
+      "uv": {
+        "u": 0.28149920255183414,
+        "v": 0.7376395534290271,
+        "width": 0.21371610845295055,
+        "height": 0.23205741626794257
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        265,
+        288
+      ]
+    },
+    "moonflower": {
+      "name": "Лунный цветок",
+      "kind": "material",
+      "atlas": "items_01",
+      "file": "items_01.png",
+      "row": 3,
+      "column": 2,
+      "frame": {
+        "x": 650,
+        "y": 925,
+        "w": 270,
+        "h": 296
+      },
+      "uv": {
+        "u": 0.518341307814992,
+        "v": 0.7376395534290271,
+        "width": 0.215311004784689,
+        "height": 0.23604465709728867
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        267,
+        293
+      ]
+    },
+    "iron_ore": {
+      "name": "Железная руда",
+      "kind": "material",
+      "atlas": "items_01",
+      "file": "items_01.png",
+      "row": 3,
+      "column": 3,
+      "frame": {
+        "x": 970,
+        "y": 947,
+        "w": 260,
+        "h": 269
+      },
+      "uv": {
+        "u": 0.773524720893142,
+        "v": 0.75518341307815,
+        "width": 0.20733652312599682,
+        "height": 0.21451355661881977
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        257,
+        266
+      ]
+    },
+    "wood": {
+      "name": "Древесина",
+      "kind": "material",
+      "atlas": "items_02",
+      "file": "items_02.png",
+      "row": 0,
+      "column": 0,
+      "frame": {
+        "x": 37,
+        "y": 60,
+        "w": 257,
+        "h": 229
+      },
+      "uv": {
+        "u": 0.029505582137161084,
+        "v": 0.04784688995215311,
+        "width": 0.20494417862838915,
+        "height": 0.18261562998405104
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        254,
+        226
+      ]
+    },
+    "goblin_hood": {
+      "name": "Обрывок капюшона",
+      "kind": "material",
+      "atlas": "items_02",
+      "file": "items_02.png",
+      "row": 0,
+      "column": 1,
+      "frame": {
+        "x": 341,
+        "y": 40,
+        "w": 282,
+        "h": 281
+      },
+      "uv": {
+        "u": 0.2719298245614035,
+        "v": 0.03189792663476874,
+        "width": 0.22488038277511962,
+        "height": 0.2240829346092504
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        279,
+        278
+      ]
+    },
+    "mushroom_cap": {
+      "name": "Шляпка гриба",
+      "kind": "material",
+      "atlas": "items_02",
+      "file": "items_02.png",
+      "row": 0,
+      "column": 2,
+      "frame": {
+        "x": 638,
+        "y": 72,
+        "w": 302,
+        "h": 215
+      },
+      "uv": {
+        "u": 0.5087719298245614,
+        "v": 0.05741626794258373,
+        "width": 0.24082934609250398,
+        "height": 0.17145135566188197
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        299,
+        212
+      ]
+    },
+    "demon_horn": {
+      "name": "Рог демона",
+      "kind": "material",
+      "atlas": "items_02",
+      "file": "items_02.png",
+      "row": 0,
+      "column": 3,
+      "frame": {
+        "x": 1015,
+        "y": 28,
+        "w": 196,
+        "h": 284
+      },
+      "uv": {
+        "u": 0.8094098883572568,
+        "v": 0.022328548644338118,
+        "width": 0.15629984051036683,
+        "height": 0.22647527910685805
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        193,
+        281
+      ]
+    },
+    "leather": {
+      "name": "Выделанная кожа",
+      "kind": "material",
+      "atlas": "items_02",
+      "file": "items_02.png",
+      "row": 1,
+      "column": 0,
+      "frame": {
+        "x": 22,
+        "y": 361,
+        "w": 291,
+        "h": 232
+      },
+      "uv": {
+        "u": 0.017543859649122806,
+        "v": 0.2878787878787879,
+        "width": 0.23205741626794257,
+        "height": 0.1850079744816587
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        288,
+        229
+      ]
+    },
+    "guardian_core": {
+      "name": "Ядро стража",
+      "kind": "material",
+      "atlas": "items_02",
+      "file": "items_02.png",
+      "row": 1,
+      "column": 1,
+      "frame": {
+        "x": 366,
+        "y": 338,
+        "w": 209,
+        "h": 281
+      },
+      "uv": {
+        "u": 0.291866028708134,
+        "v": 0.26953748006379585,
+        "width": 0.16666666666666666,
+        "height": 0.2240829346092504
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        206,
+        278
+      ]
+    },
+    "staff_apprentice": {
+      "name": "Посох ученицы",
+      "kind": "weapon",
+      "atlas": "items_02",
+      "file": "items_02.png",
+      "row": 1,
+      "column": 2,
+      "frame": {
+        "x": 639,
+        "y": 324,
+        "w": 285,
+        "h": 297
+      },
+      "uv": {
+        "u": 0.5095693779904307,
+        "v": 0.2583732057416268,
+        "width": 0.22727272727272727,
+        "height": 0.23684210526315788
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        282,
+        294
+      ]
+    },
+    "staff_ash": {
+      "name": "Ясеневый посох",
+      "kind": "weapon",
+      "atlas": "items_02",
+      "file": "items_02.png",
+      "row": 1,
+      "column": 3,
+      "frame": {
+        "x": 982,
+        "y": 323,
+        "w": 255,
+        "h": 298
+      },
+      "uv": {
+        "u": 0.7830940988835726,
+        "v": 0.25757575757575757,
+        "width": 0.20334928229665072,
+        "height": 0.23763955342902712
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        252,
+        295
+      ]
+    },
+    "staff_iron": {
+      "name": "Посох с железным навершием",
+      "kind": "weapon",
+      "atlas": "items_02",
+      "file": "items_02.png",
+      "row": 2,
+      "column": 0,
+      "frame": {
+        "x": 33,
+        "y": 635,
+        "w": 267,
+        "h": 287
+      },
+      "uv": {
+        "u": 0.02631578947368421,
+        "v": 0.5063795853269537,
+        "width": 0.21291866028708134,
+        "height": 0.22886762360446572
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        264,
+        284
+      ]
+    },
+    "staff_crimson": {
+      "name": "Посох Алого клана",
+      "kind": "weapon",
+      "atlas": "items_02",
+      "file": "items_02.png",
+      "row": 2,
+      "column": 1,
+      "frame": {
+        "x": 335,
+        "y": 625,
+        "w": 285,
+        "h": 285
+      },
+      "uv": {
+        "u": 0.2671451355661882,
+        "v": 0.4984051036682616,
+        "width": 0.22727272727272727,
+        "height": 0.22727272727272727
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        282,
+        282
+      ]
+    },
+    "ring_crimson": {
+      "name": "Кольцо Алых Демонов",
+      "kind": "accessory",
+      "atlas": "items_02",
+      "file": "items_02.png",
+      "row": 2,
+      "column": 2,
+      "frame": {
+        "x": 695,
+        "y": 684,
+        "w": 216,
+        "h": 212
+      },
+      "uv": {
+        "u": 0.5542264752791068,
+        "v": 0.5454545454545454,
+        "width": 0.1722488038277512,
+        "height": 0.16905901116427433
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        213,
+        209
+      ]
+    },
+    "amulet_wind": {
+      "name": "Амулет попутного ветра",
+      "kind": "accessory",
+      "atlas": "items_02",
+      "file": "items_02.png",
+      "row": 2,
+      "column": 3,
+      "frame": {
+        "x": 998,
+        "y": 626,
+        "w": 236,
+        "h": 286
+      },
+      "uv": {
+        "u": 0.79585326953748,
+        "v": 0.49920255183413076,
+        "width": 0.18819776714513556,
+        "height": 0.22807017543859648
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        233,
+        283
+      ]
+    },
+    "ring_iron": {
+      "name": "Железное кольцо",
+      "kind": "accessory",
+      "atlas": "items_02",
+      "file": "items_02.png",
+      "row": 3,
+      "column": 0,
+      "frame": {
+        "x": 37,
+        "y": 979,
+        "w": 251,
+        "h": 199
+      },
+      "uv": {
+        "u": 0.029505582137161084,
+        "v": 0.7807017543859649,
+        "width": 0.20015948963317384,
+        "height": 0.15869218500797447
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        248,
+        196
+      ]
+    },
+    "charm_herb": {
+      "name": "Травяной оберег",
+      "kind": "accessory",
+      "atlas": "items_02",
+      "file": "items_02.png",
+      "row": 3,
+      "column": 1,
+      "frame": {
+        "x": 365,
+        "y": 907,
+        "w": 246,
+        "h": 307
+      },
+      "uv": {
+        "u": 0.29106858054226475,
+        "v": 0.7232854864433812,
+        "width": 0.19617224880382775,
+        "height": 0.24481658692185007
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        243,
+        304
+      ]
+    },
+    "amulet_moon": {
+      "name": "Лунный амулет",
+      "kind": "accessory",
+      "atlas": "items_02",
+      "file": "items_02.png",
+      "row": 3,
+      "column": 2,
+      "frame": {
+        "x": 695,
+        "y": 915,
+        "w": 190,
+        "h": 278
+      },
+      "uv": {
+        "u": 0.5542264752791068,
+        "v": 0.7296650717703349,
+        "width": 0.15151515151515152,
+        "height": 0.22169059011164274
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        187,
+        275
+      ]
+    },
+    "book_explosion": {
+      "name": "Гримуар Взрывной магии",
+      "kind": "book",
+      "atlas": "items_02",
+      "file": "items_02.png",
+      "row": 3,
+      "column": 3,
+      "frame": {
+        "x": 952,
+        "y": 929,
+        "w": 283,
+        "h": 293
+      },
+      "uv": {
+        "u": 0.759170653907496,
+        "v": 0.740829346092504,
+        "width": 0.22567783094098884,
+        "height": 0.23365231259968103
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        280,
+        290
+      ]
+    },
+    "book_aqua": {
+      "name": "Дневник «богини»",
+      "kind": "book",
+      "atlas": "items_03",
+      "file": "items_03.png",
+      "row": 0,
+      "column": 0,
+      "frame": {
+        "x": 36,
+        "y": 42,
+        "w": 261,
+        "h": 268
+      },
+      "uv": {
+        "u": 0.028708133971291867,
+        "v": 0.03349282296650718,
+        "width": 0.20813397129186603,
+        "height": 0.21371610845295055
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        258,
+        265
+      ]
+    },
+    "book_bestiary": {
+      "name": "Бестиарий Акселя",
+      "kind": "book",
+      "atlas": "items_03",
+      "file": "items_03.png",
+      "row": 0,
+      "column": 1,
+      "frame": {
+        "x": 332,
+        "y": 37,
+        "w": 275,
+        "h": 275
+      },
+      "uv": {
+        "u": 0.2647527910685805,
+        "v": 0.029505582137161084,
+        "width": 0.21929824561403508,
+        "height": 0.21929824561403508
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        272,
+        272
+      ]
+    },
+    "book_axel": {
+      "name": "Краткая история Акселя",
+      "kind": "book",
+      "atlas": "items_03",
+      "file": "items_03.png",
+      "row": 0,
+      "column": 2,
+      "frame": {
+        "x": 643,
+        "y": 45,
+        "w": 281,
+        "h": 264
+      },
+      "uv": {
+        "u": 0.5127591706539075,
+        "v": 0.03588516746411483,
+        "width": 0.2240829346092504,
+        "height": 0.21052631578947367
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        278,
+        261
+      ]
+    },
+    "book_water": {
+      "name": "Учебник водной магии",
+      "kind": "book",
+      "atlas": "items_03",
+      "file": "items_03.png",
+      "row": 0,
+      "column": 3,
+      "frame": {
+        "x": 952,
+        "y": 43,
+        "w": 274,
+        "h": 272
+      },
+      "uv": {
+        "u": 0.759170653907496,
+        "v": 0.0342902711323764,
+        "width": 0.21850079744816586,
+        "height": 0.21690590111642744
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        271,
+        269
+      ]
+    },
+    "parcel_bread": {
+      "name": "Свёрток для кузнеца",
+      "kind": "quest",
+      "atlas": "items_03",
+      "file": "items_03.png",
+      "row": 1,
+      "column": 0,
+      "frame": {
+        "x": 20,
+        "y": 336,
+        "w": 297,
+        "h": 278
+      },
+      "uv": {
+        "u": 0.01594896331738437,
+        "v": 0.2679425837320574,
+        "width": 0.23684210526315788,
+        "height": 0.22169059011164274
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        294,
+        275
+      ]
+    },
+    "guild_license": {
+      "name": "Лицензия искателя",
+      "kind": "quest",
+      "atlas": "items_03",
+      "file": "items_03.png",
+      "row": 1,
+      "column": 1,
+      "frame": {
+        "x": 365,
+        "y": 325,
+        "w": 220,
+        "h": 300
+      },
+      "uv": {
+        "u": 0.29106858054226475,
+        "v": 0.259170653907496,
+        "width": 0.17543859649122806,
+        "height": 0.23923444976076555
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        217,
+        297
+      ]
+    },
+    "star_shard": {
+      "name": "Звёздный осколок",
+      "kind": "quest",
+      "atlas": "items_03",
+      "file": "items_03.png",
+      "row": 1,
+      "column": 2,
+      "frame": {
+        "x": 684,
+        "y": 350,
+        "w": 179,
+        "h": 266
+      },
+      "uv": {
+        "u": 0.5454545454545454,
+        "v": 0.27910685805422647,
+        "width": 0.14274322169059012,
+        "height": 0.21212121212121213
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        176,
+        263
+      ]
+    },
+    "scout_report": {
+      "name": "Отчёт разведчиков",
+      "kind": "quest",
+      "atlas": "items_03",
+      "file": "items_03.png",
+      "row": 1,
+      "column": 3,
+      "frame": {
+        "x": 947,
+        "y": 359,
+        "w": 290,
+        "h": 242
+      },
+      "uv": {
+        "u": 0.75518341307815,
+        "v": 0.2862838915470494,
+        "width": 0.23125996810207336,
+        "height": 0.19298245614035087
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        287,
+        239
+      ]
+    },
+    "sealed_letter": {
+      "name": "Запечатанное письмо",
+      "kind": "quest",
+      "atlas": "items_03",
+      "file": "items_03.png",
+      "row": 2,
+      "column": 0,
+      "frame": {
+        "x": 28,
+        "y": 665,
+        "w": 298,
+        "h": 235
+      },
+      "uv": {
+        "u": 0.022328548644338118,
+        "v": 0.5303030303030303,
+        "width": 0.23763955342902712,
+        "height": 0.18740031897926634
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        295,
+        232
+      ]
+    },
+    "resonance_crystal": {
+      "name": "Резонирующий кристалл",
+      "kind": "quest",
+      "atlas": "items_03",
+      "file": "items_03.png",
+      "row": 2,
+      "column": 1,
+      "frame": {
+        "x": 385,
+        "y": 633,
+        "w": 179,
+        "h": 283
+      },
+      "uv": {
+        "u": 0.30701754385964913,
+        "v": 0.5047846889952153,
+        "width": 0.14274322169059012,
+        "height": 0.22567783094098884
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        176,
+        280
+      ]
+    },
+    "merchant_goods": {
+      "name": "Товары Тобиаса",
+      "kind": "quest",
+      "atlas": "items_03",
+      "file": "items_03.png",
+      "row": 2,
+      "column": 2,
+      "frame": {
+        "x": 646,
+        "y": 641,
+        "w": 267,
+        "h": 278
+      },
+      "uv": {
+        "u": 0.5151515151515151,
+        "v": 0.511164274322169,
+        "width": 0.21291866028708134,
+        "height": 0.22169059011164274
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        264,
+        275
+      ]
+    },
+    "gem_ruby": {
+      "name": "Алый самоцвет",
+      "kind": "trophy",
+      "atlas": "items_03",
+      "file": "items_03.png",
+      "row": 2,
+      "column": 3,
+      "frame": {
+        "x": 975,
+        "y": 672,
+        "w": 247,
+        "h": 216
+      },
+      "uv": {
+        "u": 0.777511961722488,
+        "v": 0.5358851674641149,
+        "width": 0.19696969696969696,
+        "height": 0.1722488038277512
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        244,
+        213
+      ]
+    },
+    "reg_flask": {
+      "name": "Регистрационный флакон",
+      "kind": "quest",
+      "atlas": "items_03",
+      "file": "items_03.png",
+      "row": 3,
+      "column": 0,
+      "frame": {
+        "x": 109,
+        "y": 926,
+        "w": 178,
+        "h": 278
+      },
+      "uv": {
+        "u": 0.08692185007974482,
+        "v": 0.7384370015948963,
+        "width": 0.1419457735247209,
+        "height": 0.22169059011164274
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        175,
+        275
+      ]
+    },
+    "edmund_device": {
+      "name": "Прибор Эдмунда",
+      "kind": "quest",
+      "atlas": "items_03",
+      "file": "items_03.png",
+      "row": 3,
+      "column": 1,
+      "frame": {
+        "x": 340,
+        "y": 918,
+        "w": 255,
+        "h": 292
+      },
+      "uv": {
+        "u": 0.2711323763955343,
+        "v": 0.7320574162679426,
+        "width": 0.20334928229665072,
+        "height": 0.23285486443381181
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        252,
+        289
+      ]
+    },
+    "astra_token": {
+      "name": "Жетон снабженца",
+      "kind": "quest",
+      "atlas": "items_03",
+      "file": "items_03.png",
+      "row": 3,
+      "column": 2,
+      "frame": {
+        "x": 663,
+        "y": 948,
+        "w": 238,
+        "h": 241
+      },
+      "uv": {
+        "u": 0.5287081339712919,
+        "v": 0.7559808612440191,
+        "width": 0.189792663476874,
+        "height": 0.19218500797448165
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        235,
+        238
+      ]
+    },
+    "rope_kit": {
+      "name": "Канат и клинья",
+      "kind": "quest",
+      "atlas": "items_03",
+      "file": "items_03.png",
+      "row": 3,
+      "column": 3,
+      "frame": {
+        "x": 964,
+        "y": 947,
+        "w": 260,
+        "h": 258
+      },
+      "uv": {
+        "u": 0.7687400318979266,
+        "v": 0.75518341307815,
+        "width": 0.20733652312599682,
+        "height": 0.20574162679425836
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        257,
+        255
+      ]
+    },
+    "drain_map": {
+      "name": "Карта отводного канала",
+      "kind": "quest",
+      "atlas": "items_04",
+      "file": "items_04.png",
+      "row": 0,
+      "column": 0,
+      "frame": {
+        "x": 16,
+        "y": 31,
+        "w": 296,
+        "h": 269
+      },
+      "uv": {
+        "u": 0.012759170653907496,
+        "v": 0.024720893141945772,
+        "width": 0.23604465709728867,
+        "height": 0.21451355661881977
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        293,
+        266
+      ]
+    },
+    "road_scanner": {
+      "name": "Прибор Эдмунда",
+      "kind": "quest",
+      "atlas": "items_04",
+      "file": "items_04.png",
+      "row": 0,
+      "column": 1,
+      "frame": {
+        "x": 409,
+        "y": 21,
+        "w": 133,
+        "h": 289
+      },
+      "uv": {
+        "u": 0.32615629984051037,
+        "v": 0.01674641148325359,
+        "width": 0.10606060606060606,
+        "height": 0.23046251993620415
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        130,
+        286
+      ]
+    },
+    "road_braces": {
+      "name": "Мешок креплений",
+      "kind": "quest",
+      "atlas": "items_04",
+      "file": "items_04.png",
+      "row": 0,
+      "column": 2,
+      "frame": {
+        "x": 647,
+        "y": 45,
+        "w": 277,
+        "h": 243
+      },
+      "uv": {
+        "u": 0.5159489633173844,
+        "v": 0.03588516746411483,
+        "width": 0.22089314194577353,
+        "height": 0.1937799043062201
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        274,
+        240
+      ]
+    },
+    "capital_index": {
+      "name": "Опись водяной сети",
+      "kind": "quest",
+      "atlas": "items_04",
+      "file": "items_04.png",
+      "row": 0,
+      "column": 3,
+      "frame": {
+        "x": 965,
+        "y": 28,
+        "w": 249,
+        "h": 279
+      },
+      "uv": {
+        "u": 0.7695374800637959,
+        "v": 0.022328548644338118,
+        "width": 0.19856459330143542,
+        "height": 0.22248803827751196
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        246,
+        276
+      ]
+    },
+    "pump_scheme": {
+      "name": "Схема портового насоса",
+      "kind": "quest",
+      "atlas": "items_04",
+      "file": "items_04.png",
+      "row": 1,
+      "column": 0,
+      "frame": {
+        "x": 16,
+        "y": 331,
+        "w": 297,
+        "h": 281
+      },
+      "uv": {
+        "u": 0.012759170653907496,
+        "v": 0.26395534290271133,
+        "width": 0.23684210526315788,
+        "height": 0.2240829346092504
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        294,
+        278
+      ]
+    },
+    "pump_permit": {
+      "name": "Допуск водяной службы",
+      "kind": "quest",
+      "atlas": "items_04",
+      "file": "items_04.png",
+      "row": 1,
+      "column": 1,
+      "frame": {
+        "x": 345,
+        "y": 352,
+        "w": 262,
+        "h": 240
+      },
+      "uv": {
+        "u": 0.2751196172248804,
+        "v": 0.2807017543859649,
+        "width": 0.20893141945773525,
+        "height": 0.19138755980861244
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        259,
+        237
+      ]
+    },
+    "pump_annex": {
+      "name": "Приложение о ручном обходе",
+      "kind": "quest",
+      "atlas": "items_04",
+      "file": "items_04.png",
+      "row": 1,
+      "column": 2,
+      "frame": {
+        "x": 636,
+        "y": 340,
+        "w": 292,
+        "h": 274
+      },
+      "uv": {
+        "u": 0.507177033492823,
+        "v": 0.2711323763955343,
+        "width": 0.23285486443381181,
+        "height": 0.21850079744816586
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        289,
+        271
+      ]
+    },
+    "post_plan": {
+      "name": "План восточного поста",
+      "kind": "quest",
+      "atlas": "items_04",
+      "file": "items_04.png",
+      "row": 1,
+      "column": 3,
+      "frame": {
+        "x": 945,
+        "y": 344,
+        "w": 289,
+        "h": 269
+      },
+      "uv": {
+        "u": 0.7535885167464115,
+        "v": 0.2743221690590112,
+        "width": 0.23046251993620415,
+        "height": 0.21451355661881977
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        286,
+        266
+      ]
+    },
+    "n01_letter_item": {
+      "name": "Письмо с другого берега",
+      "kind": "quest",
+      "atlas": "items_04",
+      "file": "items_04.png",
+      "row": 2,
+      "column": 0,
+      "frame": {
+        "x": 19,
+        "y": 668,
+        "w": 293,
+        "h": 236
+      },
+      "uv": {
+        "u": 0.015151515151515152,
+        "v": 0.532695374800638,
+        "width": 0.23365231259968103,
+        "height": 0.18819776714513556
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        290,
+        233
+      ]
+    },
+    "n05_reserve_lantern": {
+      "name": "Запасной фонарь",
+      "kind": "quest",
+      "atlas": "items_04",
+      "file": "items_04.png",
+      "row": 2,
+      "column": 1,
+      "frame": {
+        "x": 371,
+        "y": 633,
+        "w": 202,
+        "h": 287
+      },
+      "uv": {
+        "u": 0.2958532695374801,
+        "v": 0.5047846889952153,
+        "width": 0.16108452950558214,
+        "height": 0.22886762360446572
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        199,
+        284
+      ]
+    },
+    "valve_key": {
+      "name": "Ключ насоса",
+      "kind": "quest",
+      "atlas": "items_04",
+      "file": "items_04.png",
+      "row": 2,
+      "column": 2,
+      "frame": {
+        "x": 672,
+        "y": 643,
+        "w": 252,
+        "h": 268
+      },
+      "uv": {
+        "u": 0.5358851674641149,
+        "v": 0.5127591706539075,
+        "width": 0.20095693779904306,
+        "height": 0.21371610845295055
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        249,
+        265
+      ]
+    },
+    "link_module": {
+      "name": "Модуль связи Эдмунда",
+      "kind": "quest",
+      "atlas": "items_04",
+      "file": "items_04.png",
+      "row": 2,
+      "column": 3,
+      "frame": {
+        "x": 995,
+        "y": 633,
+        "w": 205,
+        "h": 287
+      },
+      "uv": {
+        "u": 0.7934609250398724,
+        "v": 0.5047846889952153,
+        "width": 0.1634768740031898,
+        "height": 0.22886762360446572
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        202,
+        284
+      ]
+    },
+    "waterproof_case": {
+      "name": "Водостойкий футляр",
+      "kind": "quest",
+      "atlas": "items_04",
+      "file": "items_04.png",
+      "row": 3,
+      "column": 0,
+      "frame": {
+        "x": 12,
+        "y": 974,
+        "w": 296,
+        "h": 233
+      },
+      "uv": {
+        "u": 0.009569377990430622,
+        "v": 0.7767145135566188,
+        "width": 0.23604465709728867,
+        "height": 0.18580542264752792
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        293,
+        230
+      ]
+    },
+    "tar_tools": {
+      "name": "Набор инструментов смолокура",
+      "kind": "material",
+      "atlas": "items_04",
+      "file": "items_04.png",
+      "row": 3,
+      "column": 1,
+      "frame": {
+        "x": 320,
+        "y": 953,
+        "w": 294,
+        "h": 262
+      },
+      "uv": {
+        "u": 0.2551834130781499,
+        "v": 0.7599681020733652,
+        "width": 0.23444976076555024,
+        "height": 0.20893141945773525
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        291,
+        259
+      ]
+    },
+    "crypt_lamp": {
+      "name": "Лампа гильдии",
+      "kind": "quest",
+      "atlas": "items_04",
+      "file": "items_04.png",
+      "row": 3,
+      "column": 2,
+      "frame": {
+        "x": 675,
+        "y": 935,
+        "w": 213,
+        "h": 286
+      },
+      "uv": {
+        "u": 0.5382775119617225,
+        "v": 0.7456140350877193,
+        "width": 0.16985645933014354,
+        "height": 0.22807017543859648
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        210,
+        283
+      ]
+    },
+    "old_coin": {
+      "name": "Старинная монета",
+      "kind": "trophy",
+      "atlas": "items_04",
+      "file": "items_04.png",
+      "row": 3,
+      "column": 3,
+      "frame": {
+        "x": 976,
+        "y": 959,
+        "w": 235,
+        "h": 251
+      },
+      "uv": {
+        "u": 0.7783094098883573,
+        "v": 0.7647527910685805,
+        "width": 0.18740031897926634,
+        "height": 0.20015948963317384
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        232,
+        248
+      ]
+    },
+    "skill_explosion": {
+      "name": "Взрыв",
+      "kind": "skill",
+      "atlas": "skills_ui",
+      "file": "skills_ui.png",
+      "row": 0,
+      "column": 0,
+      "frame": {
+        "x": 33,
+        "y": 33,
+        "w": 274,
+        "h": 272
+      },
+      "uv": {
+        "u": 0.02631578947368421,
+        "v": 0.02631578947368421,
+        "width": 0.21850079744816586,
+        "height": 0.21690590111642744
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        271,
+        269
+      ]
+    },
+    "skill_crimson_breach": {
+      "name": "Алый пролом",
+      "kind": "skill",
+      "atlas": "skills_ui",
+      "file": "skills_ui.png",
+      "row": 0,
+      "column": 1,
+      "frame": {
+        "x": 348,
+        "y": 39,
+        "w": 260,
+        "h": 263
+      },
+      "uv": {
+        "u": 0.27751196172248804,
+        "v": 0.03110047846889952,
+        "width": 0.20733652312599682,
+        "height": 0.20972886762360446
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        257,
+        260
+      ]
+    },
+    "skill_staff_lunge": {
+      "name": "Проламывающий выпад",
+      "kind": "skill",
+      "atlas": "skills_ui",
+      "file": "skills_ui.png",
+      "row": 0,
+      "column": 2,
+      "frame": {
+        "x": 663,
+        "y": 36,
+        "w": 248,
+        "h": 268
+      },
+      "uv": {
+        "u": 0.5287081339712919,
+        "v": 0.028708133971291867,
+        "width": 0.19776714513556617,
+        "height": 0.21371610845295055
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        245,
+        265
+      ]
+    },
+    "skill_staff_sweep": {
+      "name": "Круговой отбив",
+      "kind": "skill",
+      "atlas": "skills_ui",
+      "file": "skills_ui.png",
+      "row": 0,
+      "column": 3,
+      "frame": {
+        "x": 972,
+        "y": 48,
+        "w": 256,
+        "h": 254
+      },
+      "uv": {
+        "u": 0.7751196172248804,
+        "v": 0.03827751196172249,
+        "width": 0.20414673046251994,
+        "height": 0.2025518341307815
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        253,
+        251
+      ]
+    },
+    "skill_water_volley": {
+      "name": "Водяной залп",
+      "kind": "skill",
+      "atlas": "skills_ui",
+      "file": "skills_ui.png",
+      "row": 1,
+      "column": 0,
+      "frame": {
+        "x": 37,
+        "y": 342,
+        "w": 269,
+        "h": 261
+      },
+      "uv": {
+        "u": 0.029505582137161084,
+        "v": 0.2727272727272727,
+        "width": 0.21451355661881977,
+        "height": 0.20813397129186603
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        266,
+        258
+      ]
+    },
+    "skill_tidal_collapse": {
+      "name": "Приливный обвал",
+      "kind": "skill",
+      "atlas": "skills_ui",
+      "file": "skills_ui.png",
+      "row": 1,
+      "column": 1,
+      "frame": {
+        "x": 350,
+        "y": 337,
+        "w": 249,
+        "h": 272
+      },
+      "uv": {
+        "u": 0.27910685805422647,
+        "v": 0.2687400318979266,
+        "width": 0.19856459330143542,
+        "height": 0.21690590111642744
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        246,
+        269
+      ]
+    },
+    "skill_water_lash": {
+      "name": "Водяной хлыст",
+      "kind": "skill",
+      "atlas": "skills_ui",
+      "file": "skills_ui.png",
+      "row": 1,
+      "column": 2,
+      "frame": {
+        "x": 663,
+        "y": 345,
+        "w": 247,
+        "h": 267
+      },
+      "uv": {
+        "u": 0.5287081339712919,
+        "v": 0.2751196172248804,
+        "width": 0.19696969696969696,
+        "height": 0.21291866028708134
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        244,
+        264
+      ]
+    },
+    "skill_counter_thrust": {
+      "name": "Встречный укол",
+      "kind": "skill",
+      "atlas": "skills_ui",
+      "file": "skills_ui.png",
+      "row": 1,
+      "column": 3,
+      "frame": {
+        "x": 963,
+        "y": 383,
+        "w": 275,
+        "h": 186
+      },
+      "uv": {
+        "u": 0.7679425837320574,
+        "v": 0.3054226475279107,
+        "width": 0.21929824561403508,
+        "height": 0.14832535885167464
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        272,
+        183
+      ]
+    },
+    "ui_health": {
+      "name": "Здоровье",
+      "kind": "ui",
+      "atlas": "skills_ui",
+      "file": "skills_ui.png",
+      "row": 2,
+      "column": 0,
+      "frame": {
+        "x": 50,
+        "y": 672,
+        "w": 239,
+        "h": 211
+      },
+      "uv": {
+        "u": 0.03987240829346093,
+        "v": 0.5358851674641149,
+        "width": 0.19059011164274323,
+        "height": 0.1682615629984051
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        236,
+        208
+      ]
+    },
+    "ui_mana": {
+      "name": "Мана",
+      "kind": "ui",
+      "atlas": "skills_ui",
+      "file": "skills_ui.png",
+      "row": 2,
+      "column": 1,
+      "frame": {
+        "x": 393,
+        "y": 650,
+        "w": 164,
+        "h": 249
+      },
+      "uv": {
+        "u": 0.3133971291866029,
+        "v": 0.518341307814992,
+        "width": 0.13078149920255183,
+        "height": 0.19856459330143542
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        161,
+        246
+      ]
+    },
+    "ui_stamina": {
+      "name": "Выносливость",
+      "kind": "ui",
+      "atlas": "skills_ui",
+      "file": "skills_ui.png",
+      "row": 2,
+      "column": 2,
+      "frame": {
+        "x": 694,
+        "y": 645,
+        "w": 185,
+        "h": 271
+      },
+      "uv": {
+        "u": 0.5534290271132376,
+        "v": 0.5143540669856459,
+        "width": 0.14752791068580542,
+        "height": 0.21610845295055822
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        182,
+        268
+      ]
+    },
+    "ui_inventory": {
+      "name": "Инвентарь",
+      "kind": "ui",
+      "atlas": "skills_ui",
+      "file": "skills_ui.png",
+      "row": 2,
+      "column": 3,
+      "frame": {
+        "x": 968,
+        "y": 662,
+        "w": 266,
+        "h": 231
+      },
+      "uv": {
+        "u": 0.7719298245614035,
+        "v": 0.5279106858054227,
+        "width": 0.21212121212121213,
+        "height": 0.18421052631578946
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        263,
+        228
+      ]
+    },
+    "ui_quest": {
+      "name": "Задания",
+      "kind": "ui",
+      "atlas": "skills_ui",
+      "file": "skills_ui.png",
+      "row": 3,
+      "column": 0,
+      "frame": {
+        "x": 35,
+        "y": 954,
+        "w": 263,
+        "h": 244
+      },
+      "uv": {
+        "u": 0.027910685805422646,
+        "v": 0.7607655502392344,
+        "width": 0.20972886762360446,
+        "height": 0.19457735247208932
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        260,
+        241
+      ]
+    },
+    "ui_map": {
+      "name": "Карта",
+      "kind": "ui",
+      "atlas": "skills_ui",
+      "file": "skills_ui.png",
+      "row": 3,
+      "column": 1,
+      "frame": {
+        "x": 336,
+        "y": 953,
+        "w": 276,
+        "h": 248
+      },
+      "uv": {
+        "u": 0.2679425837320574,
+        "v": 0.7599681020733652,
+        "width": 0.22009569377990432,
+        "height": 0.19776714513556617
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        273,
+        245
+      ]
+    },
+    "ui_craft": {
+      "name": "Ремесло",
+      "kind": "ui",
+      "atlas": "skills_ui",
+      "file": "skills_ui.png",
+      "row": 3,
+      "column": 2,
+      "frame": {
+        "x": 644,
+        "y": 949,
+        "w": 290,
+        "h": 255
+      },
+      "uv": {
+        "u": 0.5135566188197768,
+        "v": 0.7567783094098883,
+        "width": 0.23125996810207336,
+        "height": 0.20334928229665072
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        287,
+        252
+      ]
+    },
+    "ui_settings": {
+      "name": "Настройки",
+      "kind": "ui",
+      "atlas": "skills_ui",
+      "file": "skills_ui.png",
+      "row": 3,
+      "column": 3,
+      "frame": {
+        "x": 971,
+        "y": 950,
+        "w": 251,
+        "h": 245
+      },
+      "uv": {
+        "u": 0.7743221690590112,
+        "v": 0.7575757575757576,
+        "width": 0.20015948963317384,
+        "height": 0.19537480063795853
+      },
+      "content_bounds_in_frame": [
+        3,
+        3,
+        248,
+        242
+      ]
+    }
+  },
+  "source": "src/data/items.js from the user-provided local project",
+  "art_generation": "built-in image_gen; original PNG alpha preserved"
+}

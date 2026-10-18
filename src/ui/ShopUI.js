@@ -1,4 +1,7 @@
 import { ITEMS, KIND_NAMES } from '../data/items.js';
+import { itemIcon, iconHtml } from './icons.js';
+
+const COIN = iconHtml('eris', 18, 'coin') || '🪙';
 
 /**
  * Trade window (buy from the owner's stock / sell what they accept) and the crafting
@@ -53,7 +56,7 @@ export class ShopUI {
 
   render() {
     const inv = this.game.inventory;
-    this.el.eris.textContent = `🪙 ${inv.eris}`;
+    this.el.eris.innerHTML = `${COIN} ${inv.eris}`;
     const body = this.el.body;
     body.innerHTML = '';
     if (this.mode === 'shop') {
@@ -96,7 +99,7 @@ export class ShopUI {
   _row(it, sub, price, action, enabled, onClick) {
     const r = document.createElement('div');
     r.className = 'srow' + (enabled || !action ? '' : ' off');
-    r.innerHTML = `<span class="ico">${it.icon}</span><span class="nm"></span><span class="pr">${price != null ? price + ' 🪙' : ''}</span>`;
+    r.innerHTML = `<span class="ico">${itemIcon(it, 36)}</span><span class="nm"></span><span class="pr">${price != null ? price + ' ' + COIN : ''}</span>`;
     r.querySelector('.nm').innerHTML = `${escape(it.name)}<small>${escape(sub)}</small>`;
     r.title = it.desc || '';
     if (action) {
@@ -117,9 +120,9 @@ export class ShopUI {
     row.className = 'recipe' + (locked ? ' locked' : '');
     const ins = r.inputs.map(([id, n]) => {
       const have = inv.count(id);
-      return `<span class="${have >= n ? 'ok' : 'no'}">${ITEMS[id].icon} ${escape(ITEMS[id].name)} ${Math.min(have, n)}/${n}</span>`;
+      return `<span class="${have >= n ? 'ok' : 'no'}">${itemIcon(id, 20)} ${escape(ITEMS[id].name)} ${Math.min(have, n)}/${n}</span>`;
     }).join(' · ');
-    row.innerHTML = `<span class="ico" style="font-size:24px">${out.icon}</span><div><b>${escape(out.name)}</b>${r.output[1] > 1 ? ' ×' + r.output[1] : ''}<div class="ins">${ins}${r.fee ? ` · <span class="${inv.eris >= r.fee ? 'ok' : 'no'}">${r.fee} 🪙</span>` : ''}</div>${locked ? '<div class="ins">Рецепт пока неизвестен.</div>' : ''}</div>`;
+    row.innerHTML = `<span class="ico" style="font-size:24px">${itemIcon(out, 44)}</span><div><b>${escape(out.name)}</b>${r.output[1] > 1 ? ' ×' + r.output[1] : ''}<div class="ins">${ins}${r.fee ? ` · <span class="${inv.eris >= r.fee ? 'ok' : 'no'}">${r.fee} ${COIN}</span>` : ''}</div>${locked ? '<div class="ins">Рецепт пока неизвестен.</div>' : ''}</div>`;
     const b = document.createElement('button');
     b.className = 'btn';
     b.textContent = 'Создать';
