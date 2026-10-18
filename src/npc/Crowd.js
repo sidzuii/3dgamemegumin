@@ -154,6 +154,7 @@ export class Crowd {
   async prepare(nap) {
     if (!this.enabled) return;
     for (const pack of ['m', 'w']) while (this.variants[pack].length < VARIANTS[pack]) { this._variant(pack); await nap(); }
+    this._groupSpots(); // the places of the standing groups (collision queries): before the first visit, not on it
   }
 
   _variant(pack) {
