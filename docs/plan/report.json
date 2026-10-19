@@ -197,14 +197,14 @@
   },
   "buildings": {
    "key": 22,
-   "generated": 100,
-   "total": 122,
+   "generated": 99,
+   "total": 121,
    "byDistrict": {
     "center": 10,
     "trade": 16,
     "res_ne": 23,
     "caravan": 6,
-    "temple": 13,
+    "temple": 12,
     "craft": 20,
     "res_s": 25,
     "res_w": 9
@@ -219,10 +219,10 @@
     "stable": 1,
     "temple": 2,
     "workshop": 8,
-    "house": 79,
+    "house": 78,
     "warehouse": 5
    },
-   "footprint_m2": 8105
+   "footprint_m2": 8065
   },
   "streets": {
    "main": 365,
@@ -241,7 +241,7 @@
     "id": "temple",
     "name": "Храмовый холм",
     "area": 6416,
-    "buildings": 13
+    "buildings": 12
    },
    {
     "id": "trade",

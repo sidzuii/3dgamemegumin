@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mulberry32 } from '../../core/math.js';
-import { Frame, house, houseTower, cityWall, pavePoly, lamp, lantern, barrel, crate, stall, well, bench, wagon, haystack, fence, tree, bush, food, prop, tableware } from './Kit.js';
+import { Frame, house, houseTower, villageRoof, cityWall, pavePoly, lamp, lantern, barrel, crate, stall, well, bench, wagon, haystack, fence, tree, bush, food, prop, tableware } from './Kit.js';
 import { HealingCrystal, Brazier, QuestProp, Door } from '../Interactables.js';
 import { TrainingDummy } from '../TrainingDummy.js';
 import { ROOF_COLORS } from '../KitLibrary.js';
@@ -399,9 +399,16 @@ function marketHall(rng) {
   for (let i = 0; i <= 4; i++) for (const sz of [-1, 1]) F.box(0.4, h, 0.4, -w / 2 + (i * w) / 4, 0.2, sz * (d / 2), 'timber', { tint: 0x5a3a26 });
   F.box(w + 0.4, 0.3, 0.3, 0, h, d / 2, 'timber', { tint: 0x5a3a26 });
   F.box(w + 0.4, 0.3, 0.3, 0, h, -d / 2, 'timber', { tint: 0x5a3a26 });
-  F.kit('village/Roof_RoundTiles_8x14', 0, h + 0.2, 0, { ry: Math.PI / 2, sx: d / 8, sy: d / 8, sz: w / 14, collide: false, tint: 0xb8b8c8 });
-  // Clock over the north gable.
-  F.cyl(0.8, 0.1, 0, h + 2.6, d / 2 + 0.2, 'plaster', { seg: 14, rx: Math.PI / 2, collide: false, tint: 0xf4ecd8 });
+  // The tiled roof with its brick gables (an open hall: no dark hollow under the gable ends).
+  const top = h + 0.3, ridge = villageRoof(F, w, d, top, 'red', {});
+  // Clocks on both gables (not on the slope of the roof).
+  for (const s of [-1, 1]) {
+    const cy = top + (ridge - top) * 0.36, cx = s * (w / 2 + 0.02);
+    F.cyl(0.62, 0.12, cx, cy, 0, 'plaster', { seg: 16, rz: -s * Math.PI / 2, collide: false, tint: 0xf4ecd8 });
+    F.cyl(0.7, 0.08, cx - s * 0.02, cy, 0, 'timber', { seg: 16, rz: -s * Math.PI / 2, collide: false, tint: 0x4a3020 });
+    F.box(0.04, 0.34, 0.05, cx + s * 0.14, cy, 0.0, 'metal', { collide: false, rx: 0.5 });
+    F.box(0.04, 0.48, 0.04, cx + s * 0.15, cy, 0.0, 'metal', { collide: false, rx: -1.9 });
+  }
   // Tables with goods inside.
   for (let i = 0; i < 3; i++) {
     const T2 = F.sub(-w / 2 + 2.4 + i * ((w - 4.8) / 2), 0.2, 0);

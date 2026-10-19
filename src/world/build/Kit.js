@@ -18,6 +18,7 @@ const Q = new THREE.Quaternion();
 const UP = new THREE.Vector3(0, 1, 0);
 const _m = new THREE.Matrix4();
 const _p = new THREE.Vector3();
+const _gp = new THREE.Vector3();
 const _q = new THREE.Quaternion();
 const _s = new THREE.Vector3();
 const _e = new THREE.Euler();
@@ -75,6 +76,8 @@ export class Frame {
   /** Child frame offset/rotated inside this one. */
   sub(lx, ly, lz, rot = 0) {
     const p = this.at(lx, ly, lz);
+    // Ground level of a house raised on a slope (house(): its floor stands on the uphill side): props outside stay on the ground.
+    if (ly === 0 && this.raise) p.y -= this.raise;
     return new Frame(this.w, p.x, p.y, p.z, this.rot + rot);
   }
 
@@ -177,8 +180,23 @@ export function house(world, spec, rng) {
   const w = spec.w ?? 7, d = spec.d ?? 6;
   const floors = spec.floors ?? (rng() < 0.55 ? 2 : 1);
   const floorH = spec.floorH ?? 3.0;
-  const gy = spec.y ?? world.heightAt(spec.x, spec.z);
+  // Ground under a builder-space point, in builder space (the map editor may have moved the group: World.xf carries its delta).
+  const groundAt = (x, z) => { const p = world.xf(_gp.set(x, 0, z)); return world.heightAt(p.x, p.z) - p.y; };
+  const gy0 = spec.y ?? world.heightAt(spec.x, spec.z);
+  // On a slope the floor stands on the uphill side (no wall buried in the hill) and the plinth reaches down to the lowest corner
+  // (no gap under it on the downhill side).
+  let lo = 0, hi = 0;
+  if (spec.y === undefined) {
+    const c = Math.cos(spec.rot || 0), sn = Math.sin(spec.rot || 0), gc = groundAt(spec.x, spec.z);
+    for (const [ax, az] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+      const lx = ax * (w / 2 + PLINTH), lz = az * (d / 2 + PLINTH);
+      const h = groundAt(spec.x + lx * c + lz * sn, spec.z - lx * sn + lz * c) - gc;
+      lo = Math.min(lo, h); hi = Math.max(hi, h);
+    }
+  }
+  const gy = gy0 + Math.max(0, hi - 0.25);
   const F = new Frame(world, spec.x, gy, spec.z, spec.rot || 0);
+  F.raise = gy - gy0;
   const roofVar = roofVariant(spec.roofTint) ?? Object.keys(ROOF_TINTS)[Math.floor(rng() * 5)];
   const open = spec.open || false;
   const jetty = spec.jetty ?? (floors > 1 && rng() < 0.5 ? 0.3 : 0);
@@ -187,7 +205,8 @@ export function house(world, spec, rng) {
   const grid = spec.style === 'wood' || rng() < 0.4;
 
   // Stone plinth absorbs the slope.
-  F.box(w + PLINTH * 2, 0.9, d + PLINTH * 2, 0, -0.55, 0, 'stoneDark');
+  const drop = Math.max(0.55, gy - gy0 - lo + 0.15);
+  F.box(w + PLINTH * 2, 0.35 + drop, d + PLINTH * 2, 0, -drop, 0, 'stoneDark');
   const base = 0.35;
   world.addFootprint(spec.x, spec.z, w + PLINTH * 2, d + PLINTH * 2, spec.rot || 0, spec.kind || 'house');
   // Everything below is the near model; a proxy for the distance follows (World.lodDistance).
@@ -237,7 +256,9 @@ export function house(world, spec, rng) {
     const dz = d / 2 + 0.04;
     // A hall's one wide arch gets a step as wide as the opening.
     const sw = open === 'hall' && !spec.arcade && doorTiles ? Math.max(1.8, (doorTiles[1] - doorTiles[0] + 1) * tw - 0.4) : 1.8;
-    partAt(world, F, doorX, dz + 0.4, 'step', () => F.box(sw, 0.57, 0.9, doorX, base - 0.55, dz + 0.4, 'stone', { castShadow: false }), 'Крыльцо'); // down to the plinth foot
+    const sp = F.at(doorX, 0, dz + 0.85);
+    const sd = spec.y === undefined ? Math.max(0.55, base - (groundAt(sp.x, sp.z) - gy) + 0.1) : 0.55; // down to the ground in front (a raised floor on a slope)
+    partAt(world, F, doorX, dz + 0.4, 'step', () => F.box(sw, sd + 0.02, 0.9, doorX, base - sd, dz + 0.4, 'stone', { castShadow: false }), 'Крыльцо'); // down to the plinth foot
     door = F.at(doorX, base, dz + 1.2);
     if (spec.lantern !== false && rng() < 0.7) lantern(world, F.sub(doorX + (doorX > 0.01 ? -1.3 : 1.3), base + 2.1, dz + 0.18)); // on the side towards the middle
   }
@@ -632,6 +653,7 @@ function kitTower(world, F, S, height) {
  */
 export function houseTower(F, sx, sz, height, o = {}) {
   const baseH = Math.min(5, height * 0.4);
+  F.w.addFootprint(F.origin.x, F.origin.z, sx, sz, F.rot, 'tower');
   F.kit('castle/tower-square-base', 0, 0, 0, { sx, sy: baseH / 1.01, sz, collide: 'box', retex: STONE });
   const mids = Math.max(1, Math.round((height - baseH - 1) / 4.5));
   const midH = (height - baseH - 0.9) / mids;
@@ -946,6 +968,16 @@ export function plankBridge(world, ax, az, bx, bz, width, deckY) {
 }
 
 /** Fence (Kenney town fence modules, 2.6 m each) along a polyline of [x, z] points. */
+/** Is the builder-space point (x, z) inside a building's footprint (+ pad), where the building stands in the game? */
+function inBuilding(world, x, z, pad = 0) {
+  const p = world.xf(_gp.set(x, 0, z));
+  for (const f of world._footprintsNear(p.x, p.z)) {
+    const c = Math.cos(f.rot), sn = Math.sin(f.rot), dx = p.x - f.x, dz = p.z - f.z;
+    if (Math.abs(dx * c - dz * sn) < f.w / 2 + pad && Math.abs(dx * sn + dz * c) < f.d / 2 + pad) return true;
+  }
+  return false;
+}
+
 export function fence(world, points, opts = {}) {
   const S = 2.6;
   for (let i = 0; i < points.length - 1; i++) {
@@ -956,6 +988,7 @@ export function fence(world, points, opts = {}) {
     for (let k = 0; k < n; k++) {
       const t = (k + 0.5) / n, x = ax + (bx - ax) * t, z = az + (bz - az) * t;
       if (roadInfo(x, z).d < 1.6) continue; // never fence a road off
+      if (inBuilding(world, x, z, 0.3)) continue; // nor run into a house or a tower (a layout moved by the map editor)
       const y = world.heightAt(x, z);
       // The module stands on its tile's +x edge (x 0.42..0.5): shift it onto the line.
       new Frame(world, x, y - 0.05, z, rot).kit('town/fence', -0.46 * S, 0, 0, { sx: S, sy: 2.7, sz: len / n, collide: opts.open ? false : 'box' });

@@ -59,6 +59,11 @@ Full description, file map and how-to guides: see `README.md` (Russian). The use
   arrays, no three mergeGeometries) and kit pieces skip bounds recomputation (`part.center`); the collider is one triangle soup; NPC
   NavGrids fill lazily (`fill(ms)` / `ensure()`); shaders: `Game.compileScene()` (compileAsync, before the title) and `prewarmAsync()`
   (explosion FX + grids, behind the title). `?prewarm=sync` = the old blocking prewarm. `world.buildTimes` has the step timings.
+- `house()` on a slope: the floor stands on the uphill side (corners checked through `world.xf`, so editor moves count), the plinth
+  and the door step reach down to the ground; `F.raise` = the lift, and `Frame.sub(lx, 0, lz)` of such a frame drops to the ground
+  (props outside stay down). Fences skip modules inside building footprints (towers have one too). Key buildings keep a 5.5 m
+  forecourt free of generated lots (render_plan drops such plots after the generation). Facade review: shoot every Axel building
+  front + oblique (scratch script), contact sheets, then fix.
 - Buildings have LOD: `house()` emits a near model and a far proxy (`world.lodMode`), small parts use
   `detail: true`; distances come from the quality preset (`lod`, `detail`). Terrain is chunked (170 m).
 - Saves: `mapRev` (State.MAP_REV) moves the player of an older-map save to a safe spot; placements.json

@@ -171,7 +171,7 @@ export class KitLibrary {
         if (src.alphaTest > 0 || src.transparent && src.map) {
           // Leaf cards: cut-out, both sides. Lambert, not PBR: foliage is layered many cards
           // deep, and per-pixel PBR on every layer is what an integrated GPU cannot afford.
-          m = new THREE.MeshLambertMaterial({ map: src.map, alphaTest: Math.max(src.alphaTest, 0.45), side: THREE.DoubleSide, vertexColors: true });
+          m = new THREE.MeshLambertMaterial({ map: src.map, color: src.color, alphaTest: Math.max(src.alphaTest, 0.45), side: THREE.DoubleSide, vertexColors: true }); // (the vine's leaf texture is grey: its green is the colour)
           m.name = src.name;
         } else {
           m = src.clone();

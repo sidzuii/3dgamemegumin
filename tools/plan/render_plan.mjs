@@ -342,7 +342,18 @@ for (const f of fronts) {
     }
   }
 }
-const gen = placed.filter((p) => !p.key);
+// The space in front of a key building's door stays open (no house standing with its back a few metres before the entrance of the
+// hospice / the guild…): a forecourt as wide as the front and FORECOURT deep; generated plots on it are dropped (after the
+// generation, so the random stream and the rest of the rows stay as they are).
+const FORECOURT = 5.5;
+const forecourts = placed.filter((p) => p.key).map((p) => ({ id: p.id, R: rectLocal(p, -p.w / 2, p.w / 2, p.d / 2, p.d / 2 + FORECOURT) }));
+const gen = placed.filter((p) => {
+  if (p.key) return false;
+  const f = forecourts.find((q) => p.E.some((A) => satOverlap(A, q.R)));
+  if (f) console.log('plot', p.id, 'stands in front of', f.id, '- dropped');
+  return !f;
+});
+for (let i = placed.length - 1; i >= 0; i--) if (!placed[i].key && !gen.includes(placed[i])) placed.splice(i, 1); // (the report and the drawings too)
 if (process.argv.includes('--emit')) {
   const seq = {};
   const rows = gen.map((p) => {
