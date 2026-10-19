@@ -168,6 +168,11 @@
    "maxGrade": 0.28
   },
   {
+   "id": "ainstrey_road",
+   "length": 2073,
+   "maxGrade": 0.43
+  },
+  {
    "id": "lava_road",
    "length": 502,
    "maxGrade": 0.31
@@ -192,32 +197,32 @@
   },
   "buildings": {
    "key": 22,
-   "generated": 79,
-   "total": 101,
+   "generated": 100,
+   "total": 122,
    "byDistrict": {
-    "center": 8,
-    "trade": 12,
-    "res_w": 12,
-    "res_ne": 19,
-    "caravan": 8,
-    "temple": 7,
-    "craft": 16,
-    "res_s": 19
+    "center": 10,
+    "trade": 16,
+    "res_ne": 23,
+    "caravan": 6,
+    "temple": 13,
+    "craft": 20,
+    "res_s": 25,
+    "res_w": 9
    },
    "byKind": {
     "guild": 1,
     "tavern": 1,
     "public": 7,
     "military": 1,
-    "shop": 12,
+    "shop": 15,
     "inn": 2,
-    "stable": 2,
+    "stable": 1,
     "temple": 2,
     "workshop": 8,
-    "house": 59,
-    "warehouse": 6
+    "house": 79,
+    "warehouse": 5
    },
-   "footprint_m2": 6743
+   "footprint_m2": 8105
   },
   "streets": {
    "main": 365,
@@ -230,49 +235,49 @@
     "id": "center",
     "name": "Центр",
     "area": 5842,
-    "buildings": 8
+    "buildings": 10
    },
    {
     "id": "temple",
     "name": "Храмовый холм",
     "area": 6416,
-    "buildings": 7
+    "buildings": 13
    },
    {
     "id": "trade",
     "name": "Торговый район",
     "area": 5450,
-    "buildings": 12
+    "buildings": 16
    },
    {
     "id": "caravan",
     "name": "Караванный район",
     "area": 5470,
-    "buildings": 8
+    "buildings": 6
    },
    {
     "id": "craft",
     "name": "Ремесленный район",
     "area": 7740,
-    "buildings": 16
+    "buildings": 20
    },
    {
     "id": "res_ne",
     "name": "Речной квартал",
     "area": 9400,
-    "buildings": 19
+    "buildings": 23
    },
    {
     "id": "res_w",
     "name": "Западная слобода",
     "area": 3510,
-    "buildings": 12
+    "buildings": 9
    },
    {
     "id": "res_s",
     "name": "Южный квартал",
     "area": 3344,
-    "buildings": 19
+    "buildings": 25
    }
   ],
   "squares": [
@@ -783,7 +788,29 @@
    "grade": 0.07
   }
  },
- "issues": [],
+ "issues": [
+  "road ainstrey_road: 8 samples in water away from a bridge",
+  "road ainstrey_road: steeper than 30% over 24 m (max 43%)",
+  "region postal: inside the edge mountains",
+  "region ledge_road: inside the edge mountains",
+  "region chalk: inside the edge mountains",
+  "region mills: inside the edge mountains",
+  "region dam: inside the edge mountains",
+  "region dam: centre in the river",
+  "region ainstrey: inside the edge mountains",
+  "region ain_posad: inside the edge mountains",
+  "region ain_steps: inside the edge mountains",
+  "region ain_guilds: inside the edge mountains",
+  "region ain_port: inside the edge mountains",
+  "region ain_old: inside the edge mountains",
+  "region ain_academy: inside the edge mountains",
+  "region ain_garden: inside the edge mountains",
+  "area lumber_yard: touches ring",
+  "area guild_yard: touches north_street",
+  "building guild: fountain_square, guild_yard, guild_forecourt",
+  "building tavern: tavern_terrace",
+  "building town_hall: hall_steps"
+ ],
  "forests": [
   {
    "id": "whispering",
@@ -819,6 +846,36 @@
    "id": "mine_woods",
    "name": "Шахтёрский лес",
    "area_ha": 0.7
+  },
+  {
+   "id": "ain_north_wood",
+   "name": "ain_north_wood",
+   "area_ha": 13.6
+  },
+  {
+   "id": "ain_west_wood",
+   "name": "ain_west_wood",
+   "area_ha": 97.2
+  },
+  {
+   "id": "ain_east_wood",
+   "name": "ain_east_wood",
+   "area_ha": 55.5
+  },
+  {
+   "id": "ain_orchard_s",
+   "name": "ain_orchard_s",
+   "area_ha": 10.7
+  },
+  {
+   "id": "ain_mill_wood",
+   "name": "ain_mill_wood",
+   "area_ha": 2.3
+  },
+  {
+   "id": "ain_chalk_pines",
+   "name": "ain_chalk_pines",
+   "area_ha": 11.2
   }
  ]
 }

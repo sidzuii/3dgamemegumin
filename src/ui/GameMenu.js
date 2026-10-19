@@ -7,19 +7,23 @@ import { RANK_POINTS } from '../rpg/State.js';
 import { XP_TABLE } from '../rpg/RPG.js';
 import { NPCS } from '../data/npcs.js';
 import { lockedReason } from '../combat/unlocks.js';
+import { SLOT_LABEL } from '../combat/core/specs.js';
+import { itemIcon, iconHtml } from './icons.js';
+
+const COIN = iconHtml('eris', 18, 'coin') || '🪙';
 
 /**
  * The game menu (game paused while open): Inventory (I), Journal (J), Map (M),
  * Character (C), Guild (G). Esc closes.
  */
 const TABS = [
-  { id: 'inv', label: 'Инвентарь', key: 'I' },
-  { id: 'journal', label: 'Журнал', key: 'J' },
-  { id: 'map', label: 'Карта', key: 'M' },
+  { id: 'inv', label: 'Инвентарь', key: 'I', icon: 'ui_inventory' },
+  { id: 'journal', label: 'Журнал', key: 'J', icon: 'ui_quest' },
+  { id: 'map', label: 'Карта', key: 'M', icon: 'ui_map' },
   { id: 'char', label: 'Персонаж', key: 'C' },
   { id: 'guild', label: 'Гильдия', key: 'G' },
   { id: 'combat', label: 'Бой', key: 'K' },
-  { id: 'sound', label: 'Звук', key: 'O' },
+  { id: 'sound', label: 'Звук', key: 'O', icon: 'ui_settings' },
 ];
 const CAT = { story: 'Сюжет', contract: 'Заказ гильдии', side: 'Поручение' };
 
@@ -36,7 +40,7 @@ export class GameMenu {
     for (const t of TABS) {
       const b = document.createElement('button');
       b.className = 'menu-tab';
-      b.innerHTML = `${t.label} <kbd>${t.key}</kbd>`;
+      b.innerHTML = `${t.icon ? iconHtml(t.icon, 20) : ''}${t.label} <kbd>${t.key}</kbd>`;
       b.addEventListener('click', () => this.show(t.id));
       this.el.tabs.appendChild(b);
       this.tabButtons[t.id] = b;
@@ -81,7 +85,7 @@ export class GameMenu {
   render() {
     const body = this.el.body;
     body.innerHTML = '';
-    this.el.foot.textContent = `${this.rpg.clock.label()} · 🪙 ${this.game.inventory.eris}`;
+    this.el.foot.innerHTML = `${esc(this.rpg.clock.label())} · ${COIN} ${this.game.inventory.eris}`;
     if (this.tab === 'inv') this._inv(body);
     if (this.tab === 'journal') this._journal(body);
     if (this.tab === 'map') {
@@ -192,7 +196,7 @@ export class GameMenu {
         const card = div('combat-card');
         card.style.cssText = 'border:1px solid var(--panel-line);border-radius:8px;padding:8px 10px;background:rgba(255,255,255,0.03)';
         const cost = [sp.cost.mana ? sp.cost.mana + ' маны' : '', sp.cost.stamina ? sp.cost.stamina + ' выносл.' : '', sp.cooldown ? 'перезарядка ' + sp.cooldown + ' с' : ''].filter(Boolean).join(' · ');
-        card.innerHTML = `<b>${sp.name.replace(/ \/ .*/, '')}</b> <kbd>${key}</kbd><br><small style="opacity:.75">${cost}</small>`
+        card.innerHTML = `<b>${sp.name.replace(/ \/ .*/, '')}</b> <kbd>${SLOT_LABEL[key]}</kbd><br><small style="opacity:.75">${cost}</small>`
           + (lock ? `<br><small style="color:#ff8f7a">${lock}</small>` : '');
         grid.appendChild(card);
       }
@@ -274,8 +278,8 @@ export class GameMenu {
       right.innerHTML = '<div class="inv-empty">Выбери предмет.<br>Двойной клик — использовать / надеть.<br><br>3 — зелье исцеления · 4 — эликсир бодрости · 5 — эликсир маны</div>';
     } else {
       const it = ITEMS[sel.id];
-      right.innerHTML = `<div class="d-ico">${it.icon}</div><div class="d-name r-${it.rarity}">${esc(it.name)}</div>
-        <div class="d-meta">${KIND_NAMES[it.kind] || ''} · ${RARITY_NAMES[it.rarity] || ''}${sel.slot ? ' · надето' : ' · ×' + inv.count(sel.id)}${it.price ? ' · цена ' + it.price + ' 🪙' : ''}</div>
+      right.innerHTML = `<div class="d-ico">${itemIcon(it, 80)}</div><div class="d-name r-${it.rarity}">${esc(it.name)}</div>
+        <div class="d-meta">${KIND_NAMES[it.kind] || ''} · ${RARITY_NAMES[it.rarity] || ''}${sel.slot ? ' · надето' : ' · ×' + inv.count(sel.id)}${it.price ? ' · цена ' + it.price + ' ' + COIN : ''}</div>
         <div class="d-desc">${esc(it.desc || '')}</div>`;
       const acts = div('d-actions');
       const btn = (t, fn, ghost) => {
@@ -337,7 +341,7 @@ export class GameMenu {
       });
       det.appendChild(stages);
       const r = d.rewards || {};
-      const rew = [r.eris && `${r.eris} 🪙`, r.xp && `${r.xp} опыта`, r.rankPoints && `${r.rankPoints} очк. гильдии`, ...(r.items || []).map(([id, n]) => `${ITEMS[id].icon} ${ITEMS[id].name}${n > 1 ? ' ×' + n : ''}`)].filter(Boolean);
+      const rew = [r.eris && `${r.eris} ${COIN}`, r.xp && `${r.xp} опыта`, r.rankPoints && `${r.rankPoints} очк. гильдии`, ...(r.items || []).map(([id, n]) => `<span class="rew-item">${itemIcon(id, 22)} ${esc(ITEMS[id].name)}${n > 1 ? ' ×' + n : ''}</span>`)].filter(Boolean);
       if (rew.length) det.insertAdjacentHTML('beforeend', `<div class="h" style="margin-top:14px">Награда</div><div>${rew.join(' · ')}</div>`);
       if (q.status === 'active') {
         const b = document.createElement('button');
@@ -413,7 +417,7 @@ export class GameMenu {
       const ok = Q.canStart(d.id);
       const c = div('contract');
       const r = d.rewards || {};
-      c.innerHTML = `<div><div class="ck">${esc(d.kind || 'Заказ')} · ранг ${d.rank || 'F'}</div><div class="ct">${esc(d.title)}</div></div><div></div><div class="cd">${esc(d.summary)}</div><div class="cr">${[r.eris && r.eris + ' 🪙', r.xp && r.xp + ' опыта', r.rankPoints && r.rankPoints + ' очк.'].filter(Boolean).join(' · ')}</div>`;
+      c.innerHTML = `<div><div class="ck">${esc(d.kind || 'Заказ')} · ранг ${d.rank || 'F'}</div><div class="ct">${esc(d.title)}</div></div><div></div><div class="cd">${esc(d.summary)}</div><div class="cr">${[r.eris && r.eris + ' ' + COIN, r.xp && r.xp + ' опыта', r.rankPoints && r.rankPoints + ' очк.'].filter(Boolean).join(' · ')}</div>`;
       const b = document.createElement('button');
       b.className = 'btn';
       b.textContent = ok ? 'Взять заказ' : `Нужен ранг ${d.rank}`;
@@ -465,7 +469,7 @@ function slotButton(it, count, onClick, onDbl) {
   const b = document.createElement('button');
   b.className = 'inv-slot' + (it ? ` filled r-${it.rarity}${it.kind === 'quest' ? ' k-quest' : ''}${it.tint ? ' t-' + it.tint : ''}` : '');
   if (it) {
-    b.innerHTML = `<span class="ico">${it.icon}</span>${count > 1 ? `<b>${count}</b>` : ''}`;
+    b.innerHTML = `<span class="ico">${itemIcon(it, 44)}</span>${count > 1 ? `<b>${count}</b>` : ''}`;
     b.title = it.name;
   }
   b.addEventListener('click', onClick);

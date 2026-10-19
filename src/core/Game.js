@@ -169,6 +169,7 @@ export class Game {
     await step('Строим Аксель и окрестности…', 0.76);
     this.enemyAssets.prepare(this.animLib);
     this.world = new World(this.renderer, this.scene, this.kits);
+    this.world.game = this; // (closed entrances open their leaf for the townsfolk)
     this.world.layout = layout;
     this.world.heightData = heights;
     this.world.editorMode = this.editorMode;

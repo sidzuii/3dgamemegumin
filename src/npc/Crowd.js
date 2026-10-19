@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import { cityPlan, CLASS, insideCity, polyDist } from '../world/AinstreyCityPlan.js';
+import { cityPlan, CLASS, insideCity, polyDist, polygonSDF } from '../world/AinstreyCityPlan.js';
 import * as AIN from '../world/AinstreyPlan.js';
+import * as AX from '../world/AxelPlan.js';
 
 /**
  * The crowd of the capital: people walking the pavements of every street round the player and standing in groups on the squares
@@ -57,9 +58,21 @@ const LANES = {
 const LIFT = { axis: 0.1, avenue: 0.094, street: 0.088, lane: 0.082, quay: 0.09, path: 0.06 };
 /** Walkers / standing groups per preset (the far ones are dropped first). */
 const COUNT = { low: [18, 5], medium: [32, 9], high: [50, 13] };
+/** Axel (a small town: fewer people; its streets have no raised pavements, one paved surface at 0.09 m). */
+const AXEL_COUNT = { low: [10, 3], medium: [18, 5], high: [26, 7] };
+const AXEL_LANES = { main: [2.2, 3.0], secondary: [1.3], lane: [0.8], ring: [1.1] };
+const inPoly = (pts, x, z) => {
+  let c = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const [xi, zi] = pts[i], [xj, zj] = pts[j];
+    if (zi > z !== zj > z && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) c = !c;
+  }
+  return c;
+};
+const AXEL_WALL = AX.WALL.nodes.map((n) => AX.toWorld(n.u, n.v));
 const R_WALK = 72, R_STAND = 64;
 /** Streets with raised pavements (a kerb wider than 0.8 m: AinstreyCity.streets). */
-const paved = (st) => st.cls !== 'lane' && st.cls !== 'path' && CLASS[st.cls].kerb > 0.8;
+const paved = (st) => !!st.paved;
 const _box = new THREE.Box3();
 const _id = new THREE.Matrix4();
 const _f = new THREE.Vector3();
@@ -126,16 +139,37 @@ export class Crowd {
       const len = acc[acc.length - 1];
       if (len < 20) continue;
       const lanesOk = cls === 'path' ? [Math.max(0.6, S.width / 2 - 1)] : lanes;
-      const st = { pts, acc, len, cls, lanes: lanesOk, lift: LIFT[cls] ?? 0.1, half: S.width / 2, id: S.id };
-      const si = this.streets.push(st) - 1;
-      for (let s = 3; s < len - 3; s += 6) {
-        const [x, z] = this._at(st, s);
-        const key = Math.floor(x / 40) + ',' + Math.floor(z / 40);
-        if (!this.cells.has(key)) this.cells.set(key, []);
-        this.cells.get(key).push(si, s);
-      }
+      this._addStreet({ pts, acc, len, cls, lanes: lanesOk, lift: LIFT[cls] ?? 0.1, half: S.width / 2, id: S.id, paved: cls !== 'lane' && cls !== 'path' && CLASS[cls].kerb > 0.8 });
     }
     this._plan = P;
+    // Axel: its streets and the ring road inside the wall (AxelPlan; the one paved surface of RoadSurface)
+    const axel = [...AX.STREETS.map((S) => ({ id: S.id, kind: S.kind, width: S.width, pts: AX.streetLine(S) })), { id: 'ring', kind: 'ring', width: AX.RING.width, pts: [...AX.ringLine(), AX.ringLine()[0]] }];
+    for (const S of axel) {
+      const pts = S.pts.map(([u, v]) => AX.toWorld(u, v));
+      const acc = [0];
+      for (let k = 1; k < pts.length; k++) acc.push(acc[k - 1] + Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]));
+      const len = acc[acc.length - 1];
+      if (len < 14) continue;
+      this._addStreet({ pts, acc, len, cls: 'axel_' + S.kind, lanes: AXEL_LANES[S.kind], lift: 0.09, half: S.width / 2, id: 'axel_' + S.id, paved: false });
+    }
+  }
+
+  _addStreet(st) {
+    const si = this.streets.push(st) - 1;
+    for (let s = 3; s < st.len - 3; s += 6) {
+      const [x, z] = this._at(st, s);
+      const key = Math.floor(x / 40) + ',' + Math.floor(z / 40);
+      if (!this.cells.has(key)) this.cells.set(key, []);
+      this.cells.get(key).push(si, s);
+    }
+  }
+
+  /** Which town the player is in: 'ainstrey', 'axel' or null. */
+  _city(pp) {
+    const [u, v] = AIN.toLocal(pp.x, pp.z);
+    if (insideCity(u, v, -30)) return 'ainstrey';
+    if (inPoly(AXEL_WALL, pp.x, pp.z)) return 'axel';
+    return null;
   }
 
   /** Point and unit tangent at distance s along a street. */
@@ -211,16 +245,16 @@ export class Crowd {
   update(dt) {
     if (!this.enabled) return;
     const g = this.game, pp = g.player.position;
-    const [u, v] = AIN.toLocal(pp.x, pp.z);
-    const inCity = !g.inDungeon && insideCity(u, v, -30);
-    if (!inCity) { if (this.active) this._clearAll(); return; }
-    if (!this.active) { this.active = true; this._jump = true; }
+    const city = g.inDungeon ? null : this._city(pp);
+    if (!city) { if (this.active) this._clearAll(); return; }
+    if (!this.active || city !== this.city) { this.active = true; this._jump = true; this.city = city; }
     // a teleport (fast travel, a load): everyone is placed anew round the new position
     if (this._last && Math.hypot(pp.x - this._last.x, pp.z - this._last.z) > 40) this._jump = true;
     this._last = pp.clone();
     const h = g.rpg.clock.hour;
     const dayF = h >= 7 && h < 20 ? 1 : h >= 20 && h < 22 ? 0.45 : h >= 5.5 && h < 7 ? 0.4 : 0.12;
-    const [nW, nG] = COUNT[g.quality?.name] || COUNT.medium;
+    const T = city === 'axel' ? AXEL_COUNT : COUNT;
+    const [nW, nG] = T[g.quality?.name] || T.medium;
     // a fight (or a spell going off) clears the street: the people keep away until it is over
     const calm = g.player.inCombat ? 0 : 1;
     const wantW = Math.round(nW * dayF * calm), wantG = Math.round(nG * (dayF > 0.3 ? dayF : 0) * calm);
@@ -318,6 +352,13 @@ export class Crowd {
       }
       w.off += (Math.max(-1.2, Math.min(1.2, target)) - w.off) * Math.min(1, dt * 3);
       w.s += w.dir * w.speed * slow * dt;
+      // something on the way (a stall, a cart, a house corner of a lane): turn back
+      if ((w.chk = (w.chk ?? Math.random() * 0.6) - dt) < 0) {
+        w.chk = 0.6;
+        const q = this._at(w.st, w.s + w.dir * 1.3, pt);
+        const qx = q[0] + (-q[3] * w.side) * (w.lane + w.off), qz = q[1] + (q[2] * w.side) * (w.lane + w.off);
+        if (!this._clear(qx, W.heightAt(qx, qz) + w.lift, qz, 0.35)) w.dir = -w.dir;
+      }
       const p = this._at(w.st, w.s, pt);
       const x = p[0] + (-p[3] * w.side) * (w.lane + w.off), z = p[1] + (p[2] * w.side) * (w.lane + w.off);
       const m = w.mesh;
@@ -347,6 +388,23 @@ export class Crowd {
           const y = W.heightAt(x, z) + 0.125;
           if (!this._clear(x, y, z, 1.5)) continue;
           out.push({ x, y, z, n: rng() < 0.55 ? 2 : 3, yaw: rng() * Math.PI * 2, seed: Math.floor(rng() * 1e6) });
+        }
+      }
+    }
+    // Axel's squares (a smaller town: groups 8 m apart, off the gate passages)
+    for (const sq of AX.SQUARES) {
+      if (sq.id.endsWith('gate_place')) continue;
+      const us = sq.pts.map((p) => p[0]), vs = sq.pts.map((p) => p[1]);
+      for (let u = Math.min(...us) + 4; u < Math.max(...us) - 4; u += 8) {
+        for (let v = Math.min(...vs) + 4; v < Math.max(...vs) - 4; v += 8) {
+          if (rng() < 0.5) continue;
+          const uu = u + (rng() - 0.5) * 3, vv = v + (rng() - 0.5) * 3;
+          if (polygonSDF(sq.pts, uu, vv) > -3) continue; // inside, 3 m off the edge
+          const [x, z] = AX.toWorld(uu, vv);
+          if (spots.some((p) => Math.hypot(p.pos.x - x, p.pos.z - z) < 4)) continue;
+          const y = W.heightAt(x, z) + 0.125;
+          if (!this._clear(x, y, z, 1.5)) continue;
+          out.push({ x, y, z, n: rng() < 0.6 ? 2 : 3, yaw: rng() * Math.PI * 2, seed: Math.floor(rng() * 1e6) });
         }
       }
     }

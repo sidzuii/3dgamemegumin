@@ -21,6 +21,11 @@ Full description, file map and how-to guides: see `README.md` (Russian). The use
   asked for again on the next key press or click (`_relock`); holding Alt frees the cursor without pausing (`input.freeCursor`,
   MainMenu `_lockChange` ignores it). Esc in game → pause. Settings «Полный экран» = page fullscreen + `navigator.keyboard.lock(['Escape'])`
   (Chromium): Esc reaches the game instead of the browser releasing the cursor; in a window the browser always releases it on Esc.
+- Icons: `src/ui/icons.js` (`itemIcon(item|id, size)`, `iconHtml(id, size)`, `SKILL_ICON` slot → icon) over the painted pack
+  «Megumin_Icons_v1» (raw PNGs + preview + prompts in `model/icons/`, frames in `src/data/icons.json` in source pixels, atlases
+  `public/ui/icons/*.webp` = 768 px copies; the CSS is in percentages so the atlas scale does not matter). Used by the inventory, item
+  details, quest rewards, shop / craft, loot feed, quick slots, book title (a node, the title stays textContent), HUD skill slots and
+  vitals, menu tabs, the coin. Unknown id → the item's emoji in `.ico-emoji` (the only thing the potion tints recolour).
 - RPG layer: `src/rpg/` (state, quests, dialogue, guild, economy, gathering, events, clock); content is data
   in `src/data/` (items, quests, dialogues, npcs, shops, resources). Map data: `src/world/MapData.js`;
   builders: `src/world/build/` (Kit, Town, Countryside, Dungeon). NPCs: `src/npc/`.
@@ -34,12 +39,19 @@ Full description, file map and how-to guides: see `README.md` (Russian). The use
 - Interiors are in place (no separate scenes): `house({ interior: true, entrance: 'arch' })` gives an archway,
   a plank floor and a ceiling; `open: 'work'` = open-fronted workshop; furnishing in `world/build/Interiors.js`
   (wrapped in `world.lodMode = 'near'`). Closed houses have a solid door leaf. Walk-in shops register
-  `<id>_counter` / `_front` / `_entrance` spots.
+  `<id>_counter` / `_front` / `_entrance` spots. Axel's walk-in shops are CLOSED (`house({ closed: { id, name } })` →
+  `build/Entrance.js`): the leaf is shut in the arch, E «Войти»/«Выйти» = Door → `game.travel` to `<id>_inside` / `<id>_outside`
+  (fade). The doorway stays open in the static collider (NPC NavGrids, Roxy: the leaf swings open for them); only the player is held
+  by a `dynamicColliders` cylinder, the camera by `world.cameraBlockers`. `world.entrances` lists them.
 - Megumin uses `retarget: 'rest'` (bind pose = neutral, only limbs re-aimed, hips at bind height); others use 'dir'.
   CapsLock = walk mode (`MOVE.strollSpeed` 1.5); W = 3.4 m/s pure jog; Shift = sprint; gait thresholds `GAIT` in CharacterAnimator.
 - Axel lots are checked against `AxelPlan.ENVELOPE` + key-building `annex` rects; street centre lines = `streetLine()` /
-  `ringLine()` (not raw STREETS.pts); paving layer heights `PAVE_LIFT`. `tools/city_audit.js` = geometry regression audit
-  (page script; all counts must be 0). MAP_REV is 3. Never run two headless SwiftShader browsers at once (OOM).
+  `ringLine()` (not raw STREETS.pts). Streets, the ring, gate passages and door paths are ONE paved surface
+  (`build/RoadSurface.js`: a canvas coverage mask + one draped mesh, no ribbon seams at junctions; Town.js collects `ROADS`);
+  squares keep their own flagstones (`PAVE_LIFT.square`, parts of 'axel_streets'). The lot generator reads the editor's overrides of
+  key buildings / areas from placements.json (houses keep clear of where they stand in the game); after `--emit` drop the stale
+  overrides of generated lots. `tools/city_audit.js` = geometry regression audit (page script; applies the groups' editor moves;
+  all counts must be 0). MAP_REV is 3. Never run two headless SwiftShader browsers at once (OOM).
   `src/world/AxelLayoutCheck.js` = layout geometry check (houses inside each other / on a street vs the generated plan);
   editor button «Проверить дома» (tab Слои) and `node tools/layout_check.mjs [layout.json]` (exit 1 on problems).
 - Load time (2026-10): terrain heights + normals + colours are computed in Web Workers during the asset downloads
@@ -120,7 +132,7 @@ Full description, file map and how-to guides: see `README.md` (Russian). The use
   Renderer-independent core `src/combat/core/*` (fixed step 1/120 s, event bus; `node tools/combat/tests.mjs` must stay green), game side
   `src/combat/{Combat,Env,Companion,unlocks}.js`, view `src/combat/fx/*` (events → animation/particles; `vfx.density` from the quality preset).
   Two heroines have separate hp/mana/stamina (`player.fighters`); Megumin skills unlock through the story (`unlocks.js`), Roxy is the companion
-  (AI + orders on T). Enemy types/attacks: `enemies/Enemy.js` TYPES (`joint` = weak spot open while the swing recovers / staggered). Spoken
+  (AI + orders on T). Keys: slots Q E R F (data ids) are pressed with Q R X F (`SLOT_INPUT` / `SLOT_LABEL` in specs.js); E is only interaction / revive. Enemy types/attacks: `enemies/Enemy.js` TYPES (`joint` = weak spot open while the swing recovers / staggered). Spoken
   combat lines `CB_*`: `data/story/combatClips.js` (generated by `tools/combat/gen_clips.mjs`). Settings: menu tab «Бой» (K), `megumin-combat`.
   Headless checks: step with `g.update(1/30); g.input.endFrame()` (not the real loop), take canvas shots via `composer.render()`; for a page
   screenshot hide the canvas first (`style.visibility='hidden'`) or SwiftShader times out; CSS transitions need a few seconds to settle.
@@ -136,7 +148,8 @@ Full description, file map and how-to guides: see `README.md` (Russian). The use
   of spots, streets, keys. City statics use `W._bigChunk = 256`. Dense lots (~4860: frontage + lane + back rows round courtyards,
   sheds; STYLE fw/fd/fgap/pass/vac, segment hash `onStreet`); `lot.simple` (back/inner) = kit house without shutters/balconies/chimneys
   + `lightRoof`; far body = `facadeBox` with the canvas facade tile (`W.mats.facade`, night glow from DayNight). Staff series: 2/2/3 stamina, a press during a swing chains at `cancel_at`.
-- Capital street life: `npc/Crowd.js` (`game.crowd`) = anonymous walkers on the pavement lanes (`LANES` per street class) + standing
+- Street life (capital and Axel — `Crowd._city`): `npc/Crowd.js` (`game.crowd`) = anonymous walkers (Axel: AxelPlan streets + ring,
+  `AXEL_LANES`, `AXEL_COUNT`, groups on its squares; a walker turns back when the BVH blocks 1.3 m ahead) on the pavement lanes (`LANES` per street class) + standing
   groups on the squares, pooled round the player inside the walls; bodies = People geometries on shared driver skeletons (detached
   bind mode, one mixer per driver), count by preset and hour, none in combat. Street furniture keeps off those lanes: boulevards
   (AinstreyDecor: trees / lamp posts / benches / café tables / planters on a flagstone band 2 m inside the kerb, carts on the axis),

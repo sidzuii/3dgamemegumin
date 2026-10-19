@@ -16,6 +16,10 @@ export const SLOTS = {
   roxy: { Q: 'R_Q', E: 'R_E', R: 'R_R', F: 'R_F' },
 };
 export const SLOT_KEYS = ['Q', 'E', 'R', 'F'];
+/** The keys of the slots (the slot ids stay Q E R F in the data): E is the interaction key, so the second medium skill is on R and
+ *  the first strong spell (Explosion / Water Volley) on X. */
+export const SLOT_INPUT = { Q: 'KeyQ', E: 'KeyR', R: 'KeyX', F: 'KeyF' };
+export const SLOT_LABEL = { Q: 'Q', E: 'R', R: 'X', F: 'F' };
 
 /** How each swing sweeps the staff relative to the body (positive bearing = left). */
 const SWEEP = {

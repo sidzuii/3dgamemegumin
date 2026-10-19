@@ -1,0 +1,14 @@
+.mg-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 var(--mg-icon-size, 40px);
+  width: var(--mg-icon-size, 40px);
+  height: var(--mg-icon-size, 40px);
+  vertical-align: middle;
+  pointer-events: none;
+}
+.mg-icon-image {
+  display: block;
+  background-repeat: no-repeat;
+}

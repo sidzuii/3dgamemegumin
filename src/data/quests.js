@@ -69,7 +69,7 @@ export const QUESTS = Object.fromEntries([
         onDone: { setFlag: 'skill_M_Q', notify: 'Бран показал Проламывающий выпад: Q — шаг и удар торцом посоха по одной цели (22 выносливости, перезарядка 7 с).' } },
       { id: 'bran2', text: 'Вернись к Брану: теперь большая мишень в центре поля.', target: 'npc:bran', objectives: [{ type: 'talk', label: 'Поговорить с Браном' }] },
       { id: 'magic', text: 'Дождись сигнала Брана и ударь Explosion по центру поля (R, затем ЛКМ).', target: 'spot:training_center', objectives: [{ type: 'explosion', spot: 'training_center', r: 14, label: 'Заклинание по центру поля' }],
-        hint: 'R — выбрать Explosion: на земле два контура (центр 2,5 м, край 5,5 м), цель на расстоянии 8–25 м. ЛКМ — подтвердить, подготовка 2,4 с (Space или ПКМ — отмена). После выпуска — истощение 12 с.',
+        hint: 'X — выбрать Explosion: на земле два контура (центр 2,5 м, край 5,5 м), цель на расстоянии 8–25 м. ЛКМ — подтвердить, подготовка 2,4 с (Space или ПКМ — отмена). После выпуска — истощение 12 с.',
         onDone: { say: 'A07_018' } },
       { id: 'report', text: 'Доложи инструктору Брану.', target: 'npc:bran', objectives: [{ type: 'talk', label: 'Поговорить с Браном' }] },
     ],
@@ -114,7 +114,7 @@ export const QUESTS = Object.fromEntries([
       { id: 'whip', text: 'Переключись на Рокси (Tab) и зацепи мишень на линии Водяным хлыстом (Q).', target: 'spot:training_lane', objectives: [{ type: 'custom', name: 'whip_dummy', n: 1, label: 'Хлыст по мишени' }],
         hint: 'Q — Водяной хлыст: дуга 90°, 7 м. Лёгкую цель подтягивает на метр, тяжёлых и боссов нет. Задетая цель Намокает на 6 с.' },
       { id: 'counter', text: 'Отведи лёгкий удар учебного гоблина Встречным уколом (E, окно 0,10–0,24 с).', target: 'spot:training_center', objectives: [{ type: 'custom', name: 'parry', n: 1, label: 'Отвести удар' }],
-        onStart: { wave: 'cb02_goblin' }, hint: 'E — Встречный укол. Сработает на лёгкий удар спереди, красные удары не отводятся. Успех отвечает усиленным уколом.' },
+        onStart: { wave: 'cb02_goblin' }, hint: 'R — Встречный укол. Сработает на лёгкий удар спереди, красные удары не отводятся. Успех отвечает усиленным уколом.' },
       { id: 'tidal', text: 'Накрой Приливным обвалом три мишени сразу (F, ЛКМ), затем смени героиню.', target: 'spot:training_cluster', objectives: [{ type: 'custom', name: 'tidal_dummy', n: 3, label: 'Мишени под обвалом' }],
         hint: 'F — выбрать область (радиус 4,5 м, до 14 м). Вода падает с задержкой; Намокание держится 6 с: следующий взрывной удар Мегумин получит +10%.' },
       { id: 'report', text: 'Вернись к плану Рокси.', target: 'spot:training_center', objectives: [{ type: 'custom', name: 'cb02_done', label: 'Подвести итог' }] },
@@ -151,7 +151,7 @@ export const QUESTS = Object.fromEntries([
     stages: [
       { id: 'brief', text: 'Поговори с Луной о заказе: границы участка и правила добычи.', target: 'npc:luna', objectives: [{ type: 'talk', label: 'Поговорить с Луной' }] },
       { id: 'kill', text: 'Прогони гоблинов у кромки леса (запад). Дальше белых столбов не иди.', target: 'spot:forest_scouts', objectives: [{ type: 'kill', camp: 'forest_scouts', n: 4, label: 'Гоблины' }],
-        hint: 'Держи дистанцию: ЛКМ — серия посохом, Q / E — навыки, ПКМ — защита, Space — уклонение. Зелья: 3 — исцеление, 4 — бодрость (общая задержка 20 с).' },
+        hint: 'Держи дистанцию: ЛКМ — серия посохом, Q / R — навыки, ПКМ — защита, Space — уклонение. Зелья: 3 — исцеление, 4 — бодрость (общая задержка 20 с).' },
       { id: 'report', text: 'Доложи Луне в гильдии.', target: 'npc:luna', objectives: [{ type: 'talk', label: 'Доложить' }] },
     ],
     rewards: { eris: 60, xp: 45, rankPoints: 1 },
@@ -217,13 +217,14 @@ export const QUESTS = Object.fromEntries([
   Q('ch2_people', {
     title: 'Люди Акселя', category: 'story', chapter: 2, giver: 'luna', noAuto: true, requires: { quest: 'ch1_name', status: 'done' },
     summary: 'Ранг E открывает дальние маршруты. Вечером город разговорчивее: в таверне поёт Фенрик, в храме Клара хранит записи, а Бернард после заката стоит на стене.',
+    // one after another: the song sends her to Clara, Clara sends her to Bernard (a save inside the old single stage moves on by its flags)
     stages: [
-      { id: 'talks', text: 'Поговори с людьми: Фенрик поёт в таверне вечером, Клара ждёт в храме, Бернард на стене после заката.', target: 'npc:fenrik',
-        objectives: [
-          { type: 'flag', flag: 'A10_DONE', label: 'Фенрик и песня (таверна, вечером)' },
-          { type: 'flag', flag: 'A11_DONE', label: 'Клара и легенда (храм)' },
-          { type: 'flag', flag: 'A12_DONE', label: 'Бернард на стене (после заката)' },
-        ] },
+      { id: 'talks', text: 'Вечером в таверне поёт Фенрик. Послушай песню.', target: 'npc:fenrik',
+        objectives: [{ type: 'flag', flag: 'A10_DONE', label: 'Фенрик и песня (таверна, вечером)' }] },
+      { id: 'clara', text: 'Фенрик спел о звёздах под городом. Клара хранит записи тех лет — спроси её в храме.', target: 'npc:clara',
+        objectives: [{ type: 'flag', flag: 'A11_DONE', label: 'Клара и легенда (храм)' }] },
+      { id: 'bernard', text: 'Клара сказала: Бернард наблюдает свет над хребтом. После заката он на северной стене.', target: 'npc:bernard',
+        objectives: [{ type: 'flag', flag: 'A12_DONE', label: 'Бернард на стене (после заката)' }] },
     ],
     rewards: { eris: 40, xp: 80 },
   }),

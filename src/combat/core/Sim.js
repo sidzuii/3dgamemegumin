@@ -243,7 +243,7 @@ export class CombatSim {
     return true;
   }
 
-  /** Q / E (medium) or R / F (select a strong spell and show the aim). */
+  /** Slots Q / E (medium; keys Q / R) or R / F (keys X / F: select a strong spell and show the aim). */
   skill(id, slot) {
     const hero = this.heroes[id];
     if (!hero?.f.alive) return false;
