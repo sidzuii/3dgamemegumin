@@ -7,6 +7,7 @@ import { RANK_POINTS } from '../rpg/State.js';
 import { XP_TABLE } from '../rpg/RPG.js';
 import { NPCS } from '../data/npcs.js';
 import { lockedReason } from '../combat/unlocks.js';
+import { SLOT_LABEL } from '../combat/core/specs.js';
 import { itemIcon, iconHtml } from './icons.js';
 
 const COIN = iconHtml('eris', 18, 'coin') || '🪙';
@@ -195,7 +196,7 @@ export class GameMenu {
         const card = div('combat-card');
         card.style.cssText = 'border:1px solid var(--panel-line);border-radius:8px;padding:8px 10px;background:rgba(255,255,255,0.03)';
         const cost = [sp.cost.mana ? sp.cost.mana + ' маны' : '', sp.cost.stamina ? sp.cost.stamina + ' выносл.' : '', sp.cooldown ? 'перезарядка ' + sp.cooldown + ' с' : ''].filter(Boolean).join(' · ');
-        card.innerHTML = `<b>${sp.name.replace(/ \/ .*/, '')}</b> <kbd>${key}</kbd><br><small style="opacity:.75">${cost}</small>`
+        card.innerHTML = `<b>${sp.name.replace(/ \/ .*/, '')}</b> <kbd>${SLOT_LABEL[key]}</kbd><br><small style="opacity:.75">${cost}</small>`
           + (lock ? `<br><small style="color:#ff8f7a">${lock}</small>` : '');
         grid.appendChild(card);
       }

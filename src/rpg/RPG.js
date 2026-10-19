@@ -77,7 +77,7 @@ export class RPG {
     this.events.on('custom', (e) => {
       if (e.name === 'contract_done' && !this.state.flags.skill_M_E) {
         this.setFlag('skill_M_E');
-        this.notify('info', 'Открыт Круговой отбив (E): широкая дуга 240°, 26 выносливости. Потренируйся на манекенах у Брана.');
+        this.notify('info', 'Открыт Круговой отбив (R): широкая дуга 240°, 26 выносливости. Потренируйся на манекенах у Брана.');
       }
     });
     this.events.on('volley', (e) => { this._volleyStory(e); this._combatBark('V02_001', 0.35, 6); });
@@ -574,7 +574,7 @@ export class RPG {
       case 'cave_in':
         if (F.rubble_cleared) this.game.hud.toast('Проход расчищен.', 4);
         else if (!F.A19_SEEN && this.quests.status('ch3_lights') === 'active' && !this.dialogue.active) this.dialogue.start('A19', null);
-        else this.game.hud.toast('Завал. Игла показывает за него. Отойти к каменной арке и ударить взрывом (Q).', 5);
+        else this.game.hud.toast('Завал. Игла показывает за него. Отойти к каменной арке и ударить взрывом (X).', 5);
         break;
       case 'tower_logbook':
         // B07b: Megumin reads the old logbook aloud (a dialogue while the order is open, the plain text afterwards).

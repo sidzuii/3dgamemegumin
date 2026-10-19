@@ -1,5 +1,5 @@
 import { damp } from '../core/math.js';
-import { SLOTS, SLOT_KEYS } from '../combat/core/specs.js';
+import { SLOTS, SLOT_KEYS, SLOT_LABEL } from '../combat/core/specs.js';
 import { iconHtml, SKILL_ICON } from './icons.js';
 
 /** Slot art: one simple distinct pictogram per skill (physical = amber/steel, water = cool). */
@@ -84,7 +84,7 @@ export class HUD {
       const sid = SLOTS[id][k];
       const el = document.createElement('div');
       el.className = 'slot ' + (k === 'R' || k === 'F' ? 'strong' : 'medium');
-      el.innerHTML = `<div class="slot-icon">${iconHtml(SKILL_ICON[sid], k === 'R' || k === 'F' ? 60 : 50, 'slot-art') || `<svg viewBox="0 0 48 48" aria-hidden="true">${ICONS[sid]}</svg>`}<div class="slot-cd"></div><div class="slot-cdt"></div><kbd class="slot-key">${k}</kbd></div>`
+      el.innerHTML = `<div class="slot-icon">${iconHtml(SKILL_ICON[sid], k === 'R' || k === 'F' ? 60 : 50, 'slot-art') || `<svg viewBox="0 0 48 48" aria-hidden="true">${ICONS[sid]}</svg>`}<div class="slot-cd"></div><div class="slot-cdt"></div><kbd class="slot-key">${SLOT_LABEL[k]}</kbd></div>`
         + `<div class="slot-name">${SLOT_NAMES[sid]}</div><div class="slot-cost"></div><div class="slot-why"></div>`;
       host.appendChild(el);
       this.slotEls[k] = { el, cd: el.querySelector('.slot-cd'), cdt: el.querySelector('.slot-cdt'), cost: el.querySelector('.slot-cost'), why: el.querySelector('.slot-why'), key: k, sid };

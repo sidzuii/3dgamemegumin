@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { clamp } from '../core/math.js';
 import { Shockwave } from '../vfx/ExplosionEffects.js';
 import { CombatSim } from './core/Sim.js';
-import { SPEC, SLOTS, HERO_NAME, NUM } from './core/specs.js';
+import { SPEC, SLOTS, SLOT_KEYS, SLOT_INPUT, HERO_NAME, NUM } from './core/specs.js';
 import { GameEnv } from './Env.js';
 import { Companion } from './Companion.js';
 import { CombatFX } from './fx/CombatFX.js';
@@ -118,21 +118,13 @@ export class Combat {
     }
     if (input.wasMousePressed(1)) this.toggleLock();
 
-    if (input.wasPressed('KeyQ')) sim.skill(id, 'Q');
-    if (input.wasPressed('KeyR')) sim.skill(id, 'R');
-    if (input.wasPressed('KeyF')) sim.skill(id, 'F');
+    for (const k of SLOT_KEYS) if (input.wasPressed(SLOT_INPUT[k])) sim.skill(id, k);
+    // E is only the interaction key; a downed ally within reach: hold E to lift her.
     if (input.wasPressed('KeyE')) {
-      // A downed ally within reach: hold E to lift her. Otherwise the interaction prompt wins out of a fight;
-      // in a fight (or without a prompt) E is the second medium skill.
-      const it = g.interaction;
-      const prompt = !!(it?.focused && it.focused.canInteract());
       const rt = this.reviveTarget();
       if (rt) {
         this.reviving = this.reviving || { id: rt, t: 0 };
         input.pressed.delete('KeyE');
-      } else if (!(prompt && !this.inCombat)) {
-        input.pressed.delete('KeyE');
-        sim.skill(id, 'E');
       }
     }
     if (this.reviving && !input.isDown('KeyE')) this.reviving = null;
