@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import { ROOF_COLORS } from '../KitLibrary.js';
 import { roadInfo, GRID_STEP } from '../Terrain.js';
 import { HALF } from '../MapData.js';
-import { closedEntrance } from './Entrance.js';
 
 /**
  * Building kit: parametric pieces of the anime-fantasy town (timber-framed houses with steep
@@ -350,11 +349,6 @@ function walls(F, w, d, y0, h, o) {
           // Walk-in building: an open archway (≈ 1.8 m) with the leaf swung in flat against the
           // inner face of the side wall (the doorway is the corner tile next to it).
           put('Wall_Arch', { collide: false });
-          if (spec.closed) {
-            // Closed entrance: the leaf shut in the arch, in and out with E (Entrance.js)
-            partAt(T.w, T, -0.5 * sx, 0, 'door', () => closedEntrance(T.w, T, V(spec.doorModel || 'Door_1_Round'), sx, sy, spec.closed), 'Дверь');
-            continue;
-          }
           const side = t < 0 ? -1 : 1;
           const lx = side * (w / 2 - 0.47) - t; // inner wall face (w/2 − 0.40) + half the leaf
           partAt(T.w, T, lx, -0.36, 'door', () => T.kit(V(spec.doorModel || 'Door_1_Round'), lx, 0, -0.36, { sx: sx * 0.9, sy, ry: Math.PI / 2, collide: false, detail: true }), 'Дверь');

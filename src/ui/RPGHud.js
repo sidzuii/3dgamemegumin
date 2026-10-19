@@ -84,7 +84,7 @@ export class RPGHud {
         return `<div class="t-obj${ok ? ' done' : ''}">${Q.objectiveText(id, i)}</div>`;
       }).join('');
       let dist = '';
-      if (target && !g.inDungeon) {
+      if (target && (!g.inDungeon || g.inHouse)) {
         const m = Math.round(Math.hypot(target.x - p.position.x, target.z - p.position.z));
         dist = m > 6 ? `<div class="t-dist">${m} м</div>` : '';
       }
@@ -94,7 +94,7 @@ export class RPGHud {
 
     // Quest marker on the compass.
     const cam = g.cameraRig;
-    if (target && !g.inDungeon) {
+    if (target && (!g.inDungeon || g.inHouse)) {
       const heading = Math.atan2(-Math.sin(cam.yawS), Math.cos(cam.yawS));
       const b = Math.atan2(target.x - p.position.x, -(target.z - p.position.z));
       let rel = Math.atan2(Math.sin(b - heading), Math.cos(b - heading));

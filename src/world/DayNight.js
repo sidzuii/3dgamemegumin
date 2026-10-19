@@ -14,7 +14,7 @@ const SKY = {
   duskTop: C(0x3a4f8a), duskHorizon: C(0xf2a070), duskBottom: C(0x6a5a5a),
   nightTop: C(0x050914), nightHorizon: C(0x16213a), nightBottom: C(0x0a0d14),
 };
-const FOG = { day: C(0xcfe4f4), dusk: C(0xd8a888), night: C(0x0c1322), cave: C(0x0b0a10) };
+const FOG = { day: C(0xcfe4f4), dusk: C(0xd8a888), night: C(0x0c1322), cave: C(0x0b0a10), room: C(0x2a2018) };
 const SUN = { day: C(0xfff0dc), dusk: C(0xffa060), moon: C(0x8fa8ff) };
 
 const _c = new THREE.Color();
@@ -25,15 +25,18 @@ export class DayNight {
     this.world = world;
     this.scene = scene;
     this.indoor = 0; // 0..1 (smoothed)
+    this.house = 0; // 0..1: the indoor place is a lived-in room (TownInteriors), not a cave
     this.spellDim = 0;
     this.night = 0;
     this.dusk = 0;
   }
 
   /** hour: 0..24 (fractional). indoorTarget: 0|1. */
-  update(dt, hour, indoorTarget) {
+  update(dt, hour, indoorTarget, houseTarget = 0) {
     const W = this.world;
     this.indoor = damp(this.indoor, indoorTarget, 3, dt);
+    this.house = damp(this.house, houseTarget, 3, dt);
+    const hs = this.house; // a room: warmer, lighter ambience, no cave fog, the night music only at night
     const a = ((hour - 6) / 12) * Math.PI; // 0 at sunrise, PI at sunset
     const el = Math.sin(a); // >0 day
     const day = smoothstep(-0.08, 0.22, el);
@@ -55,10 +58,10 @@ export class DayNight {
     W.sun.color.copy(_c.lerp(SUN.moon, this.night));
     W.sunBaseIntensity = W.sun.intensity;
     // Ambient.
-    W.hemi.intensity = (0.55 * day + 0.22 * this.night) * (1 - this.spellDim * 0.6) * (1 - inside * 0.75);
-    W.hemi.color.copy(_c.set(0xcfe3ff).lerp(_c2.set(0x5a6aa8), this.night));
+    W.hemi.intensity = (0.55 * day + 0.22 * this.night) * (1 - this.spellDim * 0.6) * (1 - inside * (0.75 - 0.3 * hs)) + inside * hs * 0.25;
+    W.hemi.color.copy(_c.set(0xcfe3ff).lerp(_c2.set(0x5a6aa8), this.night).lerp(_c2.set(0xffd8a8), inside * hs * 0.7));
     W.hemi.groundColor.copy(_c.set(0x5b4a33).lerp(_c2.set(0x1a1820), this.night));
-    this.scene.environmentIntensity = (0.55 * day + 0.12 * this.night) * (1 - this.spellDim * 0.5) * (1 - inside * 0.85);
+    this.scene.environmentIntensity = (0.55 * day + 0.12 * this.night) * (1 - this.spellDim * 0.5) * (1 - inside * (0.85 - 0.35 * hs));
     W.rim.intensity = (1.15 * day + 0.35 * this.night) * (1 - inside * 0.7);
     // Sky.
     const u = W.sky.material.uniforms;
@@ -71,19 +74,19 @@ export class DayNight {
     // Fog.
     const fog = this.scene.fog;
     _c.copy(FOG.day).lerp(FOG.dusk, dusk).lerp(FOG.night, this.night);
-    fog.color.copy(_c.lerp(FOG.cave, inside));
+    fog.color.copy(_c.lerp(_c2.copy(FOG.cave).lerp(FOG.room, hs), inside));
     // Open country of the Ainstrey sheet is seen far (the capital must show from the chalk slopes): `viewTarget` is set by
     // the region the player is in (MapData `view`), the scale eases in.
     W.viewScale += ((W.viewTarget ?? 1) - W.viewScale) * Math.min(1, dt * 1.2);
     const vs = W.viewScale;
-    fog.near = 90 * vs * (1 - inside) + 6 * inside;
-    fog.far = 420 * vs * (1 - inside) + 60 * inside;
+    fog.near = 90 * vs * (1 - inside) + (6 + 34 * hs) * inside;
+    fog.far = 420 * vs * (1 - inside) + (60 + 90 * hs) * inside;
     // Windows + lamps glow at night (and stay warm underground).
     const glow = clamp(this.night * 1.2 + dusk * 0.4, 0, 1);
     W.mats.window.emissiveIntensity = glow * 1.3;
     if (W.mats.facade) W.mats.facade.emissiveIntensity = glow * 1.1;
     W.mats.lampGlass.emissiveIntensity = 0.15 + glow * 1.6 + inside * 1.2;
-    W.nightFactor = Math.max(glow, inside);
+    W.nightFactor = Math.max(glow, inside * (1 - hs));
     return { night: this.night, dusk };
   }
 }

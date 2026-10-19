@@ -36,13 +36,16 @@ Full description, file map and how-to guides: see `README.md` (Russian). The use
   (GENERATED: `node tools/plan/render_plan.mjs --emit` — checks streets/squares/wall/terrain, writes
   `docs/plan/*`). Builder: `world/build/Town.js`; wall = `cityWall()` in Kit.js (castle-kit geometry, village
   stone via `addKit({ retex })`). Plan doc: `docs/axel-city-plan.md`. Dungeon interior lives at z 1090..1210.
-- Interiors are in place (no separate scenes): `house({ interior: true, entrance: 'arch' })` gives an archway,
-  a plank floor and a ceiling; `open: 'work'` = open-fronted workshop; furnishing in `world/build/Interiors.js`
-  (wrapped in `world.lodMode = 'near'`). Closed houses have a solid door leaf. Walk-in shops register
-  `<id>_counter` / `_front` / `_entrance` spots. Axel's walk-in shops are CLOSED (`house({ closed: { id, name } })` →
-  `build/Entrance.js`): the leaf is shut in the arch, E «Войти»/«Выйти» = Door → `game.travel` to `<id>_inside` / `<id>_outside`
-  (fade). The doorway stays open in the static collider (NPC NavGrids, Roxy: the leaf swings open for them); only the player is held
-  by a `dynamicColliders` cylinder, the camera by `world.cameraBlockers`. `world.entrances` lists them.
+- Axel's interiors are SEPARATE ROOMS beyond the map edge: `world/HouseRooms.js` (HOUSE_ZONE inside DUNGEON, x ±240, z 2370..2570;
+  ROOMS: guild, tavern (bar, hearth, stage, a guest room), temple, bakery, store, alchemist, weaponsmith, caravan_office), built by
+  `build/TownInteriors.js` (shell: walls, timber, windows with the daylight of the hour = `W.mats.roomWindow`, ceiling beams, exit door;
+  then the furniture; shops reuse Interiors.js furnish functions with their frame at y −FY). The buildings in town are closed shells:
+  Town.js `entrance(id, F, lx, lz, rot)` = Door «Войти» -> `<id>_inside`, street spot `<id>_outside`; the rooms' Door «Выйти».
+  `world.interiors`, `world.interiorAt(p)`, `world.navPoint(p, from)` (RPG.resolveTarget maps quest targets in a room to the door of its
+  building), `game.inHouse` (DayNight `house` mode: warm ambience, no cave fog), regions `room_<id>` (interior, safe = no Explosion),
+  NavGrids per room (0.5 m), NPC `_goTo` crosses doors (walks to the door where the player sees it, else appears). Spot names inside
+  stay (guild_counter, tavern_bar, tavern_table0..4, temple_altar, <shop>_counter/_front, caravan_office_desk). Saves inside a former
+  in-place interior are moved out to the nearest door. The forge stays an open workshop in town.
 - Megumin uses `retarget: 'rest'` (bind pose = neutral, only limbs re-aimed, hips at bind height); others use 'dir'.
   CapsLock = walk mode (`MOVE.strollSpeed` 1.5); W = 3.4 m/s pure jog; Shift = sprint; gait thresholds `GAIT` in CharacterAnimator.
 - Axel lots are checked against `AxelPlan.ENVELOPE` + key-building `annex` rects; street centre lines = `streetLine()` /
