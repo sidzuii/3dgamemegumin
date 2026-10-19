@@ -197,17 +197,17 @@
   },
   "buildings": {
    "key": 22,
-   "generated": 99,
-   "total": 121,
+   "generated": 98,
+   "total": 120,
    "byDistrict": {
-    "center": 10,
+    "center": 9,
     "trade": 16,
+    "res_w": 10,
     "res_ne": 23,
     "caravan": 6,
-    "temple": 12,
+    "temple": 11,
     "craft": 20,
-    "res_s": 25,
-    "res_w": 9
+    "res_s": 25
    },
    "byKind": {
     "guild": 1,
@@ -216,13 +216,13 @@
     "military": 1,
     "shop": 15,
     "inn": 2,
-    "stable": 1,
+    "stable": 2,
     "temple": 2,
-    "workshop": 8,
-    "house": 78,
-    "warehouse": 5
+    "workshop": 7,
+    "house": 75,
+    "warehouse": 7
    },
-   "footprint_m2": 8065
+   "footprint_m2": 7714
   },
   "streets": {
    "main": 365,
@@ -235,13 +235,13 @@
     "id": "center",
     "name": "Центр",
     "area": 5842,
-    "buildings": 10
+    "buildings": 9
    },
    {
     "id": "temple",
     "name": "Храмовый холм",
     "area": 6416,
-    "buildings": 12
+    "buildings": 11
    },
    {
     "id": "trade",
@@ -271,7 +271,7 @@
     "id": "res_w",
     "name": "Западная слобода",
     "area": 3510,
-    "buildings": 9
+    "buildings": 10
    },
    {
     "id": "res_s",
@@ -804,12 +804,7 @@
   "region ain_port: inside the edge mountains",
   "region ain_old: inside the edge mountains",
   "region ain_academy: inside the edge mountains",
-  "region ain_garden: inside the edge mountains",
-  "area lumber_yard: touches ring",
-  "area guild_yard: touches north_street",
-  "building guild: fountain_square, guild_yard, guild_forecourt",
-  "building tavern: tavern_terrace",
-  "building town_hall: hall_steps"
+  "region ain_garden: inside the edge mountains"
  ],
  "forests": [
   {
