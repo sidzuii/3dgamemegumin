@@ -241,8 +241,10 @@ export class MapView {
     const g = this.game, rpg = g.rpg;
     const ctx = this.ctx;
     const cw = this.canvas.width, ch = this.canvas.height;
-    const pp = g.player.position;
-    const inDungeon = g.inDungeon;
+    // in a room of a building the map shows the street at its door
+    const room = g.inHouse ? g.world.interiorAt(g.player.position) : null;
+    const pp = room && g.world.npcSpots[room.outside] ? g.world.npcSpots[room.outside].pos : g.player.position;
+    const inDungeon = g.inDungeon && !room;
     const sh = this.sheet;
     if (this.follow) {
       this.center.x = inDungeon ? REGIONS.find((r) => r.id === 'cave').center.x : pp.x;
@@ -329,10 +331,10 @@ export class MapView {
       ctx.fill(); ctx.stroke();
       ctx.restore();
     }
-    if (inDungeon) {
+    if (inDungeon || room) {
       ctx.fillStyle = '#ffe3a8';
       ctx.font = '600 14px Segoe UI, sans-serif';
-      ctx.fillText('Вы в подземелье «Старая шахта»', cw / 2, 28);
+      ctx.fillText(room ? `Вы в здании: ${room.name}` : `Вы в подземелье «${g.currentLocation?.name ?? 'Старая шахта'}»`, cw / 2, 28);
     } else {
       ctx.fillStyle = 'rgba(255, 227, 168, 0.9)';
       ctx.font = '600 13px Segoe UI, sans-serif';

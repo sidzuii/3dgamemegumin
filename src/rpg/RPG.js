@@ -19,6 +19,7 @@ import { REGIONS, REGION, HALF, ROADS } from '../world/MapData.js';
 import { SHEET as AIN_SHEET, EXPLORE as EXPLORE_AIN, inSheet as inAinSheet } from '../world/AinstreyPlan.js';
 import { ITEMS } from '../data/items.js';
 import { PROP_TEXTS } from '../data/dialogues.js';
+import { DUNGEON } from '../world/build/Dungeon.js';
 
 /**
  * The RPG layer: owns the persistent state and every gameplay system that is not
@@ -237,6 +238,15 @@ export class RPG {
       this._relocate = false;
       this.notify('info', this._storyReset ? 'История обновлена: она начинается заново. Уровень, вещи и открытая карта сохранены; старое сохранение лежит в резервной копии.' : 'Аксель отстроен заново: вы снова на улицах города. Задания и вещи сохранены.');
     }
+    if (P && !DUNGEON.contains(P.x, P.z)) {
+      // Saved inside a building that has become a closed shell (its inside is a room beyond the map edge now): out to the door.
+      const inside = g.world.footprints.some((f) => f.kind !== 'tower' && f.kind !== 'wagon' && Math.abs((P.x - f.x) * Math.cos(f.rot) - (P.z - f.z) * Math.sin(f.rot)) < f.w / 2 && Math.abs((P.x - f.x) * Math.sin(f.rot) + (P.z - f.z) * Math.cos(f.rot)) < f.d / 2);
+      if (inside) {
+        const doors = (g.world.interiors || []).map((r) => this.spot(r.outside)).filter(Boolean);
+        const s = doors.sort((a, b) => Math.hypot(a.pos.x - P.x, a.pos.z - P.z) - Math.hypot(b.pos.x - P.x, b.pos.z - P.z))[0] || this.spot('square');
+        P.x = s.pos.x; P.y = s.pos.y; P.z = s.pos.z; P.yaw = s.yaw;
+      }
+    }
     if (P) {
       pl.level = P.level || 1;
       pl.xp = P.xp || 0;
@@ -338,6 +348,12 @@ export class RPG {
 
   /** 'npc:id' | 'spot:name' | 'region:id' -> world position. */
   resolveTarget(t) {
+    const p = this._resolveTarget(t);
+    // a target in a room of a building (beyond the map edge) is reached through its door: point there from the street
+    return p && this.game.world.navPoint ? this.game.world.navPoint(p, this.game.player.position) : p;
+  }
+
+  _resolveTarget(t) {
     if (!t) return null;
     const [kind, id] = t.split(':');
     if (kind === 'npc') {

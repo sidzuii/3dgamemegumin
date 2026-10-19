@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mulberry32 } from '../../core/math.js';
 import { Frame, lantern, crate, barrel, GEOMETRY } from './Kit.js';
 import { QuestProp, Door } from '../Interactables.js';
+import { HOUSE_ZONE } from '../HouseRooms.js';
 
 /**
  * "Старая шахта" — the first dungeon. Built off the terrain (z ≈ 1100..1200, beyond the map edge at 850) as an enclosed
@@ -20,7 +21,7 @@ export const RELAY_ZONE = { minX: -45, maxX: 45, minZ: 1406, maxZ: 1610 };
 export const DRAIN_ZONE = { minX: -45, maxX: 45, minZ: 1636, maxZ: 1850 };
 /** The pump station and the deep shaft under Axel (build/Pump.js, chapter 8). */
 export const PUMP_ZONE = { minX: -45, maxX: 45, minZ: 1876, maxZ: 2300 }; // also the service galleries and the central hall (build/Core.js)
-const ZONES = [CRYPT_ZONE, RELAY_ZONE, DRAIN_ZONE, PUMP_ZONE];
+const ZONES = [CRYPT_ZONE, RELAY_ZONE, DRAIN_ZONE, PUMP_ZONE, HOUSE_ZONE]; // HOUSE_ZONE: the rooms of Axel's buildings (TownInteriors.js)
 
 export const DUNGEON = {
   minX: -50, maxX: 50, minZ: 1090, maxZ: 1210,

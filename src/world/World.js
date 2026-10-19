@@ -29,6 +29,8 @@ import { buildPlacement } from './build/Placements.js';
 import { TreeField } from './TreeField.js';
 import { STREAM_CELL } from './CityStream.js';
 import { tree, bush, rock, decor, pick } from './build/Kit.js';
+import { buildTownInteriors } from './build/TownInteriors.js';
+import { roomAt } from './HouseRooms.js';
 
 THREE.Mesh.prototype.raycast = acceleratedRaycast;
 THREE.BufferGeometry.prototype.computeBoundsTree = computeBoundsTree;
@@ -255,6 +257,21 @@ export class World {
     for (let g = this._group; g; g = g.parent) g.hasLogic = true;
   }
 
+  /** The room (of Axel's buildings, beyond the map edge) the point is in: { id, name, room, inside, outside } or null. */
+  interiorAt(p) {
+    const r = roomAt(p.x, p.z);
+    return r ? this.interiors?.find((q) => q.id === r.id) ?? null : null;
+  }
+
+  /** Where to point the way to `p` from `from`: a target in another room than the one the player is in leads first out of her
+   * room (its door inside), then to the door of the target's building on the street. */
+  navPoint(p, from) {
+    const a = this.interiorAt(p), b = from ? this.interiorAt(from) : null;
+    if (a === b) return p;
+    const spot = b ? this.npcSpots[b.inside] : this.npcSpots[a.outside];
+    return spot ? spot.pos : p;
+  }
+
   /** Apply the current group's layout delta to a world-space point (in place). */
   xf(v) {
     return this._D ? v.applyMatrix4(this._D) : v;
@@ -289,7 +306,7 @@ export class World {
     T('ainstrey', () => buildAinstrey(this));
     T('ledge', () => buildLedge(this));
     T('city', () => buildCity(this));
-    T('dungeon', () => { buildDungeon(this); buildCrypt(this); buildRelay(this); buildDrain(this); buildPump(this); buildCore(this); });
+    T('dungeon', () => { buildDungeon(this); buildCrypt(this); buildRelay(this); buildDrain(this); buildPump(this); buildCore(this); buildTownInteriors(this); });
     T('props', () => {
       buildSideProps(this);
       for (const a of this.layout.added || []) buildPlacement(this, a);

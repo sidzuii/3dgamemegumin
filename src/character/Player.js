@@ -6,6 +6,7 @@ import { Fighter } from '../combat/core/Fighter.js';
 import { NUM } from '../combat/core/specs.js';
 import { clamp } from '../core/math.js';
 import { REGION } from '../world/MapData.js';
+import { DUNGEON } from '../world/build/Dungeon.js';
 
 /**
  * The player's party: two heroines, each with her own model, rig, controller, health, mana and stamina
@@ -153,7 +154,8 @@ export class Player {
 
   respawn(keepVitals = false) {
     const p = this.spawnPoint.clone();
-    p.y = this.game.world.groundAt(p.x, p.z) + 0.05;
+    // under a roof (a room, a dungeon) the ground is looked for from just above the point, not from the sky (the ceiling)
+    p.y = this.game.world.groundAt(p.x, p.z, DUNGEON.contains(p.x, p.z) ? p.y + 1.5 : 80) + 0.05;
     this.controller.teleport(p, this.spawnYaw);
     if (!keepVitals) this.restoreParty(true);
     const h = this.hero;

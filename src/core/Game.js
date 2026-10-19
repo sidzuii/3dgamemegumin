@@ -358,6 +358,8 @@ export class Game {
       this.cameraRig.snapBehind(s.yaw + Math.PI);
       this.cameraRig.initialized = false;
       this.inDungeonTransition = false;
+      // Roxy comes along through the door (and a 'hold' order holds here, not where she stood before)
+      if (this.player.companionSlot) { this.player.placeCompanion(); this.combat?.holdPoint?.copy(p); }
       this._checkLocation(true);
       this.rpg.markDirty(true);
     }, 280);
@@ -520,7 +522,7 @@ export class Game {
     this._checkLocation();
 
     // Lighting for the time of day (or the dark of the mine).
-    const dn = this.dayNight.update(dt, this.rpg.clock.hour, this.inDungeon ? 1 : 0);
+    const dn = this.dayNight.update(dt, this.rpg.clock.hour, this.inDungeon ? 1 : 0, this.inHouse ? 1 : 0);
     const far = Math.max(480, this.scene.fog.far + 70);
     if (Math.abs(this.camera.far - far) > 8) { this.camera.far = far; this.camera.updateProjectionMatrix(); }
 
@@ -564,6 +566,7 @@ export class Game {
   _checkLocation(force = false) {
     const pp = this.player.position;
     this.inDungeon = DUNGEON.contains(pp.x, pp.z);
+    this.inHouse = this.inDungeon && !!this.world.interiorAt(pp); // a room of Axel's buildings (lit and furnished, not a cave)
     const L = this.world.locationAt(pp);
     if (L === this.currentLocation && !force) return;
     this.currentLocation = L;

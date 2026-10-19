@@ -67,6 +67,8 @@ export class NPCManager {
       new NavGrid(W, ax0, az0, ax1, az1 + 48),
       new NavGrid(W, ...reg('farms', 62)),
       new NavGrid(W, ...reg('olkhovka', 60)),
+      // the rooms of Axel's buildings beyond the map edge (TownInteriors): half-metre cells, the furniture is close
+      ...(W.interiors || []).map(({ room: r }) => new NavGrid(W, r.x - r.w / 2 - 0.5, r.z - r.d / 2 - 0.5, r.x + r.w / 2 + 0.5, r.z + r.d / 2 + 0.5, 0.5)),
     ];
     for (const def of NPCS) this._create(def);
   }
@@ -239,6 +241,25 @@ class NPC {
   }
 
   _goTo(target, route) {
+    this.after = null;
+    // Between the street and a room of a building (or two rooms): through the doors. Where the player sees it, the NPC walks
+    // to the door of the place it leaves and comes out of the door of the other one; unseen it is simply there.
+    const W = this.game.world, pp = this.game.player.position;
+    const from = W.interiorAt?.(this.pos) ?? null, to = W.interiorAt?.(target) ?? null;
+    if (!route && from !== to) {
+      const seen = W.interiorAt(pp) === from && this.pos.distanceTo(pp) < 40;
+      if (!seen) {
+        const door = to && W.interiorAt(pp) === to ? W.npcSpots[to.inside]?.pos : null; // she is in the room it enters
+        if (!door) return this._appear(target);
+        this._appear(door);
+        return this._goTo(target);
+      }
+      const exit = W.npcSpots[from ? from.inside : to.outside]?.pos;
+      if (!exit) return this._appear(target);
+      this._goTo(exit);
+      this.after = target;
+      return;
+    }
     if (route) {
       this.path = route.map(([x, z]) => new THREE.Vector3(x, 0, z));
       this.path.push(target.clone());
@@ -354,6 +375,14 @@ class NPC {
         if (!this.path.length) {
           this.path = null;
           this.state = 'idle';
+          if (this.after) {
+            // at the door: through it, on to the spot of the hour
+            const t = this.after, W = this.game.world, from = W.interiorAt(this.pos), to = W.interiorAt(t);
+            const other = from ? W.npcSpots[from.outside] : W.npcSpots[to?.inside];
+            if (other) { this.pos.copy(other.pos); this.pos.y = this._ground(other.pos.x, other.pos.z, other.pos.y); }
+            this._goTo(t);
+            return;
+          }
           if (this.entry?.spot) this.targetYaw = this.game.rpg.spotYaw(this.entry.spot);
         }
       }

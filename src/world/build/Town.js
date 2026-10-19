@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { mulberry32 } from '../../core/math.js';
-import { Frame, house, houseTower, cityWall, pavePoly, lamp, lantern, barrel, crate, stall, well, bench, wagon, haystack, fence, tree, bush, food, prop, tableware } from './Kit.js';
+import { Frame, house, houseTower, villageRoof, cityWall, pavePoly, lamp, lantern, barrel, crate, stall, well, bench, wagon, haystack, fence, tree, bush, food, prop, tableware } from './Kit.js';
 import { HealingCrystal, Brazier, QuestProp, Door } from '../Interactables.js';
 import { TrainingDummy } from '../TrainingDummy.js';
 import { ROOF_COLORS } from '../KitLibrary.js';
@@ -8,7 +8,7 @@ import { REGION, offsetPolygon } from '../MapData.js';
 import { AXEL, WALL, RING, SQUARES, AREAS, STREETS, BUILDINGS, ENVELOPE, toWorld, FACE_ROT, streetLine, ringLine } from '../AxelPlan.js';
 import { LOTS } from './AxelLots.js';
 import { roadSurface } from './RoadSurface.js';
-import { FY, weaponShop, alchemyShop, generalStore, bakeryShop, forgeShop, caravanOffice, guildExtras, tavernExtras, templeExtras } from './Interiors.js';
+import { FY, forgeShop } from './Interiors.js';
 
 /**
  * Axel — the walled city of beginner adventurers (plan: docs/axel-city-plan.md, data:
@@ -172,8 +172,7 @@ function paveSquare(q) {
 // -----------------------------------------------------------------------------------------
 function guild(rng) {
   const { x, z, rot } = at('guild');
-  // Interior below is laid out for the plan size 18 × 13 (AxelPlan; the bell tower is its annex).
-  const g = house(W, { x, z, rot, w: B.guild.w, d: B.guild.d, floors: 1, floorH: 6.2, open: 'hall', arcade: true, wallTint: 0xf0e2c4, roofTint: 0x2f5a8a, chimney: true, door: 0, doorWidth: 3.4, kind: 'guild', lantern: false }, rng);
+  const g = house(W, { x, z, rot, w: B.guild.w, d: B.guild.d, floors: 1, floorH: 6.2, wallTint: 0xf0e2c4, roofTint: 0x2f5a8a, chimney: true, door: 0, doorWidth: 3.4, kind: 'guild', lantern: false }, rng);
   const F = g.frame;
   const fy = 0.35;
   F.box(5, 0.8, 1.6, 0, -0.55, 7.6, 'stone', { tint: 0xc8bca8 });
@@ -190,46 +189,15 @@ function guild(rng) {
   houseTower(T, 3.8, 3.8, 15.5, { roofTint: 0x2f5a8a });
   T.cyl(0.05, 2, 0, 15.5 + 2.6, 0, 'metal', { seg: 6, collide: false });
   T.box(1.3, 0.8, 0.04, 0.68, 15.5 + 3.6, 0, 'cloth', { collide: false, tint: 0xd84040 });
-  // --- Interior ---
-  F.box(6.0, 1.1, 1.0, 0, fy, -4.0, 'wood', { tint: 0x7a5232 }); // walk-round ends ≥ 1.5 m (NPC grid)
-  F.box(6.2, 0.08, 1.2, 0, fy + 1.1, -4.0, 'plank');
-  F.box(8.5, 3.6, 0.2, 0, fy, -6.25, 'wood', { tint: 0x6a4428, collide: false });
-  for (const yy of [1.5, 2.4]) F.box(7, 0.08, 0.4, 0, fy + yy, -6.05, 'plank', { collide: false });
-  W.spot('guild_counter', F.at(0, fy, -5.0), rot);
-  W.spot('guild_front', F.at(0, fy, -2.6), rot + Math.PI);
-  F.box(3.6, 2.2, 0.15, -7.5, fy + 0.9, -1.2, 'wood', { tint: 0x5a3a22 });
-  for (const s of [-1, 1]) F.box(0.16, 3.2, 0.16, -7.5 + s * 1.65, fy, -1.3, 'timber', { tint: 0x4a3020 });
-  for (let i = 0; i < 8; i++) F.box(0.5, 0.6, 0.02, -8.3 + (i % 4) * 0.55 + 0.25, fy + 1.35 + Math.floor(i / 4) * 0.75, -1.1, 'plaster', { collide: false, castShadow: false, tint: i % 3 ? 0xf2ead8 : 0xe8d0a0 });
-  W.addInteractable(new QuestProp({ id: 'guild_board', name: 'Доска заказов', prompt: 'Посмотреть заказы', position: F.at(-7.5, fy + 1.4, -0.6), shape: 'none' }));
-  F.box(1.0, 1.1, 4.0, 7.6, fy, 0.5, 'wood', { tint: 0x7a5232 });
-  for (let i = 0; i < 3; i++) crate(W, F.sub(8.2, fy, 3.4 + i * 0.8), 0, 0, 0.6, i * 0.3);
-  crate(W, F.sub(8.2, fy + 0.6, 4.2), 0, 0, 0.5, 0.7);
-  W.spot('guild_supplier', F.at(8.4, fy, 0.5), rot - Math.PI / 2);
-  for (const [tx, tz] of [[-4, 2.5], [3.5, 2.5], [-4, -0.8]]) {
-    const T2 = F.sub(tx, fy, tz);
-    T2.box(2.4, 0.08, 1.1, 0, 0.78, 0, 'plank', { tint: 0x8a6440 });
-    for (const sx of [-1, 1]) for (const sz of [-1, 1]) T2.box(0.1, 0.78, 0.1, sx * 1.05, 0, sz * 0.42, 'timber', { tint: 0x4a3020 });
-    for (const sz of [-1, 1]) T2.box(2.2, 0.45, 0.3, 0, 0, sz * 0.95, 'plank', { tint: 0x7a5432 });
-    tableware(T2, 0, 0.86, 0, rng, 'guild');
-  }
-  for (const bx of [-6.9, 6.9]) prop(F, 'furniture/bookcaseClosedWide', bx, fy, -5.7, { s: 2.4 });
-  prop(F, 'furniture/books', -2.5, fy + 1.18, -4.0, { s: 2, collide: false });
-  food(F, 'cup-tea', 2.2, fy + 1.18, -3.8);
-  W.spot('guild_table', F.at(-4, fy, 3.6), rot + Math.PI);
-  W.spot('guild_table2', F.at(3.5, fy, 3.6), rot + Math.PI);
-  for (const lx of [-4.5, 4.5]) {
-    F.cyl(0.9, 0.08, lx, 4.6, 0.5, 'metal', { seg: 12, collide: false });
-    W.addLightSource(F.at(lx, 4.3, 0.5), { color: 0xffc070, intensity: 9, distance: 14, always: true, flicker: true });
-  }
-  F.sphere(0.5, 0, 4.4, -6.1, 'bone', { collide: false, sz: 0.6 });
-  inside(() => guildExtras(F));
+  // The hall itself is a room beyond the map edge (TownInteriors.js): E at the door.
   W.spot('guild_door', F.at(0, fy, 8.6), rot);
+  entrance('guild', F, 0, B.guild.d / 2, rot);
 }
 
 function tavern(rng) {
   const { x, z, rot } = at('tavern');
   // One wide arch over the two middle tiles; the interior is laid out for 16 × 12 (AxelPlan).
-  const t = house(W, { x, z, rot, w: B.tavern.w, d: B.tavern.d, floors: 2, floorH: 4.2, open: 'hall', wallTint: 0xead6b0, roofTint: 0x8a3a2a, chimney: true, door: 0, doorWidth: 2.6, kind: 'tavern', lantern: false, jetty: 0.3, flowers: 0.6 }, rng);
+  const t = house(W, { x, z, rot, w: B.tavern.w, d: B.tavern.d, floors: 2, floorH: 4.2, wallTint: 0xead6b0, roofTint: 0x8a3a2a, chimney: true, door: 0, doorWidth: 2.6, kind: 'tavern', lantern: false, jetty: 0.3, flowers: 0.6 }, rng);
   const F = t.frame;
   const fy = 0.35;
   F.box(0.1, 0.1, 1.6, 4.5, 3.6, 6.9, 'metal', { collide: false });
@@ -245,43 +213,16 @@ function tavern(rng) {
     T2.cyl(0.08, 0.74, 0, 0, 0, 'timber', { seg: 6, tint: 0x4a3020 });
     tableware(T2, 0, 0.8, 0, rng, 'tavern');
   }
-  // --- Interior ---
-  F.box(1.2, 1.15, 7, -6.2, fy, -1.5, 'wood', { tint: 0x6a4428 });
-  F.box(1.4, 0.08, 7.2, -6.2, fy + 1.15, -1.5, 'plank');
-  for (let i = 0; i < 6; i++) barrel(W, F.sub(-7.4, fy, -4.5 + i * 1.2), 0, 0, 0x6a4428);
-  W.spot('tavern_bar', F.at(-7.1, fy, -1.5), rot + Math.PI / 2);
-  W.spot('tavern_bar_front', F.at(-4.8, fy, -1.5), rot - Math.PI / 2);
-  F.box(3.2, 2.8, 1.0, 3.0, fy, -5.6, 'stone', { tint: 0xa89c8c });
-  F.box(2.0, 1.2, 0.3, 3.0, fy + 0.2, -5.05, 'metal', { collide: false });
-  W.addLightSource(F.at(3.0, fy + 0.8, -4.6), { color: 0xff8a3a, intensity: 10, distance: 13, always: true, flicker: true });
-  W.tavernFire = F.at(3.0, fy + 0.5, -4.8);
-  const tables = [[1, 1.5], [4.5, 2.5], [1, -2.5], [5.5, -1.8], [-2.5, 3.8]];
-  tables.forEach(([tx, tz], i) => {
-    const T2 = F.sub(tx, fy, tz);
-    T2.cyl(0.75, 0.08, 0, 0.76, 0, 'plank', { seg: 12, tint: 0x8a6440 });
-    T2.cyl(0.1, 0.76, 0, 0, 0, 'timber', { seg: 8, tint: 0x4a3020 });
-    for (let k = 0; k < 3; k++) {
-      const a = (k / 3) * Math.PI * 2 + i;
-      T2.cyl(0.24, 0.45, Math.cos(a) * 1.15, 0, Math.sin(a) * 1.15, 'wood', { seg: 8, tint: 0x7a5432 });
-    }
-    tableware(T2, 0, 0.84, 0, rng, 'tavern');
-    const sx = Math.cos(i) * 1.15, sz = Math.sin(i) * 1.15;
-    W.spot('tavern_table' + i, F.at(tx + sx * 0.92, fy, tz + sz * 0.92), rot + Math.atan2(-sx, -sz));
-  });
-  for (let i = 0; i < 5; i++) food(F, i % 2 ? 'mug' : 'glass-wine', -6.0, fy + 1.23, -4.4 + i * 1.3, { ry: i });
-  for (let i = 0; i < 6; i++) food(F, ['wine-red', 'wine-white', 'mug'][i % 3], -7.4, fy + 1.0, -4.5 + i * 1.2, { ry: i });
-  F.box(3, 0.3, 2.4, 5.6, fy, 3.9, 'plank', { tint: 0x7a5432 });
-  W.spot('tavern_stage', F.at(5.6, fy + 0.3, 3.9), rot - Math.PI * 0.75);
-  for (const lx of [-1, 4]) W.addLightSource(F.at(lx, 3.4, 0), { color: 0xffb060, intensity: 6, distance: 11, always: true, flicker: true });
-  inside(() => tavernExtras(F));
+  // The tavern's hall is a room beyond the map edge (TownInteriors.js): E at the door.
   W.spot('tavern_door', F.at(0, fy, 7.5), rot);
+  entrance('tavern', F, 0, B.tavern.d / 2, rot);
 }
 
 /** Temple of Eris: a long nave (14 × 24) with a bell spire over the entrance, the altar at the back. */
 function temple(rng) {
   const { x, z, rot } = at('temple');
   const { w, d } = B.temple; // 12 × 22
-  const t = house(W, { x, z, rot, w, d, floors: 1, floorH: 7, open: 'hall', wallTint: 0xf4f0e8, roofTint: 0x3a6a8a, chimney: false, door: 0, doorWidth: 2.6, kind: 'temple', lantern: false, pitch: 0.95, style: 'plaster' }, rng);
+  const t = house(W, { x, z, rot, w, d, floors: 1, floorH: 7, wallTint: 0xf4f0e8, roofTint: 0x3a6a8a, chimney: false, door: 0, doorWidth: 2.6, kind: 'temple', lantern: false, pitch: 0.95, style: 'plaster' }, rng);
   const F = t.frame;
   const fy = 0.35;
   // Steps up from the temple square.
@@ -292,21 +233,9 @@ function temple(rng) {
   houseTower(S, 3.4, 3.4, 20, { roofTint: 0x3a6a8a });
   S.cyl(0.05, 1.8, 0, 20 + 2.9, 0, 'metal', { seg: 6, collide: false });
   S.box(0.8, 0.1, 0.1, 0, 20 + 4.2, 0, 'metal', { collide: false });
-  // Interior: altar, crystal, pews, tall windows.
-  const back = -d / 2 + 1.6;
-  F.box(4, 0.5, 2.6, 0, fy, back, 'stone', { tint: 0xe8e2d8 });
-  for (const sx of [-1.5, 1.5]) prop(F, 'graveyard/candle-multiple', sx, fy + 0.5, back + 0.6, { s: 1.2, collide: false });
-  for (const sx of [-3.4, 3.4]) prop(F, 'graveyard/urn-round', sx, fy, back - 0.2, { s: 1.6 });
-  W.spot('temple_altar', F.at(0, fy + 0.5, back + 0.8), rot);
-  for (let i = 0; i < 7; i++) for (const sx of [-1, 1]) F.box(3.4, 0.45, 0.6, sx * 2.6, fy, d / 2 - 4.5 - i * 2.0, 'plank', { tint: 0x8a6440 });
-  for (const sx of [-1, 1]) for (let i = 0; i < 5; i++) F.box(0.9, 2.6, 0.06, sx * (w / 2 + 0.03), fy + 2.6, d / 2 - 3 - i * 4, 'window', { collide: false, castShadow: false, ry: Math.PI / 2 });
-  W.addLightSource(F.at(0, fy + 2.5, back + 0.5), { color: 0x9ff0ff, intensity: 5, distance: 12, always: true });
-  W.addLightSource(F.at(0, 5.2, 0), { color: 0xffd8a0, intensity: 6, distance: 16, always: true });
-  W.addInteractable(new HealingCrystal(F.at(0, fy + 0.5, back - 0.3)));
-  // C00: the service room under the stairs (people must be led out before the crypt is opened).
-  W.addInteractable(new QuestProp({ id: 'temple_room', name: 'Служебная комната', prompt: 'Проверить, не остался ли кто внизу', position: F.at(3.2, fy + 0.9, back - 0.3), shape: 'none' }));
-  inside(() => templeExtras(F, w, d));
+  // The nave is a room beyond the map edge (TownInteriors.js): E at the door.
   W.spot('temple_door', F.at(0, fy, d / 2 + 2.4), rot);
+  entrance('temple', F, 0, d / 2, rot);
 }
 
 /** The old crypt in the cemetery (chapter 5 hook: sealed, nothing inside yet). */
@@ -399,9 +328,16 @@ function marketHall(rng) {
   for (let i = 0; i <= 4; i++) for (const sz of [-1, 1]) F.box(0.4, h, 0.4, -w / 2 + (i * w) / 4, 0.2, sz * (d / 2), 'timber', { tint: 0x5a3a26 });
   F.box(w + 0.4, 0.3, 0.3, 0, h, d / 2, 'timber', { tint: 0x5a3a26 });
   F.box(w + 0.4, 0.3, 0.3, 0, h, -d / 2, 'timber', { tint: 0x5a3a26 });
-  F.kit('village/Roof_RoundTiles_8x14', 0, h + 0.2, 0, { ry: Math.PI / 2, sx: d / 8, sy: d / 8, sz: w / 14, collide: false, tint: 0xb8b8c8 });
-  // Clock over the north gable.
-  F.cyl(0.8, 0.1, 0, h + 2.6, d / 2 + 0.2, 'plaster', { seg: 14, rx: Math.PI / 2, collide: false, tint: 0xf4ecd8 });
+  // The tiled roof with its brick gables (an open hall: no dark hollow under the gable ends).
+  const top = h + 0.3, ridge = villageRoof(F, w, d, top, 'red', {});
+  // Clocks on both gables (not on the slope of the roof).
+  for (const s of [-1, 1]) {
+    const cy = top + (ridge - top) * 0.36, cx = s * (w / 2 + 0.02);
+    F.cyl(0.62, 0.12, cx, cy, 0, 'plaster', { seg: 16, rz: -s * Math.PI / 2, collide: false, tint: 0xf4ecd8 });
+    F.cyl(0.7, 0.08, cx - s * 0.02, cy, 0, 'timber', { seg: 16, rz: -s * Math.PI / 2, collide: false, tint: 0x4a3020 });
+    F.box(0.04, 0.34, 0.05, cx + s * 0.14, cy, 0.0, 'metal', { collide: false, rx: 0.5 });
+    F.box(0.04, 0.48, 0.04, cx + s * 0.15, cy, 0.0, 'metal', { collide: false, rx: -1.9 });
+  }
   // Tables with goods inside.
   for (let i = 0; i < 3; i++) {
     const T2 = F.sub(-w / 2 + 2.4 + i * ((w - 4.8) / 2), 0.2, 0);
@@ -420,49 +356,55 @@ function inside(fn) {
   try { return fn(); } finally { W.lodMode = prev; }
 }
 
+/** The door of a building whose inside is a room beyond the map edge (TownInteriors.js): E «Войти» -> `<id>_inside`; the street
+ * side of the way back = `<id>_outside`. (lx, lz) = the door on the front wall of the frame F. */
+function entrance(id, F, lx, lz, rot) {
+  const name = (B[id]?.label ?? id).replace(/ \(.*\)$/, '');
+  W.addInteractable(new Door({ id: id + '_enter', name, prompt: 'Войти', position: F.at(lx, 0.35, lz + 0.35), target: id + '_inside', rotY: rot }));
+  W.spot(id + '_outside', F.at(lx, 0.05, lz + 1.6), rot);
+}
+
 /**
- * Walk-in shop: an archway at the left end of the front, a plank floor, a ceiling; `furnish`
- * fills it (Interiors.js) and returns the NPC points; spots <prefix>_counter / _front.
+ * Shop with a door on the left of the front: the shop itself is a room beyond the map edge (TownInteriors.js, HouseRooms.js);
+ * spots <id>_entrance / _outside on the street.
  */
-function walkIn(id, rng, spec, furnish, prefix = id) {
+function walkIn(id, rng, spec) {
   const b = B[id];
   const { x, z, rot } = at(id);
-  const closed = { id, name: (b.label ?? id).replace(/ \(.*\)$/, '') }; // in and out with E (Entrance.js)
-  const h = house(W, { x, z, rot, w: b.w, d: b.d, floors: b.floors || 2, interior: true, entrance: 'arch', closed, door: -b.w / 2 + 1.0, lantern: false, ...spec }, rng);
+  const dx = -b.w / 2 + 1.0;
+  const h = house(W, { x, z, rot, w: b.w, d: b.d, floors: b.floors || 2, door: dx, lantern: false, ...spec }, rng);
   const F = h.frame;
-  const pts = inside(() => furnish(F, b.w, b.d, rng));
-  if (pts.counter) W.spot(prefix + '_counter', F.at(pts.counter[0], FY, pts.counter[1]), rot);
-  if (pts.front) W.spot(prefix + '_front', F.at(pts.front[0], FY, pts.front[1]), rot + Math.PI);
-  // Shop sign over the archway.
-  F.box(0.08, 0.08, 1.2, -b.w / 2 + 1.0, 3.2, b.d / 2 + 0.6, 'metal', { collide: false });
-  F.box(1.0, 0.7, 0.06, -b.w / 2 + 1.0, 2.5, b.d / 2 + 1.15, 'wood', { collide: false, tint: spec.sign ?? 0x6a4428 });
-  W.spot(id + '_entrance', F.at(-b.w / 2 + 1.0, 0, b.d / 2 + 1.8), rot);
+  // Shop sign over the door.
+  F.box(0.08, 0.08, 1.2, dx, 3.2, b.d / 2 + 0.6, 'metal', { collide: false });
+  F.box(1.0, 0.7, 0.06, dx, 2.5, b.d / 2 + 1.15, 'wood', { collide: false, tint: spec.sign ?? 0x6a4428 });
+  W.spot(id + '_entrance', F.at(dx, 0, b.d / 2 + 1.8), rot);
+  entrance(id, F, dx, b.d / 2, rot);
   if (h.door) doorPath(h.door, rot, 16); // a paved path from the door to the street
-  return { h, F, pts };
+  return { h, F };
 }
 
 function bakery(rng) {
-  const { F } = walkIn('bakery', rng, { roofTint: 0xa0522d, chimney: true, flowers: 0.5, sign: 0xd8a030 }, bakeryShop);
+  const { F } = walkIn('bakery', rng, { roofTint: 0xa0522d, chimney: true, flowers: 0.5, sign: 0xd8a030 });
   F.sphere(0.3, -B.bakery.w / 2 + 1.0, 2.5, B.bakery.d / 2 + 1.22, 'hay', { collide: false, sx: 1.3, sy: 0.7 });
 }
 
 function store(rng) {
   const b = B.store;
-  const { F } = walkIn('store', rng, { roofTint: 0x4c6e5a, sign: 0x3a7ac8 }, generalStore);
+  const { F } = walkIn('store', rng, { roofTint: 0x4c6e5a, sign: 0x3a7ac8 });
   for (let i = 0; i < 2; i++) crate(W, F.sub(b.w / 2 - 0.9 - i * 0.9, 0, b.d / 2 + 0.9), 0, 0, 0.7, i);
   barrel(W, F.sub(b.w / 2 - 2.8, 0, b.d / 2 + 0.9), 0, 0);
 }
 
 function alchemist(rng) {
   const b = B.alchemist;
-  const { F } = walkIn('alchemist', rng, { floors: 3, roofTint: 0x5a4a6e, chimney: true, vines: 1, sign: 0x7a4aa8 }, alchemyShop);
+  const { F } = walkIn('alchemist', rng, { floors: 3, roofTint: 0x5a4a6e, chimney: true, vines: 1, sign: 0x7a4aa8 });
   // The purple turret (landmark) corbelled out over the back corner, from the first floor up.
   const T = F.sub(b.w / 2 + 1.4, -0.6, -b.d / 2 + 0.4); // a slim stone tower touching the back corner from outside
   houseTower(T, 2.8, 2.8, 12.5, { roofTint: 0x6a4e80 });
 }
 
 function weaponsmith(rng) {
-  walkIn('weaponsmith', rng, { roofTint: 0x7d3a3a, style: 'brick', sign: 0x8a2a2a }, weaponShop, 'weapons');
+  walkIn('weaponsmith', rng, { roofTint: 0x7d3a3a, style: 'brick', sign: 0x8a2a2a });
 }
 
 function forge(rng) {
@@ -484,8 +426,7 @@ function forge(rng) {
 }
 
 function office(rng) {
-  const { F, pts } = walkIn('caravan_office', rng, { style: 'wood', roofTint: ROOF_COLORS.brown, sign: 0xb08a5a }, caravanOffice);
-  W.spot('caravan_office_desk', F.at(pts.desk[0], FY, pts.desk[1]), at('caravan_office').rot);
+  walkIn('caravan_office', rng, { style: 'wood', roofTint: ROOF_COLORS.brown, sign: 0xb08a5a });
 }
 
 function workshop(b, rng, style) {

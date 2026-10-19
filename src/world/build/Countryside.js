@@ -5,6 +5,7 @@ import { ROOF_COLORS } from '../KitLibrary.js';
 import { REGION, LAKES, BRIDGES, POIS } from '../MapData.js';
 import { QuestProp, Door } from '../Interactables.js';
 import { createRitualCircle } from '../Surfaces.js';
+import { WATCHTOWER } from './WatchtowerData.js';
 
 /**
  * Everything outside the walls of Axel: the bridges (Moon bridge at the east gate, the south
@@ -568,6 +569,7 @@ function goblinDen(W, rng) {
 
 // -----------------------------------------------------------------------------------------
 function watchtower(W, rng) {
+  if (W.kits.has('obj/watchtower')) return watchtowerModel(W, rng);
   const c = REGION.watchtower.center;
   const y = H(W, c.x, c.z);
   const R = 3.8, T = 0.6, top = 10.2;
@@ -607,6 +609,69 @@ function watchtower(W, rng) {
   W.spot('watchtower_door', F.at(-R - 1.5, 0, 0), -Math.PI / 2);
   W.addFootprint(c.x, c.z, R * 2, R * 2, 0, 'tower');
   for (let i = 0; i < 6; i++) rock(W, c.x + Math.cos(i) * (R + 2.5), c.z + Math.sin(i) * (R + 2.5), 0.6 + rng() * 0.7, rng, 'rock');
+}
+
+/**
+ * The old watchtower = the user's model (obj/watchtower): the model is only drawn; walking runs on invisible solids built from
+ * its own measures (WatchtowerData.js): the ground floor, the 67 treads along the wall, the wall ring with the door gap, the
+ * flare where the shaft widens, the deck with the stair's opening and the parapet. The portal faces west, towards the trail.
+ */
+function watchtowerModel(W, rng) {
+  const c = REGION.watchtower.center, D = WATCHTOWER;
+  // the base on the highest ground under the tower (no gap under the threshold)
+  let y = H(W, c.x, c.z);
+  for (let i = 0; i < 8; i++) y = Math.max(y, H(W, c.x + Math.cos(i) * 2.6, c.z + Math.sin(i) * 2.6));
+  const F = new Frame(W, c.x, y - 0.05, c.z, -Math.PI / 2); // model +z (the portal) -> world -x
+  const at = (r, a) => [r * Math.cos(a), -r * Math.sin(a)]; // the model's own angle (Blender) -> local x, z
+  const CO = { collideOnly: true };
+  F.kit('obj/watchtower', 0, 0, 0, { collide: false });
+  // a stone foot so the base never hangs over the slope
+  F.cyl(2.75, 1.2, 0, -1.15, 0, 'stoneDark', { seg: 16, tint: 0x6a645c });
+  // ground floor
+  F.cyl(D.wallIn + 0.05, 0.2, 0, D.floor - 0.2, 0, 'stone', { ...CO, seg: 16 });
+  // treads: radial stone blocks along the wall (the packed model lost its thin treads to the simplifier: drawn here, solid)
+  for (const [ri, ro, a, b, top] of D.treads) {
+    const m = (a + b) / 2, r = (ri + ro) / 2, [x, z] = at(r, m);
+    F.box(ro - ri + 0.04, 0.3, r * (b - a) * 1.08, x, top - 0.3, z, 'stone', { ry: m, tint: 0xb8ad9c });
+  }
+  // the wall: a ring of slabs (a gap for the portal at a = -pi/2 below the lintel), the flare, the upper wall
+  const N = 28, door = -Math.PI / 2;
+  const ring = (rIn, rOut, y0, y1, gap) => {
+    for (let k = 0; k < N; k++) {
+      const a = (k / N) * Math.PI * 2, dd = Math.atan2(Math.sin(a - door), Math.cos(a - door));
+      if (gap && Math.abs(dd) < 0.36) continue;
+      const r = (rIn + rOut) / 2, [x, z] = at(r, a);
+      F.box(rOut - rIn, y1 - y0, ((2 * Math.PI * rOut) / N) * 1.12, x, y0, z, 'stone', { ...CO, ry: a });
+    }
+  };
+  ring(D.wallIn, D.wallOut, 0, 2.6, true);
+  ring(D.wallIn, D.wallOut, 2.6, D.flare[0], false);
+  const steps = 4;
+  for (let i = 0; i < steps; i++) {
+    const f = (i + 0.5) / steps, y0 = D.flare[0] + ((D.flare[1] - D.flare[0]) * i) / steps;
+    ring(D.wallIn + (D.deckIn - D.wallIn) * f, D.deckOut, y0, y0 + (D.flare[1] - D.flare[0]) / steps, false);
+  }
+  ring(D.deckIn, D.deckOut, D.flare[1], D.height - 0.2, false); // up to the parapet
+  // the deck: sectors over the whole circle, only the inner part where the stair comes up along the wall
+  const up = D.treads.filter((t) => t[4] > D.deck - 2.15), a0 = up[0][2], a1 = up[up.length - 1][3];
+  const M = 40;
+  for (let k = 0; k < M; k++) {
+    const a = (k / M) * Math.PI * 2;
+    const open = [a, a + Math.PI * 2, a + Math.PI * 4].some((q) => q > a0 - 0.05 && q < a1 + 0.05);
+    const rIn = 0, rOut = open ? D.exit[0] : D.deckIn + 0.05, r = (rIn + rOut) / 2, [x, z] = at(r, a);
+    F.box(rOut - rIn, 0.25, ((2 * Math.PI * rOut) / M) * 1.15, x, D.deck - 0.25, z, 'plank', { ...CO, ry: a });
+  }
+  // the story's things on the deck (its middle is free: 2 x 1.4 m), the way in
+  const [lx, lz] = at(0.55, Math.PI), [cx, cz] = at(0.75, 0);
+  W.addInteractable(new QuestProp({ id: 'tower_logbook', name: 'Журнал дозорного', prompt: 'Прочитать', position: F.at(lx, D.deck, lz), shape: 'book' }));
+  W.addChest(F.at(cx, D.deck, cz), 0.4, 'tower_top');
+  W.spot('watchtower_top', F.at(...[0, D.deck, 0.2]), 0);
+  W.spot('watchtower_door', F.at(0, 0, D.wallOut + 1.6), -Math.PI / 2);
+  W.addFootprint(c.x, c.z, D.deckOut * 2, D.deckOut * 2, 0, 'tower');
+  for (let i = 0; i < 6; i++) {
+    const a = 0.6 + i * 0.95; // not in front of the portal (west)
+    rock(W, c.x + Math.cos(a) * 4.6, c.z + Math.sin(a) * 4.6, 0.5 + rng() * 0.6, rng, 'rock');
+  }
 }
 
 function caveEntrance(W, rng) {

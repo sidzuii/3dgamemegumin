@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { AXEL, WALL, toWorld } from './AxelPlan.js';
 import * as AIN from './AinstreyPlan.js';
+import { ROOMS } from './HouseRooms.js';
 
 /**
  * The overworld as data. North = -Z, east = +X, metres (docs/axel-city-plan.md).
@@ -53,6 +54,8 @@ export const REGIONS = [
   { id: 'pump', name: 'Насосная станция', sub: 'Под городом', center: v(0, 2000), r: 130, icon: '◒', tier: 0, interior: true },
   { id: 'drain', name: 'Внешний отвод', sub: 'Под Багровым ущельем', center: v(0, 1740), r: 110, icon: '◒', tier: 0, interior: true },
   { id: 'relay', name: 'Ретранслятор', sub: 'Восточный пост Астрариума', center: v(0, 1508), r: 100, icon: '◒', tier: 0, interior: true },
+  // The rooms of Axel's buildings beyond the map edge (HouseRooms.js): safe (no Explosion), named by their building.
+  ...ROOMS.map((r) => ({ id: 'room_' + r.id, name: r.name, sub: 'Аксель', center: v(r.x, r.z), r: Math.max(r.w, r.d) / 2 + 3, icon: '⌂', tier: 0, interior: true, safe: true, room: r.id })),
   // ---- Ainstrey sheet (docs/ainstrey): the road from the east pass and the capital. `poly` = world polygon (a district is not a circle).
   ...AIN_REGIONS(),
 ];
